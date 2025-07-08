@@ -1,7 +1,9 @@
 import json
+import os  # ← ADD THIS LINE
+
 import shutil
 import threading
-from datetime import datetime
+from datetime import datetime, timedelta  # ← ADD timedelta here too
 from tinydb import TinyDB, Query
 from tinydb.middlewares import CachingMiddleware
 from tinydb.storages import JSONStorage
@@ -21,7 +23,12 @@ usage_db = None
 cost_db = None
 user_limits_db = None
 
-Q = Query()
+# Initialize Q - but make it more robust
+try:
+    Q = Query()
+except Exception as e:
+    print(f"Warning: Could not initialize Query object: {e}")
+    Q = None
 
 
 def repair_corrupted_json(file_path):

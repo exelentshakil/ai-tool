@@ -81,11 +81,11 @@ def generate_ai_analysis(tool_config, user_data, base_result, ip):
     if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
         return create_fallback_response(tool_config, user_data, base_result)
 
-    cache_key = hashlib.sha256(f"{tool_config['slug']}:{str(user_data)}".encode()).hexdigest()
-    cached = check_cache("ai_" + tool_config['slug'], cache_key)
-
-    if cached:
-        return cached.replace("[RESULT]", str(base_result))
+    # cache_key = hashlib.sha256(f"{tool_config['slug']}:{str(user_data)}".encode()).hexdigest()
+    # cached = check_cache("ai_" + tool_config['slug'], cache_key)
+    #
+    # if cached:
+    #     return cached.replace("[RESULT]", str(base_result))
 
     category = tool_config.get("category", "general")
     tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
@@ -110,7 +110,7 @@ def generate_ai_analysis(tool_config, user_data, base_result, ip):
         # Generate rich HTML response with charts and value ladder
         rich_response = generate_rich_html_response(ai_analysis, user_data, base_result, tool_config)
 
-        store_cache("ai_" + tool_config['slug'], cache_key, rich_response)
+        # store_cache("ai_" + tool_config['slug'], cache_key, rich_response)
         return rich_response.replace("[RESULT]", str(base_result))
 
     except Exception as e:
