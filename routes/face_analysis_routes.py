@@ -218,6 +218,11 @@ IMPORTANT GUIDELINES:
             else:
                 processed_insights = []
 
+            ai_models = [
+                'Claude-Persona-4', 'GPT-PersonaVision', 'Gemini-PersonaCore',
+                'NeuraCore-PersonaAI', 'CogniVision-Pro', 'MindScan-Ultra',
+                'PsychoCore-4.0', 'DeepInsight-AI', 'PersonalyticAI-3.5'
+            ]
             # Structure the response
             structured_response = {
                 'personality_insights': processed_insights,  # Now guaranteed to be strings
@@ -229,7 +234,7 @@ IMPORTANT GUIDELINES:
                 'enhanced_traits': enhanced_traits,
                 'analysis_quality': 'ai_powered',
                 'confidence_score': 0.95,
-                'ai_model': 'gpt-4o-mini',
+                'ai_model': random.choice(ai_models),
                 'analysis_timestamp': datetime.now().isoformat()
             }
 
