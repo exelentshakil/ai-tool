@@ -69,9 +69,10 @@ def increment_user_usage(ip, tool_slug):
 def check_user_limit(ip, is_premium=False):
     """Check hourly user limit"""
     usage = get_user_usage_current_hour(ip)
-    limit = float('inf') if is_premium else HOURLY_FREE_LIMIT
+    limit = HOURLY_FREE_LIMIT
+    limit_display = "unlimited" if is_premium else limit
 
-    if usage >= limit:
+    if not is_premium and usage >= limit:
         reset = datetime.now().replace(minute=RESET_MINUTE, second=0, microsecond=0) + timedelta(hours=1)
         minutes_until_reset = max(1, int((reset - datetime.now()).total_seconds() / 60))
 
@@ -82,7 +83,7 @@ def check_user_limit(ip, is_premium=False):
             "can_calculate": True,
             "can_ai": False,
             "usage_count": usage,
-            "limit": limit
+            "limit": limit_display
         }
 
     return {
@@ -90,8 +91,8 @@ def check_user_limit(ip, is_premium=False):
         "can_calculate": True,
         "can_ai": True,
         "usage_count": usage,
-        "limit": limit,
-        "remaining": limit - usage
+        "limit": limit_display,
+        "remaining": "unlimited" if is_premium else limit - usage
     }
 
 
