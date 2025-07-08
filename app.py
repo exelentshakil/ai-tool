@@ -14,14 +14,10 @@ from utils.validation import validate_tool_inputs
 from utils.ai_analysis import generate_ai_analysis, generate_base_result, create_fallback_response
 from utils.tools_config import load_all_tools, ALL_TOOLS
 from config.settings import *
-from routes.face_analysis_routes import face_bp
 
 # ─── ENV & APP SETUP ────────────────────────────────────────────────────────────
 load_dotenv()
 app = Flask(__name__)
-
-# class register
-app.register_blueprint(face_bp)
 
 # Update CORS to include your WordPress site
 CORS(app, origins=[
