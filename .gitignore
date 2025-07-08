@@ -1,0 +1,25 @@
+# Add to your existing .gitignore
+# Production configs
+.env
+.env.production
+.env.local
+ecosystem.config.js
+ecosystem.production.js
+gunicorn.conf.py
+
+# Deployment scripts
+safe_deploy.sh
+start_app.sh
+optimize_system.sh
+health_check.sh
+
+# Logs and runtime
+logs/
+*.log
+*.pid
+
+# PM2
+.pm2/
+
+# Backup files
+*.backup.*
