@@ -57,41 +57,67 @@ def process_tool():
         tool_slug = data.get("tool", "").strip()
         user_data = data.get("data", {})
 
+        print(f"🔍 Processing tool: {tool_slug}")
+        print(f"🔍 User data: {user_data}")
+
         if not tool_slug:
             return jsonify({"error": "Tool parameter required"}), 400
 
         # Find tool configuration
+        print(f"🔍 Looking for tool in {len(tools_config.ALL_TOOLS)} available tools")
         tool_config = tools_config.ALL_TOOLS.get(tool_slug)
+
         if not tool_config:
+            print(f"🔍 Exact match not found, searching for partial matches...")
             for key in tools_config.ALL_TOOLS.keys():
                 if tool_slug.lower() in key.lower() or key.lower() in tool_slug.lower():
                     tool_config = tools_config.ALL_TOOLS[key]
+                    print(f"🔍 Found partial match: {key}")
                     break
 
         if not tool_config:
+            print(f"❌ No tool found for: {tool_slug}")
             return jsonify({
                 "error": f"Tool '{tool_slug}' not found",
                 "available_tools": list(tools_config.ALL_TOOLS.keys())[:10]
             }), 404
 
+        print(f"✅ Found tool config: {tool_config.get('base_name', 'No name')}")
+
+        print("🔍 Getting remote address...")
         ip = get_remote_address()
+        print(f"🔍 IP: {ip}")
+
+        print("🔍 Checking user limits...")
         limit_check = check_user_limit(ip, is_premium_user(ip))
+        print(f"🔍 Limit check result: {limit_check}")
 
         # Validate inputs
+        print("🔍 Validating inputs...")
         category = tool_config.get("category", "general")
+        print(f"🔍 Category: {category}")
+
         validated_data = validate_tool_inputs(user_data, category)
+        print(f"🔍 Validated data: {validated_data}")
+
+        print("🔍 Generating base result...")
         base_result = generate_base_result(validated_data, category)
+        print(f"🔍 Base result: {base_result}")
 
         # Generate AI analysis if not rate limited
+        print("🔍 Checking if AI analysis is allowed...")
         if limit_check.get("can_ai", False):
+            print("🔍 Generating AI analysis...")
             ai_analysis = generate_ai_analysis(tool_config, validated_data, base_result, ip)
             increment_user_usage(ip, tool_slug)
         else:
+            print("🔍 Creating fallback response...")
             ai_analysis = create_fallback_response(tool_config, validated_data, base_result)
             ai_analysis += f"\n\n**Rate Limit:** {limit_check.get('message', 'Hourly limit reached')}"
 
+        print("🔍 Preparing response...")
         is_rate_limited = limit_check.get("blocked", False)
-        return jsonify({
+        response = {
             "output": {
                 "base_result": base_result,
                 "ai_analysis": ai_analysis,
@@ -105,13 +131,21 @@ def process_tool():
                 "upgrade_available": not is_premium_user(ip),
                 "rate_limit_message": limit_check.get("message") if is_rate_limited else None
             }
-        }), 200
+        }
+
+        print("✅ Returning successful response")
+        return jsonify(response), 200
 
     except Exception as e:
-        app.logger.error(f"Process tool error: {str(e)}")
+        print(f"❌ Exception in process_tool: {str(e)}")
+        print(f"❌ Exception type: {type(e)}")
+        import traceback
+        traceback.print_exc()
+
         return jsonify({
             "error": "Processing failed",
-            "message": "Please check your inputs and try again"
+            "message": f"Error: {str(e)}",  # Include actual error for debugging
+            "error_type": str(type(e).__name__)
         }), 500
 
 
