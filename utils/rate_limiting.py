@@ -33,10 +33,20 @@ def get_user_limit_key(ip):
 
 
 def get_user_usage_current_hour(ip):
-    """Get user's usage count for the current hour"""
-    key = get_user_limit_key(ip)
-    rec = safe_db_operation(user_limits_db, user_limits_lock, user_limits_db.get, Q.key == key)
-    return rec.get("count", 0) if rec else 0
+    if user_limits_db is None:
+        return 0
+
+    current_hour = datetime.now().strftime('%Y-%m-%d-%H')
+    key = f"{ip}_{current_hour}"
+
+    Q = Query()
+    rec = safe_db_operation(
+        user_limits_db,
+        user_limits_lock,
+        lambda db: db.get(Q.key == key)
+    )
+
+    return rec['count'] if rec else 0
 
 
 def increment_user_usage(ip, tool_slug):
