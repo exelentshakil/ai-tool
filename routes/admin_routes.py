@@ -899,16 +899,17 @@ def get_growth_metrics(timeframe):
             "monthly_active_users": current_users * 30,
             "growth_trajectory": "positive" if current_users > 5 else "stable"
         }
-    except Exception:
+    except Exception as e:
         return {
             "user_growth": "N/A",
             "request_growth": "N/A",
             "new_tool_usage": "N/A",
-            "retention_rate": "N/A"
+            "retention_rate": "N/A",
+            "weekly_active_users": 0,
+            "monthly_active_users": 0,
+            "growth_trajectory": "error",
+            "error_message": f"Growth metrics failed: {str(e)}"
         }
-        "Optimization failed: {str(e)}",
-        "partial_results": results
-    }
 
     def get_current_hour_users():
         """Get users active in current hour"""
