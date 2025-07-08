@@ -1,3 +1,5 @@
+# Add this to your existing app.py file
+
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_limiter import Limiter
@@ -16,7 +18,13 @@ from config.settings import *
 # ─── ENV & APP SETUP ────────────────────────────────────────────────────────────
 load_dotenv()
 app = Flask(__name__)
-CORS(app, origins=["https://barakahsoft.com"])
+
+# Update CORS to include your WordPress site
+CORS(app, origins=[
+    "https://barakahsoft.com",
+    "https://www.barakahsoft.com",
+    "https://your-wordpress-site.com"  # Add your actual WordPress domain
+])
 CORS(app, expose_headers=['Retry-After'])
 
 # Initialize rate limiter
@@ -31,6 +39,33 @@ init_databases()
 
 # Load tools configuration
 load_all_tools()
+
+# ─── FACE ANALYSIS TOOL CONFIGURATION ──────────────────────────────────────────
+# Add face analysis to your tools configuration
+FACE_ANALYSIS_TOOL = {
+    "face_analyzer": {
+        "name": "AI Face Personality Analyzer",
+        "description": "Advanced personality analysis using facial recognition and AI",
+        "category": "personality",
+        "ai_model": "gpt-4",
+        "complexity": "high",
+        "rate_limit": {
+            "free": 3,
+            "premium": 50
+        },
+        "features": [
+            "Big Five personality traits analysis",
+            "Career recommendations with salary insights",
+            "Personal growth roadmap",
+            "Success predictions",
+            "Facial symmetry analysis",
+            "Leadership potential assessment"
+        ]
+    }
+}
+
+# Add to your existing ALL_TOOLS
+ALL_TOOLS.update(FACE_ANALYSIS_TOOL)
 
 
 # ─── MAIN API ENDPOINTS ─────────────────────────────────────────────────────────
@@ -104,14 +139,82 @@ def process_tool():
         }), 500
 
 
-# Import and register all other endpoints
+# Import and register all blueprints including face analysis
 from routes.tools_routes import tools_bp
 from routes.admin_routes import admin_bp
 from routes.legacy_routes import legacy_bp
+from routes.face_analysis_routes import face_bp  # New face analysis routes
 
 app.register_blueprint(tools_bp)
 app.register_blueprint(admin_bp)
 app.register_blueprint(legacy_bp)
+app.register_blueprint(face_bp)  # Register face analysis blueprint
+
+
+# ─── FACE ANALYSIS SPECIFIC ENDPOINTS ──────────────────────────────────────────
+@app.route('/analyze-face-simple', methods=['POST', 'OPTIONS'])
+@limiter.limit("20 per hour")
+def analyze_face_simple():
+    """Simplified face analysis endpoint for WordPress integration"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
+
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        ip = get_remote_address()
+        is_premium = is_premium_user(ip)
+        limit_check = check_user_limit(ip, is_premium)
+
+        # Check if user can perform analysis
+        if limit_check.get("blocked", False):
+            return jsonify({
+                'error': 'Rate limit exceeded',
+                'message': limit_check.get("message", "Daily limit reached"),
+                'upgrade_available': not is_premium,
+                'reset_time': (datetime.now() + timedelta(hours=1)).isoformat()
+            }), 429
+
+        # Extract personality traits from client
+        traits = data.get('personality_traits', {})
+        user_profile = data.get('user_profile', {})
+
+        if not traits:
+            return jsonify({'error': 'Personality traits required'}), 400
+
+        # Generate basic analysis for WordPress plugin
+        from routes.face_analysis_routes import EnhancedPersonalityAnalyzer
+        analyzer = EnhancedPersonalityAnalyzer()
+
+        # Create simplified analysis
+        analysis = {
+            'personality_insights': analyzer.generate_comprehensive_insights(traits, {}, user_profile)[:2],
+            'career_match': analyzer.get_career_recommendations(traits, {})[:1],
+            'success_predictions': analyzer.generate_life_predictions(traits, {}),
+            'confidence_score': 0.85,
+            'analysis_timestamp': datetime.now().isoformat()
+        }
+
+        # Increment usage
+        increment_user_usage(ip, 'face_analysis_simple')
+
+        return jsonify({
+            'success': True,
+            'analysis': analysis,
+            'user_info': {
+                'remaining_analyses': limit_check.get("remaining", 0) - 1,
+                'is_premium': is_premium
+            }
+        })
+
+    except Exception as e:
+        app.logger.error(f"Simple face analysis error: {str(e)}")
+        return jsonify({
+            'error': 'Analysis failed',
+            'message': str(e)
+        }), 500
 
 
 # ─── HEALTH CHECK ───────────────────────────────────────────────────────────────
@@ -124,8 +227,69 @@ def health_check():
         "tools_loaded": len(ALL_TOOLS),
         "daily_ai_cost": round(daily_cost, 4),
         "budget_remaining": round(DAILY_OPENAI_BUDGET - daily_cost, 4),
+        "face_analysis_enabled": True,
         "timestamp": datetime.now().isoformat()
     })
+
+
+# ─── FACE ANALYSIS UTILITY ENDPOINTS ───────────────────────────────────────────
+@app.route('/face-analysis/limits', methods=['GET'])
+def get_face_analysis_limits():
+    """Get current face analysis limits for user"""
+    ip = get_remote_address()
+    is_premium = is_premium_user(ip)
+    limit_check = check_user_limit(ip, is_premium)
+
+    return jsonify({
+        'daily_limit': 50 if is_premium else 5,
+        'remaining': limit_check.get("remaining", 0),
+        'reset_time': (datetime.now() + timedelta(hours=24)).isoformat(),
+        'is_premium': is_premium,
+        'can_analyze': not limit_check.get("blocked", False)
+    })
+
+
+@app.route('/face-analysis/demo', methods=['POST'])
+@limiter.limit("5 per hour")
+def face_analysis_demo():
+    """Demo endpoint with sample personality analysis"""
+    try:
+        # Sample traits for demo
+        demo_traits = {
+            'openness': 0.75,
+            'conscientiousness': 0.68,
+            'extraversion': 0.82,
+            'agreeableness': 0.71,
+            'neuroticism': 0.34
+        }
+
+        demo_profile = {
+            'name': 'Demo User',
+            'age_range': '25-34'
+        }
+
+        from routes.face_analysis_routes import EnhancedPersonalityAnalyzer
+        analyzer = EnhancedPersonalityAnalyzer()
+
+        demo_analysis = {
+            'personality_insights': [
+                "You demonstrate exceptional leadership potential with high extraversion and strong organizational skills.",
+                "Your openness to new experiences combined with conscientiousness makes you ideal for innovative leadership roles."
+            ],
+            'career_recommendations': analyzer.get_career_recommendations(demo_traits, {})[:1],
+            'success_predictions': analyzer.generate_life_predictions(demo_traits, {}),
+            'is_demo': True,
+            'demo_message': 'This is a sample analysis. Upload your photo for personalized results!'
+        }
+
+        return jsonify({
+            'success': True,
+            'analysis': demo_analysis,
+            'demo': True
+        })
+
+    except Exception as e:
+        return jsonify({'error': 'Demo failed', 'message': str(e)}), 500
 
 
 if __name__ == "__main__":
