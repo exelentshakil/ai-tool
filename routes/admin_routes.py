@@ -9,7 +9,9 @@ from utils.database import (
     get_database_stats, clean_old_cache,
     user_limits_db, user_limits_lock, safe_db_operation
 )
-from utils.tools_config import get_tool_statistics, ALL_TOOLS
+from utils.tools_config import load_all_tools
+from utils.tools_config import get_tool_statistics
+from utils import tools_config
 from config.settings import ADMIN_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET, HOURLY_FREE_LIMIT
 from tinydb import Query
 
@@ -67,7 +69,7 @@ def admin_stats():
                 "monthly_budget_used_percent": round((monthly_cost / MONTHLY_OPENAI_BUDGET) * 100, 2)
             },
             "system": {
-                "tools_loaded": len(ALL_TOOLS),
+                "tools_loaded": len(tools_config.ALL_TOOLS),
                 "hourly_limit": HOURLY_FREE_LIMIT,
                 "database_stats": db_stats,
                 "tools_stats": tools_stats
@@ -153,7 +155,7 @@ def admin_tools():
 
         # Get tool usage statistics
         tools_info = []
-        for slug, tool_config in ALL_TOOLS.items():
+        for slug, tool_config in tools_config.ALL_TOOLS.items():
             tools_info.append({
                 'slug': slug,
                 'name': tool_config.get('seo_data', {}).get('title', slug),
@@ -165,7 +167,7 @@ def admin_tools():
         return jsonify({
             "tools_overview": tools_stats,
             "tools_list": tools_info,
-            "total_tools": len(ALL_TOOLS)
+            "total_tools": len(tools_config.ALL_TOOLS)
         })
 
     except Exception as e:
@@ -280,8 +282,8 @@ def admin_maintenance():
                 return jsonify({
                     "operation": "update_tools_config",
                     "success": result,
-                    "tools_loaded": len(ALL_TOOLS),
-                    "message": f"Reloaded {len(ALL_TOOLS)} tools" if result else "Failed to reload tools"
+                    "tools_loaded": len(tools_config.ALL_TOOLS),
+                    "message": f"Reloaded {len(tools_config.ALL_TOOLS)} tools" if result else "Failed to reload tools"
                 })
             except Exception as e:
                 return jsonify({
@@ -294,7 +296,7 @@ def admin_maintenance():
             report_data = {
                 "timestamp": datetime.now().isoformat(),
                 "system_stats": {
-                    "tools_loaded": len(ALL_TOOLS),
+                    "tools_loaded": len(tools_config.ALL_TOOLS),
                     "daily_cost": get_openai_cost_today(),
                     "monthly_cost": get_openai_cost_month(),
                     "current_users": len(get_current_hour_users())
@@ -340,7 +342,7 @@ def admin_config():
                     "current_hour_users": len(get_current_hour_users())
                 },
                 "system": {
-                    "total_tools": len(ALL_TOOLS),
+                    "total_tools": len(tools_config.ALL_TOOLS),
                     "cache_stats": cache_stats,
                     "system_status": "operational"
                 },
@@ -573,7 +575,7 @@ def create_data_backup():
                 "backup_date": datetime.now().isoformat(),
                 "files_included": backed_up,
                 "system_info": {
-                    "total_tools": len(ALL_TOOLS),
+                    "total_tools": len(tools_config.ALL_TOOLS),
                     "daily_cost": get_openai_cost_today(),
                     "monthly_cost": get_openai_cost_month()
                 }
@@ -999,7 +1001,7 @@ def get_growth_metrics(timeframe):
                 "event": "Application started",
                 "timestamp": datetime.now().isoformat(),
                 "severity": "info",
-                "details": f"Loaded {len(ALL_TOOLS)} tools"
+                "details": f"Loaded {len(tools_config.ALL_TOOLS)} tools"
             }
         ]
 
