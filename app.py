@@ -64,7 +64,7 @@ FACE_ANALYSIS_TOOL = {
 }
 
 # Add to your existing ALL_TOOLS
-ALL_TOOLS.update(FACE_ANALYSIS_TOOL)
+#ALL_TOOLS.update(FACE_ANALYSIS_TOOL)
 
 
 # ─── MAIN API ENDPOINTS ─────────────────────────────────────────────────────────

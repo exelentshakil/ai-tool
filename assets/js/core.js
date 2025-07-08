@@ -3,7 +3,7 @@
 
 class EnhancedCalculatorCore {
     constructor() {
-        this.config = window.TOOL_CONFIG || this.getDefaultConfig();
+        this.config = TOOL_CONFIG || this.getDefaultConfig();
         this.apiBaseUrl = 'https://ai.barakahsoft.com';
         this.results = null;
         this.isCalculating = false;
