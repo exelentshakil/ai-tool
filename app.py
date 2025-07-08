@@ -19,6 +19,18 @@ from config.settings import *
 load_dotenv()
 app = Flask(__name__)
 
+def initialize_databases():
+    global user_limits_db
+    try:
+        DB_PATH = os.path.join(os.path.dirname(__file__), 'data')
+        os.makedirs(DB_PATH, exist_ok=True)
+        user_limits_db = TinyDB(os.path.join(DB_PATH, 'user_limits.json'))
+        print("Database initialized successfully")
+    except Exception as e:
+        print(f"Failed to initialize database: {e}")
+
+initialize_databases()
+
 # Update CORS to include your WordPress site
 CORS(app, origins=[
     "https://barakahsoft.com",
