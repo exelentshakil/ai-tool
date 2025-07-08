@@ -1316,58 +1316,66 @@ class EnhancedCalculatorSystem {
     }
 
     async downloadInteractiveReport() {
-        const container = document.getElementById('tool-results');
-        if (!container) throw new Error('No results to capture');
+  const container = document.getElementById('tool-results');
+  if (!container) throw new Error('No results to capture');
 
-        const htmlContent = `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>${this.config.seo_data?.title || 'Calculator Report'}</title>
-                <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
-                <style>
-                    ${this.getReportCSS()}
-                </style>
-            </head>
-            <body>
-                <div class="report-container">
-                    <header class="report-header">
-                        <h1>${this.config.seo_data?.title || 'Calculator Report'}</h1>
-                        <p>Generated on ${new Date().toLocaleDateString()}</p>
-                        <div class="report-meta">
-                            <span>Category: ${this.config.category?.toUpperCase()}</span>
-                            <span>Tool: ${this.config.base_name}</span>
-                        </div>
-                    </header>
-                    ${container.innerHTML}
-                    <footer class="report-footer">
-                        <p>Powered by AI Calculator System</p>
-                        <p>This report contains interactive charts and analysis</p>
-                    </footer>
-                </div>
-                <script>
-                    // Re-initialize charts
-                    setTimeout(() => {
-                        ${this.getChartInitScript()}
-                    }, 100);
-                </script>
-            </body>
-            </html>
-        `;
+  const title    = this.config.seo_data?.title || 'Calculator Report';
+  const category = (this.config.category || '').toUpperCase();
+  const toolName = this.config.base_name || '';
+  const slug     = this.config.slug || 'calculator-report';
+  const today    = new Date().toLocaleDateString();
+  const filename = `${slug}-interactive-report-${new Date().toISOString().split('T')[0]}.html`;
 
-        const blob = new Blob([htmlContent], {type: 'text/html;charset=utf-8'});
-        const link = document.createElement('a');
-        link.download = `${this.config.slug}-interactive-report-${new Date().toISOString().split('T')[0]}.html`;
-        link.href = URL.createObjectURL(blob);
+ // build the full HTML
+  const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${title}</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+  <style>
+    ${safeCss}
+  </style>
+</head>
+<body>
+  <div class="report-container">
+    <header class="report-header">
+      <h1>${title}</h1>
+      <p>Generated on ${today}</p>
+      <div class="report-meta">
+        <span>Category: ${category}</span>
+        <span>Tool: ${toolName}</span>
+      </div>
+    </header>
+    ${containerHtml}
+    <footer class="report-footer">
+      <p>Powered by AI Calculator System</p>
+      <p>This report contains interactive charts and analysis</p>
+    </footer>
+  </div>
+  <script>
+    // Re-initialize charts after DOM load
+    setTimeout(() => {
+      ${safeChartJs}
+    }, 100);
+  </script>
+</body>
+</html>`;
 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+  return htmlContent;
+}
 
-        URL.revokeObjectURL(link.href);
-    }
+  const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+  const link = document.createElement('a');
+  link.download = filename;
+  link.href = URL.createObjectURL(blob);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(link.href);
+}
+
 
     getReportCSS() {
         return `
@@ -2851,6 +2859,3 @@ class EnhancedCalculatorSystem {
     }
 
 }
-
-
-
