@@ -144,7 +144,7 @@ Please provide a detailed JSON response with the following structure:
             "success_metrics": ["Metric 1", "Metric 2"],
             "resources": ["Resource 1", "Resource 2"]
         }}
-        // Provide 2-3 growth recommendations
+        // Provide 4 growth recommendations
     ],
     "life_predictions": {{
         "career_advancement": 85, // 1-100 prediction
