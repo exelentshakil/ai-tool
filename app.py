@@ -12,7 +12,8 @@ from utils.database import init_databases, get_openai_cost_today
 from utils.rate_limiting import get_remote_address, check_user_limit, is_premium_user, increment_user_usage
 from utils.validation import validate_tool_inputs
 from utils.ai_analysis import generate_ai_analysis, generate_base_result, create_fallback_response
-from utils.tools_config import load_all_tools, ALL_TOOLS
+from utils.tools_config import load_all_tools
+from utils import tools_config
 from config.settings import *
 
 # ─── ENV & APP SETUP ────────────────────────────────────────────────────────────
@@ -61,7 +62,7 @@ def process_tool():
             return jsonify({"error": "Tool parameter required"}), 400
 
         # Find tool configuration
-        tool_config = ALL_TOOLS.get(tool_slug)
+        tool_config = tools_config.ALL_TOOLS.get(tool_slug)
         if not tool_config:
             for key in ALL_TOOLS.keys():
                 if tool_slug.lower() in key.lower() or key.lower() in tool_slug.lower():
@@ -200,7 +201,7 @@ def health_check():
     daily_cost = get_openai_cost_today()
     return jsonify({
         "status": "healthy",
-        "tools_loaded": len(ALL_TOOLS),
+        "tools_loaded": len(tools_config.ALL_TOOLS),
         "daily_ai_cost": round(daily_cost, 4),
         "budget_remaining": round(DAILY_OPENAI_BUDGET - daily_cost, 4),
         "face_analysis_enabled": True,
