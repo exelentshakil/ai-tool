@@ -32,11 +32,11 @@ pytest-flask==1.3.0
 gunicorn==21.2.0        # For Linux/Mac production
 waitress==2.1.2         # For Windows production
 
-# Security (Optional but recommended)
-cryptography==41.0.8
-
 # Logging (Optional but recommended for production)
 python-json-logger==2.0.7
 
 # Performance Monitoring (Optional)
 werkzeug==3.0.1
+
+# Security (Optional but recommended)
+cryptography==41.0.8
