@@ -37,8 +37,11 @@ limiter.init_app(app)
 # Initialize databases
 init_databases()
 
-# Load tools configuration
-load_all_tools()
+# At the top of your main application file
+print("🚀 Starting application...")
+load_result = load_all_tools()
+print(f"🔍 Tools loaded successfully: {load_result}")
+print(f"🔍 Available tools after loading: {list(ALL_TOOLS.keys()) if ALL_TOOLS else 'None'}")
 
 # ─── FACE ANALYSIS TOOL CONFIGURATION ──────────────────────────────────────────
 # Add face analysis to your tools configuration
@@ -64,7 +67,7 @@ FACE_ANALYSIS_TOOL = {
 }
 
 # Add to your existing ALL_TOOLS
-#ALL_TOOLS.update(FACE_ANALYSIS_TOOL)
+ALL_TOOLS.update(FACE_ANALYSIS_TOOL)
 
 
 # ─── MAIN API ENDPOINTS ─────────────────────────────────────────────────────────

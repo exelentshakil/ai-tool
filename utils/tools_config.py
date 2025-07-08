@@ -10,27 +10,52 @@ def load_all_tools():
     """Load all tools from tools_config.json"""
     global ALL_TOOLS
     try:
+        print(f"🔍 Looking for tools config file: {TOOLS_CONFIG_FILE}")
+        print(f"🔍 Current working directory: {os.getcwd()}")
+        print(f"🔍 File exists: {os.path.exists(TOOLS_CONFIG_FILE)}")
+
         if not os.path.exists(TOOLS_CONFIG_FILE):
             print(f"❌ {TOOLS_CONFIG_FILE} not found!")
+            print(f"🔍 Attempting to create default config...")
             create_default_tools_config()
             return False
 
+        # Check file size and permissions
+        file_stat = os.stat(TOOLS_CONFIG_FILE)
+        print(f"🔍 File size: {file_stat.st_size} bytes")
+        print(f"🔍 File permissions: {oct(file_stat.st_mode)}")
+
+        with open(TOOLS_CONFIG_FILE, 'r', encoding='utf-8') as f:
+            content = f.read()
+            print(f"🔍 File content preview: {content[:200]}...")
+
+        # Reset file pointer and load JSON
         with open(TOOLS_CONFIG_FILE, 'r', encoding='utf-8') as f:
             ALL_TOOLS = json.load(f)
+
+        print(f"🔍 Loaded tools from JSON: {list(ALL_TOOLS.keys())}")
+
+        # Merge with Python-defined tools
+        if 'FACE_ANALYSIS_TOOL' in globals():
+            ALL_TOOLS.update(FACE_ANALYSIS_TOOL)
+            print(f"🔍 After merging with Python tools: {list(ALL_TOOLS.keys())}")
 
         # Ensure each tool has a slug
         for tool_slug, tool_config in ALL_TOOLS.items():
             if 'slug' not in tool_config:
                 tool_config['slug'] = tool_slug
 
-        print(f"✅ Loaded {len(ALL_TOOLS)} tools from {TOOLS_CONFIG_FILE}")
+        print(f"✅ Successfully loaded {len(ALL_TOOLS)} tools")
         return True
 
     except json.JSONDecodeError as e:
         print(f"❌ Invalid JSON in {TOOLS_CONFIG_FILE}: {e}")
+        print(f"🔍 File content: {open(TOOLS_CONFIG_FILE, 'r').read()}")
         return False
     except Exception as e:
         print(f"❌ Error loading tools: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
