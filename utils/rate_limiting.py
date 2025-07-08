@@ -33,67 +33,101 @@ def get_user_limit_key(ip):
 
 
 def get_user_usage_current_hour(ip):
+    """Get user usage for current hour with safety checks"""
     if user_limits_db is None:
+        print("❌ user_limits_db is None, returning 0 usage")
         return 0
 
     current_hour = datetime.now().strftime('%Y-%m-%d-%H')
     key = f"{ip}_{current_hour}"
 
-    Q = Query()
-    rec = safe_db_operation(
-        user_limits_db,
-        user_limits_lock,
-        lambda db: db.get(Q.key == key)
-    )
-
-    return rec['count'] if rec else 0
+    try:
+        rec = safe_db_operation(
+            user_limits_db,
+            user_limits_lock,
+            lambda db: db.get(Q.key == key)
+        )
+        return rec['count'] if rec else 0
+    except Exception as e:
+        print(f"❌ Error getting user usage: {e}")
+        return 0
 
 
 def increment_user_usage(ip, tool_slug):
-    """Increment user usage for current hour"""
-    key = get_user_limit_key(ip)
-    current = get_user_usage_current_hour(ip)
+    """Increment user usage for current hour with safety checks"""
+    if user_limits_db is None:
+        print("❌ user_limits_db is None, cannot increment usage")
+        return False
 
-    data = {
-        "key": key,
-        "ip": ip,
-        "count": current + 1,
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "hour": datetime.now().strftime("%H"),
-        "last_used": datetime.now().isoformat(),
-        "last_tool": tool_slug
-    }
-    safe_db_operation(user_limits_db, user_limits_lock, user_limits_db.upsert, data, Q.key == key)
+    try:
+        key = get_user_limit_key(ip)
+        current = get_user_usage_current_hour(ip)
+
+        data = {
+            "key": key,
+            "ip": ip,
+            "count": current + 1,
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "hour": datetime.now().strftime("%H"),
+            "last_used": datetime.now().isoformat(),
+            "last_tool": tool_slug
+        }
+
+        result = safe_db_operation(user_limits_db, user_limits_lock, user_limits_db.upsert, data, Q.key == key)
+        if result is None:
+            print("❌ Failed to increment user usage")
+            return False
+
+        print(f"✅ Incremented usage for {ip}: {current + 1}")
+        return True
+
+    except Exception as e:
+        print(f"❌ Error incrementing user usage: {e}")
+        return False
 
 
 def check_user_limit(ip, is_premium=False):
-    """Check hourly user limit"""
-    usage = get_user_usage_current_hour(ip)
-    limit = HOURLY_FREE_LIMIT
-    limit_display = "unlimited" if is_premium else limit
+    """Check hourly user limit with safety checks"""
+    try:
+        usage = get_user_usage_current_hour(ip)
+        limit = HOURLY_FREE_LIMIT
+        limit_display = "unlimited" if is_premium else limit
 
-    if not is_premium and usage >= limit:
-        reset = datetime.now().replace(minute=RESET_MINUTE, second=0, microsecond=0) + timedelta(hours=1)
-        minutes_until_reset = max(1, int((reset - datetime.now()).total_seconds() / 60))
+        if not is_premium and usage >= limit:
+            reset = datetime.now().replace(minute=RESET_MINUTE, second=0, microsecond=0) + timedelta(hours=1)
+            minutes_until_reset = max(1, int((reset - datetime.now()).total_seconds() / 60))
+
+            return {
+                "blocked": True,
+                "message": f"You've reached your hourly limit of {limit} analyses. Limit resets in {minutes_until_reset} minutes.",
+                "minutes_until_reset": minutes_until_reset,
+                "can_calculate": True,
+                "can_ai": False,
+                "usage_count": usage,
+                "limit": limit_display
+            }
 
         return {
-            "blocked": True,
-            "message": f"You've reached your hourly limit of {limit} analyses. Limit resets in {minutes_until_reset} minutes.",
-            "minutes_until_reset": minutes_until_reset,
+            "blocked": False,
             "can_calculate": True,
-            "can_ai": False,
+            "can_ai": True,
             "usage_count": usage,
-            "limit": limit_display
+            "limit": limit_display,
+            "remaining": "unlimited" if is_premium else limit - usage
         }
 
-    return {
-        "blocked": False,
-        "can_calculate": True,
-        "can_ai": True,
-        "usage_count": usage,
-        "limit": limit_display,
-        "remaining": "unlimited" if is_premium else limit - usage
-    }
+    except Exception as e:
+        print(f"❌ Error in check_user_limit: {e}")
+        # Return safe fallback
+        return {
+            "blocked": False,
+            "can_calculate": True,
+            "can_ai": True,
+            "usage_count": 0,
+            "limit": "unknown",
+            "remaining": "unknown",
+            "error": str(e)
+        }
 
 
 def is_premium_user(ip):

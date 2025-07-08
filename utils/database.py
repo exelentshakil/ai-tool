@@ -53,30 +53,80 @@ def repair_corrupted_json(file_path):
 def safe_init_db(file_path):
     """Safely initialize TinyDB with error handling"""
     try:
-        return TinyDB(file_path, storage=CachingMiddleware(JSONStorage))
+        print(f"🔍 Attempting to initialize database: {file_path}")
+        print(f"🔍 File exists: {os.path.exists(file_path)}")
+        print(f"🔍 File absolute path: {os.path.abspath(file_path)}")
+
+        db = TinyDB(file_path, storage=CachingMiddleware(JSONStorage))
+        print(f"✅ Successfully initialized: {file_path}")
+        return db
+
     except Exception as e:
-        print(f"Database error for {file_path}: {e}")
+        print(f"❌ Database error for {file_path}: {e}")
         if "Extra data" in str(e):
-            repair_corrupted_json(file_path)
-            return TinyDB(file_path, storage=CachingMiddleware(JSONStorage))
-        raise
+            print("🔧 Attempting to repair corrupted JSON...")
+            if repair_corrupted_json(file_path):
+                print("🔧 Retrying database initialization...")
+                return TinyDB(file_path, storage=CachingMiddleware(JSONStorage))
+        print(f"❌ Failed to initialize {file_path}")
+        return None  # Return None instead of raising
 
 
 def init_databases():
     """Initialize all databases"""
     global cache_db, analytics_db, usage_db, cost_db, user_limits_db
 
-    cache_db = safe_init_db(DB_FILES['cache'])
-    analytics_db = safe_init_db(DB_FILES['analytics'])
-    usage_db = safe_init_db(DB_FILES['usage'])
-    cost_db = safe_init_db(DB_FILES['cost'])
-    user_limits_db = safe_init_db(DB_FILES['user_limits'])
+    print("🔍 Starting database initialization...")
+    print(f"🔍 DB_FILES: {DB_FILES}")
+    ensure_db_files_exist()
+    try:
+        print("🔍 Initializing cache_db...")
+        cache_db = safe_init_db(DB_FILES['cache'])
+        print(f"✅ cache_db initialized: {cache_db is not None}")
 
-    print("✅ All databases initialized successfully")
+        print("🔍 Initializing analytics_db...")
+        analytics_db = safe_init_db(DB_FILES['analytics'])
+        print(f"✅ analytics_db initialized: {analytics_db is not None}")
+
+        print("🔍 Initializing usage_db...")
+        usage_db = safe_init_db(DB_FILES['usage'])
+        print(f"✅ usage_db initialized: {usage_db is not None}")
+
+        print("🔍 Initializing cost_db...")
+        cost_db = safe_init_db(DB_FILES['cost'])
+        print(f"✅ cost_db initialized: {cost_db is not None}")
+
+        print("🔍 Initializing user_limits_db...")
+        user_limits_db = safe_init_db(DB_FILES['user_limits'])
+        print(f"✅ user_limits_db initialized: {user_limits_db is not None}")
+
+        print("✅ All databases initialized successfully")
+
+        # Verify all databases are not None
+        failed_dbs = []
+        if cache_db is None: failed_dbs.append('cache_db')
+        if analytics_db is None: failed_dbs.append('analytics_db')
+        if usage_db is None: failed_dbs.append('usage_db')
+        if cost_db is None: failed_dbs.append('cost_db')
+        if user_limits_db is None: failed_dbs.append('user_limits_db')
+
+        if failed_dbs:
+            print(f"❌ Failed to initialize: {failed_dbs}")
+        else:
+            print("✅ All databases verified as not None")
+
+    except Exception as e:
+        print(f"❌ Database initialization error: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 def safe_db_operation(db, lock, operation, *args, **kwargs):
     """Perform thread-safe database operation"""
+    if db is None:
+        print(f"❌ Database is None in safe_db_operation")
+        return None
+
     with lock:
         try:
             return operation(*args, **kwargs)
@@ -163,3 +213,17 @@ def get_database_stats():
         "user_limit_entries": len(safe_db_operation(user_limits_db, user_limits_lock, user_limits_db.all) or []),
         "analytics_entries": len(safe_db_operation(analytics_db, analytics_lock, analytics_db.all) or [])
     }
+
+def ensure_db_files_exist():
+    """Ensure all database files exist"""
+    for db_name, file_path in DB_FILES.items():
+        if not os.path.exists(file_path):
+            print(f"🔧 Creating missing database file: {file_path}")
+            try:
+                # Create empty JSON database structure
+                empty_db = {"_default": {}}
+                with open(file_path, 'w', encoding='utf-8') as f:
+                    json.dump(empty_db, f, indent=2)
+                print(f"✅ Created {file_path}")
+            except Exception as e:
+                print(f"❌ Failed to create {file_path}: {e}")
