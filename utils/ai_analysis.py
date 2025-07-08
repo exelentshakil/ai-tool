@@ -123,7 +123,7 @@ def generate_rich_html_response(ai_analysis, user_data, base_result, tool_config
     category = tool_config.get("category", "general")
 
     # Generate charts data based on category
-    charts_html = generate_charts_html(user_data, base_result, category)
+    # charts_html = generate_charts_html(user_data, base_result, category)
 
     # Generate value ladder
     value_ladder_html = generate_value_ladder(user_data, base_result, category)
@@ -133,6 +133,12 @@ def generate_rich_html_response(ai_analysis, user_data, base_result, tool_config
 
     # Generate comparison table
     comparison_html = generate_comparison_table(user_data, base_result, category)
+
+    # Convert markdown AI analysis to HTML
+    formatted_ai_analysis = convert_markdown_to_html(ai_analysis)
+
+    # Generate charts data based on category
+    charts_html = generate_charts_html(user_data, base_result, category)
 
     # Combine everything into rich HTML
     rich_html = f"""
@@ -150,7 +156,7 @@ def generate_rich_html_response(ai_analysis, user_data, base_result, tool_config
         <div class="ai-insights">
             <h3>🤖 AI Strategic Analysis</h3>
             <div class="insights-content">
-                {ai_analysis}
+                {formatted_ai_analysis}
             </div>
         </div>
 
@@ -745,63 +751,161 @@ def create_fallback_response(tool_config, user_data, base_result):
     </div>
 
     <style>
-    .fallback-container {
-    max - width: 1000px;
+    .fallback-container {{
+    max-width: 1000px;
         margin: 0 auto;
         padding: 20px;
-    }
+    }}
 
-    .fallback-header {
+    .fallback-header {{
     background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
         border-radius: 15px;
         padding: 30px;
         color: white;
         text-align: center;
         margin-bottom: 30px;
-    }
+    }}
 
-    .fallback-content {
+    .fallback-content {{
     display: grid;
         grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
         gap: 20px;
         margin: 30px 0;
-    }
+    }}
 
-    .insight-card {
+    .insight-card {{
     background: white;
         border-radius: 12px;
         padding: 25px;
         box-shadow: 0 5px 15px rgba(0,0,0,0.08);
         border-left: 4px solid #007bff;
-    }
+    }}
 
-    .insight-card h3 {
+    .insight-card h3 {{
     margin - top: 0;
         color: #2c3e50;
-    }
+    }}
 
-    .insight-card ul {
+    .insight-card ul {{
     padding - left: 20px;
-    }
+    }}
 
-    .insight-card li {
+    .insight-card li {{
     margin - bottom: 10px;
         line-height: 1.5;
-    }
+   }}
 
-    .upgrade-banner {
+    .upgrade-banner {{
     background: linear-gradient(135deg, #ffc107 0%, #ff6b35 100%);
         border-radius: 15px;
         padding: 25px;
         text-align: center;
         color: white;
         margin-top: 30px;
-    }
+    }}
 
-    .upgrade-banner h3 {
-    margin - top: 0;
-    }
+    .upgrade-banner h3 {{
+    margin-top: 0;
+    }}
     </style>
     """
 
     return fallback_html
+
+
+def convert_markdown_to_html(markdown_text):
+    """Convert markdown text to HTML"""
+    if not markdown_text:
+        return '<p>AI analysis not available.</p>'
+
+    # Convert markdown to HTML
+    html = markdown_text
+    html = html.replace('### ', '<h3>')
+    html = html.replace('## ', '<h2>')
+    html = html.replace('# ', '<h1>')
+    html = html.replace('**', '<strong>', 1).replace('**', '</strong>', 1)
+
+    # Handle multiple bold text
+    import re
+    html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
+    html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html)
+
+    # Convert line breaks to paragraphs
+    paragraphs = html.split('\n\n')
+    formatted_paragraphs = []
+
+    for para in paragraphs:
+        para = para.strip()
+        if para:
+            if para.startswith('<h'):
+                formatted_paragraphs.append(para)
+            elif para.startswith('-') or para.startswith('•'):
+                # Handle lists
+                list_items = para.split('\n')
+                list_html = '<ul>'
+                for item in list_items:
+                    if item.strip():
+                        clean_item = item.replace('- ', '').replace('• ', '').strip()
+                        list_html += f'<li>{clean_item}</li>'
+                list_html += '</ul>'
+                formatted_paragraphs.append(list_html)
+            else:
+                formatted_paragraphs.append(f'<p>{para.replace(chr(10), "<br>")}</p>')
+
+    return '\n'.join(formatted_paragraphs)
+
+
+def generate_charts_html(user_data, base_result, category):
+    """Generate interactive charts based on category"""
+    if category == "health":
+        return f"""
+        <div class="chart-container">
+            <h3>📈 Health Progress Tracker</h3>
+            <canvas id="healthChart" width="400" height="200"></canvas>
+            <script>
+                // Wait for Chart.js to be available
+                function createHealthChart() {{
+                    if (typeof Chart === 'undefined') {{
+                        console.log('Chart.js not loaded yet, retrying...');
+                        setTimeout(createHealthChart, 500);
+                        return;
+                    }}
+
+                    const ctx = document.getElementById('healthChart');
+                    if (!ctx) return;
+
+                    new Chart(ctx, {{
+                        type: 'line',
+                        data: {{
+                            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                            datasets: [{{
+                                label: 'Progress',
+                                data: [0, 10, 25, 40, 60, 80],
+                                borderColor: '#4CAF50',
+                                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                                tension: 0.4
+                            }}]
+                        }},
+                        options: {{
+                            responsive: true,
+                            scales: {{
+                                y: {{
+                                    beginAtZero: true,
+                                    max: 100
+                                }}
+                            }}
+                        }}
+                    }});
+                }}
+
+                // Try to create chart immediately, or wait for page load
+                if (document.readyState === 'loading') {{
+                    document.addEventListener('DOMContentLoaded', createHealthChart);
+                }} else {{
+                    createHealthChart();
+                }}
+            </script>
+        </div>
+        """
+
+    # Similar pattern for other categories...

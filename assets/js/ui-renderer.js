@@ -153,7 +153,7 @@ class UIRenderer {
             <div class="ai-analysis-section">
                 <h3 class="section-title">🤖 AI Strategic Insights</h3>
                 <div class="ai-content-wrapper">
-                    ${this.formatAIAnalysis(output.ai_analysis)}
+                    ${output.ai_analysis}
                 </div>
             </div>
         `;
@@ -662,23 +662,10 @@ class UIRenderer {
     formatAIAnalysis(aiAnalysis) {
         if (!aiAnalysis) return '<p>AI analysis not available.</p>';
 
-        // Convert markdown-style formatting to HTML safely
-        let formatted = this.escapeHtml(aiAnalysis)
-            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-            .replace(/\*(.*?)\*/g, '<em>$1</em>')
-            .replace(/^### (.*$)/gim, '<h3>$1</h3>')
-            .replace(/^## (.*$)/gim, '<h2>$1</h2>')
-            .replace(/^# (.*$)/gim, '<h1>$1</h1>')
-            .replace(/^\• (.*$)/gim, '<li>$1</li>')
-            .replace(/\n\n/g, '</p><p>')
-            .replace(/\n/g, '<br>');
-
-        // Wrap in paragraphs if not already wrapped
-        if (!formatted.includes('<p>') && !formatted.includes('<h1>') && !formatted.includes('<h2>')) {
-            formatted = '<p>' + formatted + '</p>';
-        }
-
-        return formatted;
+        // Basic security cleanup only
+        return aiAnalysis
+            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+            .replace(/javascript:/gi, '');
     }
 
     escapeHtml(text) {
