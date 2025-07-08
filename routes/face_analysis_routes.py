@@ -111,7 +111,7 @@ Please provide a detailed JSON response with the following structure:
 
 {{
     "personality_insights": [
-        // 4-5 deep, personalized insights about their personality, strengths, and unique characteristics
+        // 8 deep, personalized insights about their personality, strengths, and unique characteristics
         // Each insight should be 2-3 sentences and actionable
         // Focus on their dominant traits and how they combine
     ],
@@ -127,7 +127,7 @@ Please provide a detailed JSON response with the following structure:
             "recommended_skills": ["Skill 1", "Skill 2", "Skill 3", "Skill 4"],
             "future_market_trends": "What's happening in this field"
         }}
-        // Provide 3 career recommendations total
+        // Provide 4 career recommendations total
     ],
     "growth_roadmap": [
         {{

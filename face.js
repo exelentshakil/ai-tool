@@ -1582,11 +1582,11 @@ try {
     ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`${userName}'s Personality`, canvas.width / 2, 180);
+    ctx.fillText(`${userName}'s Personality`, canvas.width / 2, 200);
 
     ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = '#64b5f6';
-    ctx.fillText('UNIVERSE', canvas.width / 2, 200);
+    ctx.fillText('UNIVERSE', canvas.width / 2, 220);
 
     // AI Badge with modern styling
     ctx.fillStyle = 'rgba(100, 181, 246, 0.2)';
