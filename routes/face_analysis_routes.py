@@ -200,9 +200,27 @@ IMPORTANT GUIDELINES:
                     (1 - traits.get('neuroticism', 0.5)) * 0.2
             )
 
+            # FIX: Ensure personality_insights are strings
+            personality_insights = ai_response.get('personality_insights', [])
+            if personality_insights:
+                # Convert any objects to strings
+                processed_insights = []
+                for insight in personality_insights:
+                    if isinstance(insight, dict):
+                        # If it's a dict, try to extract text
+                        insight_text = insight.get('text') or insight.get('message') or insight.get('insight') or str(
+                            insight)
+                        processed_insights.append(insight_text)
+                    elif isinstance(insight, str):
+                        processed_insights.append(insight)
+                    else:
+                        processed_insights.append(str(insight))
+            else:
+                processed_insights = []
+
             # Structure the response
             structured_response = {
-                'personality_insights': ai_response.get('personality_insights', []),
+                'personality_insights': processed_insights,  # Now guaranteed to be strings
                 'career_recommendations': ai_response.get('career_recommendations', []),
                 'growth_roadmap': ai_response.get('growth_roadmap', []),
                 'life_predictions': ai_response.get('life_predictions', {}),
