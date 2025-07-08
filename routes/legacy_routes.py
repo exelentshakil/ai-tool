@@ -179,54 +179,54 @@ Rate Limit: {limit_check.get('message', 'Hourly limit reached')}
 
 
 # Enhanced face analysis endpoint
-@legacy_bp.route('/analyze-face-enhanced', methods=['POST', 'OPTIONS'])
-def analyze_face_enhanced():
-    """Enhanced face analysis with AI insights"""
-    if request.method == 'OPTIONS':
-        return jsonify({}), 200
-
-    data = request.get_json() or {}
-    face_data = data.get('face_data', {})
-    user_profile = data.get('user_profile', {})
-
-    if not face_data:
-        return jsonify({"error": "Face analysis data required"}), 400
-
-    ip = get_remote_address()
-    limit_check = check_user_limit(ip, is_premium_user(ip))
-
-    # Check rate limits
-    if limit_check.get("blocked"):
-        return jsonify({
-            "error": "Rate limit exceeded",
-            "message": limit_check["message"],
-            "retry_after": 3600,
-            "upgrade_available": not is_premium_user(ip)
-        }), 429
-
-    try:
-        # Generate enhanced face analysis
-        analysis = generate_enhanced_face_analysis(face_data, user_profile, ip)
-
-        # Update usage
-        increment_user_usage(ip, "face_enhanced")
-        log_usage("face_enhanced", len(str(face_data)), cached=False, ip_address=ip)
-
-        return jsonify({
-            "analysis": analysis,
-            "cached": False,
-            "user_info": {
-                "current_usage": limit_check.get("usage_count", 0) + 1,
-                "remaining_free": max(0, limit_check.get("remaining", 0) - 1),
-                "is_premium": is_premium_user(ip)
-            }
-        })
-
-    except Exception as e:
-        return jsonify({
-            "error": "Analysis failed",
-            "message": "Please try again later"
-        }), 500
+# @legacy_bp.route('/analyze-face-enhanced', methods=['POST', 'OPTIONS'])
+# def analyze_face_enhanced():
+#     """Enhanced face analysis with AI insights"""
+#     if request.method == 'OPTIONS':
+#         return jsonify({}), 200
+#
+#     data = request.get_json() or {}
+#     face_data = data.get('face_data', {})
+#     user_profile = data.get('user_profile', {})
+#
+#     if not face_data:
+#         return jsonify({"error": "Face analysis data required"}), 400
+#
+#     ip = get_remote_address()
+#     limit_check = check_user_limit(ip, is_premium_user(ip))
+#
+#     # Check rate limits
+#     if limit_check.get("blocked"):
+#         return jsonify({
+#             "error": "Rate limit exceeded",
+#             "message": limit_check["message"],
+#             "retry_after": 3600,
+#             "upgrade_available": not is_premium_user(ip)
+#         }), 429
+#
+#     try:
+#         # Generate enhanced face analysis
+#         analysis = generate_enhanced_face_analysis(face_data, user_profile, ip)
+#
+#         # Update usage
+#         increment_user_usage(ip, "face_enhanced")
+#         log_usage("face_enhanced", len(str(face_data)), cached=False, ip_address=ip)
+#
+#         return jsonify({
+#             "analysis": analysis,
+#             "cached": False,
+#             "user_info": {
+#                 "current_usage": limit_check.get("usage_count", 0) + 1,
+#                 "remaining_free": max(0, limit_check.get("remaining", 0) - 1),
+#                 "is_premium": is_premium_user(ip)
+#             }
+#         })
+#
+#     except Exception as e:
+#         return jsonify({
+#             "error": "Analysis failed",
+#             "message": "Please try again later"
+#         }), 500
 
 
 def generate_enhanced_face_analysis(face_data, user_profile, ip):
