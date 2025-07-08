@@ -42,7 +42,6 @@ init_databases()
 print("🚀 Starting application...")
 load_result = load_all_tools()
 print(f"🔍 Tools loaded successfully: {load_result}")
-print(f"🔍 Available tools after loading: {list(ALL_TOOLS.keys()) if ALL_TOOLS else 'None'}")
 
 
 # ─── MAIN API ENDPOINTS ─────────────────────────────────────────────────────────
@@ -64,15 +63,15 @@ def process_tool():
         # Find tool configuration
         tool_config = tools_config.ALL_TOOLS.get(tool_slug)
         if not tool_config:
-            for key in ALL_TOOLS.keys():
+            for key in tools_config.ALL_TOOLS.keys():
                 if tool_slug.lower() in key.lower() or key.lower() in tool_slug.lower():
-                    tool_config = ALL_TOOLS[key]
+                    tool_config = tools_config.ALL_TOOLS[key]
                     break
 
         if not tool_config:
             return jsonify({
                 "error": f"Tool '{tool_slug}' not found",
-                "available_tools": list(ALL_TOOLS.keys())[:10]
+                "available_tools": list(tools_config.ALL_TOOLS.keys())[:10]
             }), 404
 
         ip = get_remote_address()
