@@ -432,17 +432,109 @@ class EnhancedPersonalityAnalyzer:
 
 @face_bp.route('/analyze-face-enhanced', methods=['POST', 'OPTIONS'])
 def analyze_face_enhanced():
-    print("=== ROUTE HIT: analyze_face_enhanced ===")
-    print(f"Request method: {request.method}")
-    print(f"Request headers: {dict(request.headers)}")
-    print(f"Request content type: {request.content_type}")
+    """Enhanced face analysis endpoint integrated with existing rate limiting"""
+    if request.method == 'OPTIONS':
+        return jsonify({}), 200
 
     try:
-        # Your existing code
-        pass
+        data = request.get_json()
+
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Get user IP for rate limiting
+        ip = get_remote_address()
+        is_premium = is_premium_user(ip)
+
+        # Check rate limits
+        limit_check = check_user_limit(ip, is_premium)
+
+        # Extract face data and user profile
+        face_data = data.get('face_data', {})
+        user_profile = data.get('user_profile', {})
+
+        # Validate required data
+        if not face_data.get('personality_traits') and not face_data.get('basic'):
+            return jsonify({'error': 'Face analysis data required'}), 400
+
+        # Initialize analyzer
+        analyzer = EnhancedPersonalityAnalyzer()
+
+        # Calculate enhanced traits
+        if face_data.get('basic') or face_data.get('advanced'):
+            # Use comprehensive face data if available
+            enhanced_traits = analyzer.calculate_enhanced_traits(face_data)
+        else:
+            # Fallback to basic traits
+            enhanced_traits = face_data.get('personality_traits', {})
+
+        # Blend with client-side traits if available for better accuracy
+        client_traits = face_data.get('personality_traits', {})
+        if client_traits and enhanced_traits:
+            final_traits = {}
+            for trait in enhanced_traits:
+                if trait in client_traits:
+                    # Weighted average: 60% enhanced, 40% client
+                    final_traits[trait] = (enhanced_traits[trait] * 0.6 + client_traits[trait] * 0.4)
+                else:
+                    final_traits[trait] = enhanced_traits[trait]
+        else:
+            final_traits = enhanced_traits or client_traits
+
+        # Generate comprehensive analysis based on rate limit status
+        if limit_check.get("can_ai", False):
+            # Premium analysis with AI enhancement
+            analysis_result = {
+                'personality_insights': analyzer.generate_comprehensive_insights(final_traits, face_data, user_profile),
+                'career_recommendations': analyzer.get_career_recommendations(final_traits, face_data),
+                'growth_roadmap': analyzer.generate_growth_roadmap(final_traits, user_profile),
+                'life_predictions': analyzer.generate_life_predictions(final_traits, face_data),
+                'analysis_quality': 'premium',
+                'confidence_score': 0.92
+            }
+
+            # Increment usage for premium analysis
+            increment_user_usage(ip, 'face_analysis_premium')
+
+        else:
+            # Basic analysis for rate-limited users
+            analysis_result = {
+                'personality_insights': analyzer.generate_comprehensive_insights(final_traits, face_data, user_profile)[
+                                        :2],
+                'career_recommendations': analyzer.get_career_recommendations(final_traits, face_data)[:1],
+                'growth_roadmap': analyzer.generate_growth_roadmap(final_traits, user_profile)[:1],
+                'life_predictions': analyzer.generate_life_predictions(final_traits, face_data),
+                'analysis_quality': 'basic',
+                'confidence_score': 0.78,
+                'upgrade_message': 'Unlock detailed career roadmaps and comprehensive growth plans with premium access!'
+            }
+
+        # Add metadata
+        analysis_result.update({
+            'enhanced_traits': final_traits,
+            'analysis_timestamp': datetime.now().isoformat(),
+            'user_tier': 'premium' if is_premium else 'free'
+        })
+
+        return jsonify({
+            'success': True,
+            'analysis': analysis_result,
+            'user_info': {
+                'is_rate_limited': limit_check.get("blocked", False),
+                'remaining_analyses': limit_check.get("remaining", 0),
+                'upgrade_available': not is_premium,
+                'analysis_quality': analysis_result['analysis_quality']
+            },
+            'message': 'Comprehensive personality analysis completed successfully'
+        })
+
     except Exception as e:
-        print(f"Exception in route: {e}")
-        return jsonify({'error': 'Analysis failed', 'message': str(e)}), 500
+        logging.error(f"Face analysis error: {str(e)}")
+        return jsonify({
+            'data': request.get_json(),
+            'error': 'Analysis failed',
+            'message': 'Please check your image and try again'
+        }), 500
 
 
 # Rate limiting check endpoint
