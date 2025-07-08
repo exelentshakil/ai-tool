@@ -43,25 +43,24 @@ load_all_tools()
 # ─── FACE ANALYSIS TOOL CONFIGURATION ──────────────────────────────────────────
 # Add face analysis to your tools configuration
 FACE_ANALYSIS_TOOL = {
-    "face_analyzer": {
-        "name": "AI Face Personality Analyzer",
-        "description": "Advanced personality analysis using facial recognition and AI",
-        "category": "personality",
-        "ai_model": "gpt-4",
-        "complexity": "high",
-        "rate_limit": {
-            "free": 3,
-            "premium": 50
-        },
-        "features": [
-            "Big Five personality traits analysis",
-            "Career recommendations with salary insights",
-            "Personal growth roadmap",
-            "Success predictions",
-            "Facial symmetry analysis",
-            "Leadership potential assessment"
-        ]
-    }
+        "face-analyzer": {
+            "category": "personality",
+            "base_name": "AI Face Personality Analyzer - Online",
+            "variation": "analyzer",
+            "rpm": 10,
+            "openai_prompt_template": "As an expert personality analyst, analyze facial features and provide insights into personality traits, career recommendations, and personal growth opportunities.",
+            "form_fields": [
+                "image_upload",
+                "analysis_type"
+            ],
+            "seo_data": {
+                "title": "Free AI Face Personality Analyzer - Online Tool",
+                "description": "Advanced AI-powered face personality analysis. Get Big Five personality traits, career recommendations, and growth insights from facial recognition.",
+                "keywords": "face personality analyzer, ai face analysis, personality traits, facial recognition, career recommendations, big five personality",
+                "h1": "Free AI Face Personality Analyzer",
+                "focus_keyword": "face personality analyzer"
+            }
+        }
 }
 
 # Add to your existing ALL_TOOLS
