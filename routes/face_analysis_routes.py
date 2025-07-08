@@ -111,7 +111,7 @@ Please provide a detailed JSON response with the following structure:
 
 {{
     "personality_insights": [
-        // 8 deep, personalized insights about their personality, strengths, and unique characteristics
+        // 9 deep, personalized insights about their personality, strengths, and unique characteristics
         // Each insight should be 2-3 sentences and actionable
         // Focus on their dominant traits and how they combine
     ],
@@ -158,7 +158,10 @@ Please provide a detailed JSON response with the following structure:
         "key_challenges": ["Challenge 1", "Challenge 2"],
         "optimal_environment": "Description of ideal work/life environment",
         "decision_making_style": "How they make decisions",
-        "communication_style": "How they communicate best"
+        "communication_style": "How they communicate best",
+        "learning_style": "How they learn best",
+        "stress_management": "How they cope with stress",
+        "risk_tolerance": "Their comfort level with risk"
     }},
     "motivation_message": "A powerful, personalized motivational message (2-3 sentences) that inspires them based on their unique strengths and potential"
 }}
