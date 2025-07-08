@@ -442,6 +442,8 @@ def analyze_face_enhanced():
         if not data:
             return jsonify({'error': 'No data provided'}), 400
 
+        print(f"DEBUG: Received data keys: {list(data.keys()) if data else 'None'}")
+
         # Get user IP for rate limiting
         ip = get_remote_address()
         is_premium = is_premium_user(ip)
@@ -529,10 +531,17 @@ def analyze_face_enhanced():
         })
 
     except Exception as e:
-        logging.error(f"Face analysis error: {str(e)}")
+        print(f"=== DEBUG: Exception occurred ===")
+        print(f"Error: {str(e)}")
+        print(f"Error type: {type(e)}")
+        import traceback
+        traceback.print_exc()
+        print("=== END DEBUG ===")
+
         return jsonify({
             'error': 'Analysis failed',
-            'message': 'Please check your image and try again'
+            'message': str(e),
+            'debug': True
         }), 500
 
 
