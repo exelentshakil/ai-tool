@@ -43,32 +43,6 @@ load_result = load_all_tools()
 print(f"🔍 Tools loaded successfully: {load_result}")
 print(f"🔍 Available tools after loading: {list(ALL_TOOLS.keys()) if ALL_TOOLS else 'None'}")
 
-# ─── FACE ANALYSIS TOOL CONFIGURATION ──────────────────────────────────────────
-# Add face analysis to your tools configuration
-FACE_ANALYSIS_TOOL = {
-        "face-analyzer": {
-            "category": "personality",
-            "base_name": "AI Face Personality Analyzer - Online",
-            "variation": "analyzer",
-            "rpm": 10,
-            "openai_prompt_template": "As an expert personality analyst, analyze facial features and provide insights into personality traits, career recommendations, and personal growth opportunities.",
-            "form_fields": [
-                "image_upload",
-                "analysis_type"
-            ],
-            "seo_data": {
-                "title": "Free AI Face Personality Analyzer - Online Tool",
-                "description": "Advanced AI-powered face personality analysis. Get Big Five personality traits, career recommendations, and growth insights from facial recognition.",
-                "keywords": "face personality analyzer, ai face analysis, personality traits, facial recognition, career recommendations, big five personality",
-                "h1": "Free AI Face Personality Analyzer",
-                "focus_keyword": "face personality analyzer"
-            }
-        }
-}
-
-# Add to your existing ALL_TOOLS
-ALL_TOOLS.update(FACE_ANALYSIS_TOOL)
-
 
 # ─── MAIN API ENDPOINTS ─────────────────────────────────────────────────────────
 @app.route('/process-tool', methods=['POST', 'OPTIONS'])
