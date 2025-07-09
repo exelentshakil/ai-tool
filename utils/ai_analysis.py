@@ -4492,7 +4492,7 @@ def generate_faq_content(category, currency):
 
 
 # Add CSS for new components
-def generate_enhanced_fallback_styles_additional():
+def generate_enhanced_fallback_styles():
     """Additional CSS styles for enhanced fallback components"""
     return """
     /* Chart Components */
