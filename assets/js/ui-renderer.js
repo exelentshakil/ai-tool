@@ -8,6 +8,89 @@ class UIRenderer {
         this.animationQueue = [];
         this.isAnimating = false;
         console.log('✅ UI Renderer initialized');
+        // Initialize sliders after construction
+        this.initializeSliders();
+    }
+
+    // Add these methods to your UIRenderer class
+    updateSliderValue(slider) {
+        const value = parseFloat(slider.value);
+        const format = slider.getAttribute('data-format') || 'number';
+        const valueDisplay = document.getElementById(slider.id + '-value');
+
+        if (!valueDisplay) return;
+
+        let formattedValue;
+
+        switch (format) {
+            case 'currency':
+                formattedValue = this.formatCurrency(value);
+                break;
+            case 'percentage':
+                formattedValue = value.toFixed(1) + '%';
+                break;
+            case 'years':
+                formattedValue = value + (value === 1 ? ' year' : ' years');
+                break;
+            case 'number':
+            default:
+                formattedValue = this.formatNumber(value);
+                break;
+        }
+
+        valueDisplay.textContent = formattedValue;
+
+        // Add visual feedback
+        valueDisplay.style.transform = 'scale(1.1)';
+        valueDisplay.style.color = '#007bff';
+
+        setTimeout(() => {
+            valueDisplay.style.transform = 'scale(1)';
+            valueDisplay.style.color = '';
+        }, 150);
+    }
+
+    formatCurrency(amount) {
+        if (amount >= 1000000) {
+            return '$' + (amount / 1000000).toFixed(amount % 1000000 === 0 ? 0 : 1) + 'M';
+        } else if (amount >= 1000) {
+            return '$' + (amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 0) + 'K';
+        } else {
+            return '$' + amount.toLocaleString();
+        }
+    }
+
+    formatNumber(number) {
+        return number.toLocaleString();
+    }
+
+    initializeSliders() {
+        // Wait for DOM to be ready
+        const initSliders = () => {
+            const sliders = document.querySelectorAll('.slider-input');
+
+            sliders.forEach(slider => {
+                // Initial setup
+                this.updateSliderValue(slider);
+
+                // Add event listeners
+                slider.addEventListener('input', () => {
+                    this.updateSliderValue(slider);
+                });
+
+                slider.addEventListener('change', () => {
+                    this.updateSliderValue(slider);
+                });
+            });
+
+            console.log('✅ Initialized', sliders.length, 'sliders');
+        };
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initSliders);
+        } else {
+            initSliders();
+        }
     }
 
     displayResults(result) {
@@ -1356,3 +1439,10 @@ class UIRenderer {
 
 // Export for global access
 window.UIRenderer = UIRenderer;
+
+// Make updateSliderValue globally accessible
+window.updateSliderValue = function(slider) {
+    if (window.universalCalculator && window.universalCalculator.uiRenderer) {
+        window.universalCalculator.uiRenderer.updateSliderValue(slider);
+    }
+};
