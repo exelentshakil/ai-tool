@@ -2,6 +2,7 @@ import csv
 import json
 import re
 from datetime import datetime
+from typing import Dict, Any
 
 
 class UniquePageTransformer:
@@ -709,6 +710,8 @@ class UniquePageTransformer:
         return form_content
 
     # UPDATED CSV GENERATION METHOD
+    # REPLACE this part in your transform_csv_to_unique_pages method:
+
     def transform_csv_to_unique_pages(self, input_csv_file):
         """Transform existing CSV with global high RPM optimization"""
 
@@ -739,8 +742,17 @@ class UniquePageTransformer:
             # Generate global RankMath SEO data
             rankmath_data = self.generate_global_rankmath_data(title, original_slug, intention, i)
 
-            # Generate country-specific form content
-            global_form = self.generate_global_form_content(intention, country_data)
+            # 🔧 FIX: Use the robust form generator instead of global_form
+            category = self.get_category_from_specialty(intention['specialty'])
+            robust_form = self.generate_form_fields_html(
+                form_fields=intention.get('form_fields', []),
+                specialty=intention['specialty'],
+                icon=intention['icon'],
+                category=category
+            )
+
+            # Add country-specific customizations to the robust form
+            localized_form = self.localize_form_for_country(robust_form, country_data)
 
             # Generate educational content
             educational_content = self.generate_global_educational_content(intention, country_data)
@@ -764,7 +776,7 @@ class UniquePageTransformer:
             </div>
 
             <div class="tool-interface">
-                {global_form}
+                {localized_form}
             </div>
 
             <div class="results-container">
@@ -783,12 +795,13 @@ class UniquePageTransformer:
             <script>
             const TOOL_CONFIG = {{
               "slug": "{original_slug}",
-              "category": "{self.get_category_from_specialty(intention['specialty'])}",
+              "category": "{category}",
               "base_name": "{intention['specialty']}",
               "variation": "{self.get_variation_from_title(title)}",
               "rpm": {country_data['rpm']},
               "target_country": "{country_data['code']}",
               "country_data": {json.dumps(country_data)},
+              "form_fields": {json.dumps(intention.get('form_fields', []))},
               "seo_data": {{
                 "title": "{rankmath_data['rank_math_title']}",
                 "description": "{rankmath_data['rank_math_description']}",
@@ -798,7 +811,7 @@ class UniquePageTransformer:
             }};
             </script>'''
 
-            # Add to CSV data with global optimization
+            # Rest of your existing code for adding to CSV data...
             self.updated_csv_data.append({
                 "post_title": title,
                 "post_name": original_slug,
@@ -832,7 +845,7 @@ class UniquePageTransformer:
                 "rank_math_twitter_card_type": "summary_large_image",
 
                 # Legacy fields with global data
-                "meta:tool_category": self.get_category_from_specialty(intention['specialty']),
+                "meta:tool_category": category,
                 "meta:tool_rpm": country_data['rpm'],
                 "meta:tool_variation": self.get_variation_from_title(title),
                 "meta:generated_date": datetime.now().isoformat(),
@@ -847,6 +860,79 @@ class UniquePageTransformer:
         print(f"✅ Global transformation complete!")
         print(f"🌍 Tools distributed across {len(self.high_rpm_countries)} countries")
         print(f"💰 Average RPM: ${sum(c['rpm'] for c in self.high_rpm_countries) / len(self.high_rpm_countries):.2f}")
+
+    # ADD this new method to localize the robust form for different countries:
+
+    def localize_form_for_country(self, form_html, country_data):
+        """Localize the robust form for specific country"""
+
+        currency = country_data["currency"]
+        local_term = country_data["local_term"]
+        urgency = country_data["urgency"]
+        savings = country_data["savings"]
+        country_name = country_data["name"]
+
+        # Replace placeholders with country-specific values
+        localized_html = form_html.replace(
+            'placeholder="Enter your ZIP code"',
+            f'placeholder="Enter your {local_term}"'
+        )
+
+        # Update the form header for country-specific messaging
+        if country_data["language"] == "English":
+            header_update = f'''
+            <div class="form-header global-{country_data["code"].lower()}">
+                <div class="country-flag">{self.get_country_flag(country_data["code"])}</div>
+                <h2>💰 AI-Powered Calculator - Save {currency}{savings:,}/Year</h2>
+                <p>Trusted by 250,000+ {country_name} residents</p>
+                <div class="urgency-badge">{urgency}!</div>
+                <p style="text-align:center;"><a href="https://www.buymeacoffee.com/shakdiesel" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a></p>
+            </div>'''
+
+        elif country_data["language"] == "German":
+            header_update = f'''
+            <div class="form-header global-{country_data["code"].lower()}">
+                <div class="country-flag">{self.get_country_flag(country_data["code"])}</div>
+                <h2>💰 KI-gestützter Rechner - Sparen Sie {currency}{savings:,}/Jahr</h2>
+                <p>Vertraut von 250.000+ {country_name} Einwohnern</p>
+                <div class="urgency-badge">{urgency}!</div>
+                <p style="text-align:center;"><a href="https://www.buymeacoffee.com/shakdiesel" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a></p>
+            </div>'''
+
+        else:
+            # Default English with country flag
+            header_update = f'''
+            <div class="form-header global-{country_data["code"].lower()}">
+                <div class="country-flag">{self.get_country_flag(country_data["code"])}</div>
+                <h2>💰 AI-Powered Calculator - Save {currency}{savings:,}/Year</h2>
+                <p>Trusted by residents of {country_name}</p>
+                <div class="urgency-badge">{urgency}!</div>
+                <p style="text-align:center;"><a href="https://www.buymeacoffee.com/shakdiesel" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a></p>
+            </div>'''
+
+        # Replace the form header
+        localized_html = re.sub(
+            r'<div class="form-header">.*?</div>',
+            header_update,
+            localized_html,
+            flags=re.DOTALL
+        )
+
+        # Update button text with country-specific savings
+        button_update = f'''
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-icon">🚀</span>
+                        Get My {currency}{savings:,} Savings Now
+                    </button>'''
+
+        localized_html = re.sub(
+            r'<button type="submit" class="btn btn-primary">.*?</button>',
+            button_update,
+            localized_html,
+            flags=re.DOTALL
+        )
+
+        return localized_html
 
     def get_country_flag(self, country_code):
         """Get country flag emoji"""
@@ -1320,9 +1406,23 @@ class UniquePageTransformer:
         slug = slug.strip('-')
         return slug
 
-    def generate_form_fields_html(self, form_fields, specialty, icon):
-        """Generate unique form HTML based on specialization"""
+    def generate_form_fields_html(self, form_fields, specialty, icon, category=None):
+        """Generate unique form HTML with guaranteed minimum 4 fields for robustness"""
 
+        # Enhanced category-specific field mappings - minimum 4-6 fields per category
+        category_field_mappings = {
+            "insurance": ["coverage_amount", "age", "location", "coverage_type", "driving_record", "vehicle_year"],
+            "business": ["revenue", "expenses", "employees", "industry", "location", "business_type"],
+            "finance": ["amount", "income", "credit_score", "debt_amount", "loan_term", "location"],
+            "real_estate": ["home_price", "down_payment", "location", "property_type", "credit_score", "loan_term"],
+            "automotive": ["vehicle_price", "down_payment", "fuel_type", "vehicle_year", "credit_score", "location"],
+            "health": ["height", "weight", "age", "activity_level", "health_goals", "location"],
+            "education": ["tuition_cost", "years", "degree_type", "location", "student_type", "financial_aid"],
+            "legal": ["case_type", "complexity", "location", "urgency", "budget_range", "case_duration"],
+            "general": ["amount", "duration", "location", "preferences", "goals", "budget"]
+        }
+
+        # Comprehensive field configurations
         field_configs = {
             # Age-related fields
             "driver_age": {
@@ -1335,6 +1435,26 @@ class UniquePageTransformer:
             },
 
             # Financial fields
+            "amount": {
+                "icon": "💰", "label": "Amount", "type": "currency_slider",
+                "min": "1000", "max": "100000", "default": "10000"
+            },
+            "revenue": {
+                "icon": "💰", "label": "Annual Revenue", "type": "currency_slider",
+                "min": "50000", "max": "10000000", "default": "500000"
+            },
+            "annual_revenue": {
+                "icon": "💰", "label": "Annual Revenue", "type": "currency_slider",
+                "min": "50000", "max": "10000000", "default": "500000"
+            },
+            "expenses": {
+                "icon": "💳", "label": "Annual Expenses", "type": "currency_slider",
+                "min": "10000", "max": "5000000", "default": "200000"
+            },
+            "annual_expenses": {
+                "icon": "💳", "label": "Annual Expenses", "type": "currency_slider",
+                "min": "10000", "max": "5000000", "default": "200000"
+            },
             "income": {
                 "icon": "💰", "label": "Annual Income", "type": "currency_slider",
                 "min": "20000", "max": "500000", "default": "75000"
@@ -1343,16 +1463,118 @@ class UniquePageTransformer:
                 "icon": "🚗", "label": "Vehicle Value", "type": "currency_slider",
                 "min": "5000", "max": "200000", "default": "25000"
             },
+            "vehicle_price": {
+                "icon": "🚗", "label": "Vehicle Price", "type": "currency_slider",
+                "min": "5000", "max": "200000", "default": "35000"
+            },
+            "price": {
+                "icon": "💰", "label": "Price", "type": "currency_slider",
+                "min": "5000", "max": "200000", "default": "35000"
+            },
             "home_value": {
                 "icon": "🏠", "label": "Home Value", "type": "currency_slider",
                 "min": "50000", "max": "2000000", "default": "300000"
+            },
+            "home_price": {
+                "icon": "🏠", "label": "Home Price", "type": "currency_slider",
+                "min": "50000", "max": "2000000", "default": "400000"
+            },
+            "property_value": {
+                "icon": "🏠", "label": "Property Value", "type": "currency_slider",
+                "min": "50000", "max": "2000000", "default": "400000"
+            },
+            "down_payment": {
+                "icon": "💰", "label": "Down Payment", "type": "currency_slider",
+                "min": "5000", "max": "500000", "default": "80000"
             },
             "coverage_amount": {
                 "icon": "🛡️", "label": "Coverage Amount", "type": "currency_slider",
                 "min": "25000", "max": "1000000", "default": "100000"
             },
+            "tuition_cost": {
+                "icon": "🎓", "label": "Tuition Cost", "type": "currency_slider",
+                "min": "5000", "max": "100000", "default": "25000"
+            },
+            "loan_amount": {
+                "icon": "💰", "label": "Loan Amount", "type": "currency_slider",
+                "min": "1000", "max": "1000000", "default": "50000"
+            },
+            "debt_amount": {
+                "icon": "💳", "label": "Total Debt", "type": "currency_slider",
+                "min": "0", "max": "500000", "default": "25000"
+            },
+            "budget": {
+                "icon": "💰", "label": "Budget", "type": "currency_slider",
+                "min": "500", "max": "50000", "default": "5000"
+            },
 
-            # Selection fields
+            # Numeric fields
+            "employees": {
+                "icon": "👥", "label": "Number of Employees", "type": "slider",
+                "min": "1", "max": "1000", "default": "10"
+            },
+            "years": {
+                "icon": "📅", "label": "Years", "type": "slider",
+                "min": "1", "max": "10", "default": "4"
+            },
+            "duration": {
+                "icon": "📅", "label": "Duration (Months)", "type": "slider",
+                "min": "1", "max": "60", "default": "12"
+            },
+            "height": {
+                "icon": "📏", "label": "Height (inches)", "type": "slider",
+                "min": "48", "max": "84", "default": "68"
+            },
+            "weight": {
+                "icon": "⚖️", "label": "Weight (lbs)", "type": "slider",
+                "min": "80", "max": "400", "default": "150"
+            },
+            "loan_term": {
+                "icon": "📅", "label": "Loan Term (Years)", "type": "slider",
+                "min": "1", "max": "30", "default": "15"
+            },
+
+            # Selection fields for better UX
+            "driving_record": {
+                "icon": "🚗", "label": "Driving Record", "type": "select",
+                "options": ["Clean Record", "1 Minor Violation", "2+ Violations", "Accident History", "DUI/DWI"]
+            },
+            "credit_score": {
+                "icon": "📊", "label": "Credit Score", "type": "select",
+                "options": ["Excellent (750+)", "Good (700-749)", "Fair (650-699)", "Poor (600-649)", "Bad (<600)"]
+            },
+            "property_type": {
+                "icon": "🏠", "label": "Property Type", "type": "select",
+                "options": ["Single Family", "Condo", "Townhouse", "Multi-Family", "Commercial"]
+            },
+            "activity_level": {
+                "icon": "🏃", "label": "Activity Level", "type": "select",
+                "options": ["Sedentary", "Lightly Active", "Moderately Active", "Very Active", "Extremely Active"]
+            },
+            "health_goals": {
+                "icon": "🎯", "label": "Health Goals", "type": "select",
+                "options": ["Weight Loss", "Weight Gain", "Muscle Building", "General Fitness", "Athletic Performance"]
+            },
+            "student_type": {
+                "icon": "👨‍🎓", "label": "Student Type", "type": "select",
+                "options": ["Full-time", "Part-time", "Online", "Graduate", "International"]
+            },
+            "financial_aid": {
+                "icon": "💰", "label": "Expected Financial Aid", "type": "currency_slider",
+                "min": "0", "max": "50000", "default": "5000"
+            },
+            "urgency": {
+                "icon": "⏰", "label": "Case Urgency", "type": "select",
+                "options": ["Low", "Medium", "High", "Critical"]
+            },
+            "budget_range": {
+                "icon": "💰", "label": "Budget Range", "type": "select",
+                "options": ["Under $1,000", "$1,000-$5,000", "$5,000-$15,000", "$15,000-$50,000", "Over $50,000"]
+            },
+            "case_duration": {
+                "icon": "📅", "label": "Expected Duration", "type": "select",
+                "options": ["1-3 months", "3-6 months", "6-12 months", "1-2 years", "Over 2 years"]
+            },
             "coverage_type": {
                 "icon": "🛡️", "label": "Coverage Type", "type": "select",
                 "options": ["Liability Only", "Full Coverage", "Comprehensive", "Collision"]
@@ -1364,6 +1586,45 @@ class UniquePageTransformer:
             "policy_type": {
                 "icon": "📋", "label": "Policy Type", "type": "select",
                 "options": ["Term Life", "Whole Life", "Universal Life", "Variable Life"]
+            },
+            "fuel_type": {
+                "icon": "⛽", "label": "Fuel Type", "type": "select",
+                "options": ["Gasoline", "Diesel", "Electric", "Hybrid"]
+            },
+            "industry": {
+                "icon": "🏢", "label": "Industry", "type": "select",
+                "options": ["Technology", "Healthcare", "Finance", "Retail", "Manufacturing", "Education",
+                            "Real Estate", "Other"]
+            },
+            "degree_type": {
+                "icon": "🎓", "label": "Degree Type", "type": "select",
+                "options": ["Associate's Degree", "Bachelor's Degree", "Master's Degree", "Doctoral Degree",
+                            "Professional Degree"]
+            },
+            "case_type": {
+                "icon": "⚖️", "label": "Case Type", "type": "select",
+                "options": ["Business", "Personal Injury", "Family Law", "Criminal Defense", "Real Estate",
+                            "Immigration", "Other"]
+            },
+            "complexity": {
+                "icon": "📊", "label": "Case Complexity", "type": "select",
+                "options": ["Simple", "Moderate", "Complex", "Very Complex"]
+            },
+            "preferences": {
+                "icon": "⭐", "label": "Preferences", "type": "select",
+                "options": ["Basic", "Standard", "Premium", "Custom"]
+            },
+            "goals": {
+                "icon": "🎯", "label": "Primary Goal", "type": "select",
+                "options": ["Save Money", "Get Best Quality", "Quick Results", "Long-term Planning", "Risk Management"]
+            },
+            "experience_level": {
+                "icon": "📈", "label": "Experience Level", "type": "select",
+                "options": ["Beginner", "Intermediate", "Advanced", "Expert"]
+            },
+            "risk_tolerance": {
+                "icon": "📊", "label": "Risk Tolerance", "type": "select",
+                "options": ["Very Conservative", "Conservative", "Moderate", "Aggressive", "Very Aggressive"]
             },
 
             # Text fields
@@ -1388,12 +1649,50 @@ class UniquePageTransformer:
                 "icon": "📄", "label": "SR-22 Required", "type": "checkbox"
             },
 
-            # Default fallback
-            "default": {
-                "icon": "📝", "label": "Amount", "type": "currency_slider",
-                "min": "1000", "max": "100000", "default": "10000"
+            # Fallback fields for ensuring minimum 4 fields
+            "priority": {
+                "icon": "🎯", "label": "Priority Level", "type": "select",
+                "options": ["Low", "Medium", "High", "Critical"]
+            },
+            "timeline": {
+                "icon": "⏰", "label": "Timeline", "type": "select",
+                "options": ["ASAP", "Within 1 Month", "1-3 Months", "3-6 Months", "Flexible"]
+            },
+            "quality_preference": {
+                "icon": "⭐", "label": "Quality Preference", "type": "select",
+                "options": ["Budget-Friendly", "Good Value", "Premium", "Luxury"]
+            },
+            "communication_preference": {
+                "icon": "📱", "label": "Communication Preference", "type": "select",
+                "options": ["Email", "Phone", "Text", "In-Person", "Online Chat"]
             }
         }
+
+        # Determine which fields to use
+        if category and category in category_field_mappings:
+            fields_to_use = category_field_mappings[category]
+        else:
+            # Use provided form_fields or fallback to general
+            fields_to_use = form_fields[:6] if form_fields else category_field_mappings.get("general", [])
+
+        # CRITICAL: Ensure minimum 4 fields for robustness
+        if len(fields_to_use) < 4:
+            print(f"⚠️ Warning: Only {len(fields_to_use)} fields found. Adding fallback fields for robustness...")
+
+            # Add essential fallback fields to reach minimum 4
+            fallback_fields = ["amount", "location", "preferences", "goals", "priority", "timeline",
+                               "quality_preference"]
+
+            for fallback in fallback_fields:
+                if fallback not in fields_to_use:
+                    fields_to_use.append(fallback)
+                    if len(fields_to_use) >= 4:
+                        break
+
+        # Ensure we don't exceed 6 fields for optimal UX
+        fields_to_use = fields_to_use[:6]
+
+        print(f"🔧 Generating form with {len(fields_to_use)} fields: {fields_to_use}")
 
         form_html = f'''
     <div class="enhanced-form">
@@ -1406,8 +1705,11 @@ class UniquePageTransformer:
         <form id="tool-form" onsubmit="calculateResults(event)">
             <div class="form-grid">'''
 
-        for field in form_fields[:6]:  # Limit to 6 fields for better UX
-            config = field_configs.get(field, field_configs["default"])
+        for field in fields_to_use:
+            config = field_configs.get(field, {
+                "icon": "📝", "label": field.replace("_", " ").title(), "type": "text",
+                "placeholder": f"Enter {field.replace('_', ' ')}"
+            })
 
             form_html += f'''
 
@@ -1453,7 +1755,7 @@ class UniquePageTransformer:
             elif config['type'] == 'select':
                 form_html += f'''
                     <select id="{field}" name="{field}" class="form-select">'''
-                for option in config['options']:
+                for option in config.get('options', ['Option 1', 'Option 2', 'Option 3']):
                     form_html += f'<option value="{option}">{option}</option>'
                 form_html += '</select>'
             elif config['type'] == 'checkbox':
@@ -1491,6 +1793,395 @@ class UniquePageTransformer:
     </div>'''
 
         return form_html
+
+    def validate_tool_inputs_enhanced(user_data: Dict[str, Any], category: str) -> Dict[str, Any]:
+        """Enhanced validation function that handles all field types with minimum 4 fields guarantee"""
+        cleaned = {}
+
+        if category in ["business", "finance"]:
+            if category == "business":
+                cleaned["revenue"] = safe_float(user_data.get("revenue", user_data.get("annual_revenue", 500000)))
+                cleaned["expenses"] = safe_float(user_data.get("expenses", user_data.get("annual_expenses", 200000)))
+                cleaned["employees"] = safe_int(user_data.get("employees", 10))
+                cleaned["industry"] = safe_str(user_data.get("industry", "Technology"))
+                cleaned["location"] = safe_str(user_data.get("location", "National Average"))
+                cleaned["business_type"] = safe_str(user_data.get("business_type", "General Business"))
+            else:  # finance
+                cleaned["amount"] = safe_float(user_data.get("amount", user_data.get("loan_amount", 50000)))
+                cleaned["income"] = safe_float(user_data.get("income", user_data.get("annual_income", 75000)))
+                cleaned["credit_score"] = safe_str(user_data.get("credit_score", "Good (700-749)"))
+                cleaned["debt_amount"] = safe_float(user_data.get("debt_amount", 25000))
+                cleaned["loan_term"] = safe_int(user_data.get("loan_term", 15))
+                cleaned["location"] = safe_str(user_data.get("location", "National Average"))
+
+        elif category == "insurance":
+            cleaned["coverage_amount"] = safe_float(user_data.get("coverage_amount", user_data.get("amount", 100000)))
+            cleaned["age"] = safe_int(user_data.get("age", 35))
+            cleaned["location"] = safe_str(user_data.get("location", "National Average"))
+            cleaned["coverage_type"] = safe_str(user_data.get("coverage_type", "Full Coverage"))
+            cleaned["driving_record"] = safe_str(user_data.get("driving_record", "Clean Record"))
+            cleaned["vehicle_year"] = safe_str(user_data.get("vehicle_year", "2020"))
+
+        elif category == "real_estate":
+            cleaned["home_price"] = safe_float(user_data.get("home_price", user_data.get("property_value", 400000)))
+            cleaned["down_payment"] = safe_float(user_data.get("down_payment", 80000))
+            cleaned["location"] = safe_str(user_data.get("location", "National Average"))
+            cleaned["property_type"] = safe_str(user_data.get("property_type", "Single Family"))
+            cleaned["credit_score"] = safe_str(user_data.get("credit_score", "Good (700-749)"))
+            cleaned["loan_term"] = safe_int(user_data.get("loan_term", 30))
+
+        elif category == "automotive":
+            cleaned["vehicle_price"] = safe_float(user_data.get("vehicle_price", user_data.get("price", 35000)))
+            cleaned["down_payment"] = safe_float(user_data.get("down_payment", 7000))
+            cleaned["fuel_type"] = safe_str(user_data.get("fuel_type", "Gasoline"))
+            cleaned["vehicle_year"] = safe_str(user_data.get("vehicle_year", "2020"))
+            cleaned["credit_score"] = safe_str(user_data.get("credit_score", "Good (700-749)"))
+            cleaned["location"] = safe_str(user_data.get("location", "National Average"))
+
+        elif category == "health":
+            cleaned["height"] = safe_float(user_data.get("height", 68))
+            cleaned["weight"] = safe_float(user_data.get("weight", 150))
+            cleaned["age"] = safe_int(user_data.get("age", 35))
+            cleaned["activity_level"] = safe_str(user_data.get("activity_level", "Moderately Active"))
+            cleaned["health_goals"] = safe_str(user_data.get("health_goals", "General Fitness"))
+            cleaned["location"] = safe_str(user_data.get("location", "National Average"))
+
+        elif category == "education":
+            cleaned["tuition_cost"] = safe_float(user_data.get("tuition_cost", 25000))
+            cleaned["years"] = safe_int(user_data.get("years", 4))
+            cleaned["degree_type"] = safe_str(user_data.get("degree_type", "Bachelor's Degree"))
+            cleaned["location"] = safe_str(user_data.get("location", "National Average"))
+            cleaned["student_type"] = safe_str(user_data.get("student_type", "Full-time"))
+            cleaned["financial_aid"] = safe_float(user_data.get("financial_aid", 5000))
+
+        elif category == "legal":
+            cleaned["case_type"] = safe_str(user_data.get("case_type", "Business"))
+            cleaned["complexity"] = safe_str(user_data.get("complexity", "Moderate"))
+            cleaned["location"] = safe_str(user_data.get("location", "National Average"))
+            cleaned["urgency"] = safe_str(user_data.get("urgency", "Medium"))
+            cleaned["budget_range"] = safe_str(user_data.get("budget_range", "$5,000-$15,000"))
+            cleaned["case_duration"] = safe_str(user_data.get("case_duration", "3-6 months"))
+
+        else:
+            # Generic validation for unknown categories with fallback fields
+            cleaned["amount"] = safe_float(user_data.get("amount", 10000))
+            cleaned["location"] = safe_str(user_data.get("location", "National Average"))
+            cleaned["preferences"] = safe_str(user_data.get("preferences", "Standard"))
+            cleaned["goals"] = safe_str(user_data.get("goals", "Save Money"))
+
+            # Add any additional fields from user_data
+            for key, value in user_data.items():
+                if key not in cleaned:
+                    if isinstance(value, str) and any(char.isdigit() for char in value):
+                        cleaned[key] = safe_float(value)
+                    else:
+                        cleaned[key] = safe_str(value)
+
+        # CRITICAL: Ensure minimum 4 fields are always present
+        essential_fallbacks = {
+            "priority": "Medium",
+            "timeline": "1-3 Months",
+            "quality_preference": "Good Value",
+            "communication_preference": "Email"
+        }
+
+        field_count = len(cleaned)
+        if field_count < 4:
+            print(f"⚠️ Warning: Only {field_count} fields validated. Adding fallback fields...")
+            for key, default_value in essential_fallbacks.items():
+                if key not in cleaned:
+                    cleaned[key] = safe_str(user_data.get(key, default_value))
+                    field_count += 1
+                    if field_count >= 4:
+                        break
+
+        print(f"✅ Validated {len(cleaned)} fields for category: {category}")
+        return cleaned
+
+    # Helper functions for safe data conversion
+    def safe_float(value, default=0.0):
+        """Safely convert value to float"""
+        try:
+            if isinstance(value, str):
+                # Remove currency symbols and commas
+                value = value.replace('$', '').replace(',', '').strip()
+            return float(value) if value else default
+        except (ValueError, TypeError):
+            return default
+
+    def safe_int(value, default=0):
+        """Safely convert value to int"""
+        try:
+            return int(float(value)) if value else default
+        except (ValueError, TypeError):
+            return default
+
+    def safe_str(value, default=""):
+        """Safely convert value to string"""
+        try:
+            return str(value).strip() if value is not None else default
+        except:
+            return default
+
+    def enrich_request_with_location_data(request_data, country_data_config):
+        """
+        Enrich request data with location information from country_data config
+
+        Args:
+            request_data: Dict containing the request data like:
+                         {"tool": "insurance-quotes", "data": {"location": "6570", "coverage_amount": "100000"}}
+            country_data_config: Dict containing location data mapping like:
+                               {"6570": {"city": "Viborg", "region": "Central Jutland", "country": "Denmark"}}
+
+        Returns:
+            Dict with enriched request data including location details
+        """
+        if not request_data.get("data", {}).get("location"):
+            return request_data
+
+        location_code = request_data["data"]["location"]
+        location_data = country_data_config.get(location_code, {})
+
+        if location_data:
+            # Add location data to the request while preserving original structure
+            enriched_request = {
+                **request_data,
+                "data": {
+                    **request_data["data"],
+                    "location_data": location_data,
+                    "location_code": location_code,
+                    # Add common location fields that tools might expect
+                    "city": location_data.get("city", ""),
+                    "region": location_data.get("region", ""),
+                    "country": location_data.get("country", ""),
+                    "postal_code": location_code
+                }
+            }
+            return enriched_request
+
+        # If no location data found, just add the original code
+        return {
+            **request_data,
+            "data": {
+                **request_data["data"],
+                "location_code": location_code,
+                "postal_code": location_code
+            }
+        }
+
+    def enrich_request_with_location_data(request_data: Dict[str, Any], country_data_config: Dict[str, Any]) -> Dict[
+        str, Any]:
+        """
+        Enhanced location data enrichment with robust error handling and logging
+
+        Args:
+            request_data: Dict containing the request data like:
+                         {"tool": "insurance-quotes", "data": {"location": "6570", "coverage_amount": "100000"}}
+            country_data_config: Dict containing location data mapping like:
+                               {"6570": {"city": "Viborg", "region": "Central Jutland", "country": "Denmark"}}
+
+        Returns:
+            Dict with enriched request data including location details
+        """
+
+        # Input validation
+        if not isinstance(request_data, dict):
+            logging.warning("Request data is not a dictionary, returning unchanged")
+            return request_data
+
+        if not isinstance(country_data_config, dict):
+            logging.warning("Country data config is not a dictionary, returning request unchanged")
+            return request_data
+
+        # Check if location exists in request data
+        if not request_data.get("data", {}).get("location"):
+            logging.info("No location found in request data")
+            return request_data
+
+        location_code = request_data["data"]["location"]
+
+        # Clean and normalize location code
+        location_code = str(location_code).strip().upper() if location_code else ""
+
+        if not location_code:
+            logging.warning("Location code is empty after cleaning")
+            return request_data
+
+        # Try exact match first
+        location_data = country_data_config.get(location_code, {})
+
+        # If no exact match, try lowercase version
+        if not location_data:
+            location_data = country_data_config.get(location_code.lower(), {})
+
+        # If still no match, try original case
+        if not location_data:
+            original_location = request_data["data"]["location"]
+            location_data = country_data_config.get(str(original_location), {})
+
+        if location_data:
+            logging.info(f"Location data found for: {location_code}")
+
+            # Validate location_data structure
+            if not isinstance(location_data, dict):
+                logging.warning(f"Location data for {location_code} is not a dictionary")
+                location_data = {}
+
+            # Add location data to the request while preserving original structure
+            enriched_request = {
+                **request_data,
+                "data": {
+                    **request_data["data"],
+                    "location_data": location_data,
+                    "location_code": location_code,
+                    "original_location": request_data["data"]["location"],  # Keep original input
+
+                    # Add common location fields that tools might expect
+                    "city": location_data.get("city", ""),
+                    "region": location_data.get("region", ""),
+                    "country": location_data.get("country", ""),
+                    "postal_code": location_code,
+
+                    # Additional useful fields
+                    "country_code": location_data.get("country_code", ""),
+                    "timezone": location_data.get("timezone", ""),
+                    "currency": location_data.get("currency", "USD"),
+                    "language": location_data.get("language", "en"),
+
+                    # Risk/pricing factors if available
+                    "risk_factor": location_data.get("risk_factor", "medium"),
+                    "cost_of_living_index": location_data.get("cost_of_living_index", 100),
+                    "population": location_data.get("population", 0),
+
+                    # SEO/Marketing data
+                    "local_term": location_data.get("local_term", "ZIP code"),
+                    "urgency_text": location_data.get("urgency", "Limited time offer"),
+                    "savings_estimate": location_data.get("savings", 2000)
+                }
+            }
+
+            logging.info(f"Successfully enriched request with location data for {location_code}")
+            return enriched_request
+
+        else:
+            logging.warning(f"No location data found for: {location_code}")
+
+            # Return with basic location info even if no match found
+            fallback_request = {
+                **request_data,
+                "data": {
+                    **request_data["data"],
+                    "location_code": location_code,
+                    "original_location": request_data["data"]["location"],
+                    "postal_code": location_code,
+
+                    # Fallback values
+                    "city": "",
+                    "region": "",
+                    "country": "Unknown",
+                    "country_code": "",
+                    "timezone": "",
+                    "currency": "USD",
+                    "language": "en",
+                    "risk_factor": "medium",
+                    "cost_of_living_index": 100,
+                    "population": 0,
+                    "local_term": "ZIP code",
+                    "urgency_text": "Limited time offer",
+                    "savings_estimate": 2000,
+
+                    # Flag to indicate no location data was found
+                    "location_data_found": False
+                }
+            }
+
+            return fallback_request
+
+    def get_location_display_name(location_data: Dict[str, Any]) -> str:
+        """
+        Generate a user-friendly display name for a location
+
+        Args:
+            location_data: Dictionary containing location information
+
+        Returns:
+            String with formatted location name
+        """
+        if not location_data:
+            return "Unknown Location"
+
+        city = location_data.get("city", "")
+        region = location_data.get("region", "")
+        country = location_data.get("country", "")
+
+        # Build display name with available components
+        parts = []
+        if city:
+            parts.append(city)
+        if region and region != city:
+            parts.append(region)
+        if country and country not in [city, region]:
+            parts.append(country)
+
+        return ", ".join(parts) if parts else "Unknown Location"
+
+    def validate_location_code(location_code: str) -> bool:
+        """
+        Validate if a location code appears to be in a valid format
+
+        Args:
+            location_code: The location code to validate
+
+        Returns:
+            Boolean indicating if the code appears valid
+        """
+        if not location_code or not isinstance(location_code, str):
+            return False
+
+        # Clean the code
+        code = location_code.strip()
+
+        # Basic validation rules
+        if len(code) < 2 or len(code) > 10:
+            return False
+
+        # Check for obvious invalid patterns
+        if code.lower() in ['test', 'null', 'undefined', 'none', '']:
+            return False
+
+        return True
+
+    def get_location_risk_multiplier(location_data: Dict[str, Any], category: str) -> float:
+        """
+        Get risk multiplier based on location and category
+
+        Args:
+            location_data: Dictionary containing location information
+            category: The tool category (insurance, finance, etc.)
+
+        Returns:
+            Float representing risk multiplier (1.0 = average risk)
+        """
+        if not location_data:
+            return 1.0
+
+        base_risk = location_data.get("risk_factor", "medium")
+        category_risks = location_data.get("category_risks", {})
+
+        # Category-specific risk if available
+        if category in category_risks:
+            return float(category_risks[category])
+
+        # General risk mapping
+        risk_map = {
+            "very_low": 0.8,
+            "low": 0.9,
+            "medium": 1.0,
+            "high": 1.1,
+            "very_high": 1.2
+        }
+
+        return risk_map.get(base_risk, 1.0)
 
     def generate_educational_content(self, specialty, target, unique_focus, icon):
         """Generate unique educational content for each tool"""

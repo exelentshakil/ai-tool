@@ -239,25 +239,30 @@ class CalculatorValidator {
     validateByAttributes(field, value) {
         const num = parseFloat(value);
 
-        // Min/Max validation for numbers
-        if (field.type === 'number' && !isNaN(num)) {
-            if (field.min && num < parseFloat(field.min)) {
-                return {
-                    isValid: false,
-                    message: `Value must be at least ${field.min}`
-                };
-            }
+        // Allow min/max validation for any field type that has these attributes
+        if (field.min && num < parseFloat(field.min)) {
+            return {
+                isValid: false,
+                message: `Value must be at least ${field.min}`
+            };
+        }
 
-            if (field.max && num > parseFloat(field.max)) {
-                return {
-                    isValid: false,
-                    message: `Value must be no more than ${field.max}`
-                };
-            }
+        if (field.max && num > parseFloat(field.max)) {
+            return {
+                isValid: false,
+                message: `Value must be no more than ${field.max}`
+            };
         }
 
         // Length validation for text fields
         if (field.type === 'text' || field.type === 'textarea') {
+            // Skip length validation for zip codes and location fields
+            if (field.name === 'location' || field.name === 'zipcode' || field.name === 'postnummer') {
+                // Skip length validation for these fields
+                return { isValid: true };
+            }
+
+            // Only do length validation for other text fields
             if (field.minLength && value.length < parseInt(field.minLength)) {
                 return {
                     isValid: false,
