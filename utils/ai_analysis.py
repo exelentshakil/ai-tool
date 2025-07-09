@@ -149,7 +149,7 @@ def generate_ai_analysis(tool_config, user_data, base_result, ip):
     except Exception as e:
         print(f"AI analysis failed: {str(e)}")
         return jsonify({
-            "error": "Processing failed",
+            "error": "AI analysis failed",
             "message": "Please check your inputs and try again"
         }), 500
 
