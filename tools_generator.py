@@ -747,69 +747,62 @@ class UniquePageTransformer:
 
             # Create complete page body with global optimization
             page_body = f'''
-                <div class="tool-container-wrapper global-{country_data["code"].lower()}">
-                    <div class="hero-section">
-                        <div class="country-flag">{self.get_country_flag(country_data["code"])}</div>
-                        <h1>{rankmath_data["rank_math_title"]}</h1>
-                        <p>Specialized for {country_data["name"]} residents. {rankmath_data["rank_math_description"]}</p>
-                        <div class="global-stats">
-                            <div class="stat-item">
-                                <span class="stat-number">{country_data["savings"]:,}</span>
-                                <span class="stat-label">Avg. Annual Savings ({country_data["currency"]})</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-number">250k+</span>
-                                <span class="stat-label">{country_data["name"]} Users</span>
-                            </div>
-                        </div>
+            <div class="hero-section">
+                <div class="country-flag">{self.get_country_flag(country_data["code"])}</div>
+                <h1>{rankmath_data["rank_math_title"]}</h1>
+                <p>Specialized for {country_data["name"]} residents. {rankmath_data["rank_math_description"]}</p>
+                <div class="global-stats">
+                    <div class="stat-item">
+                        <span class="stat-number">{country_data["savings"]:,}</span>
+                        <span class="stat-label">Avg. Annual Savings ({country_data["currency"]})</span>
                     </div>
-
-                    <div class="tool-main-content">
-                        <div class="tool-content-area">
-                            <div class="tool-interface">
-                                {global_form}
-                            </div>
-
-                            <div class="results-container">
-                                <div id="tool-results" class="tool-results">
-                                    <div class="results-placeholder">
-                                        <h3>📊 Your {country_data["name"]} Results Will Appear Here</h3>
-                                        <p>Optimized for {country_data["name"]} market conditions and regulations.</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="educational-content">
-                                {educational_content}
-                            </div>
-                        </div>
+                    <div class="stat-item">
+                        <span class="stat-number">250k+</span>
+                        <span class="stat-label">{country_data["name"]} Users</span>
                     </div>
                 </div>
+            </div>
 
-                <script>
-                // GLOBAL TOOL CONFIGURATION
-                const TOOL_CONFIG = {{
-                  "slug": "{original_slug}",
-                  "category": "{self.get_category_from_specialty(intention['specialty'])}",
-                  "base_name": "{intention['specialty']}",
-                  "variation": "{self.get_variation_from_title(title)}",
-                  "rpm": {country_data['rpm']},
-                  "target_country": "{country_data['code']}",
-                  "country_data": {json.dumps(country_data)},
-                  "seo_data": {{
-                    "title": "{rankmath_data['rank_math_title']}",
-                    "description": "{rankmath_data['rank_math_description']}",
-                    "keywords": "{rankmath_data['rank_math_keywords']}",
-                    "focus_keyword": "{rankmath_data['rank_math_focus_keyword']}"
-                  }}
-                }};
-                </script>'''
+            <div class="tool-interface">
+                {global_form}
+            </div>
+
+            <div class="results-container">
+                <div id="tool-results" class="tool-results">
+                    <div class="results-placeholder">
+                        <h3>📊 Your {country_data["name"]} Results Will Appear Here</h3>
+                        <p>Optimized for {country_data["name"]} market conditions and regulations.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="educational-content">
+                {educational_content}
+            </div>
+
+            <script>
+            const TOOL_CONFIG = {{
+              "slug": "{original_slug}",
+              "category": "{self.get_category_from_specialty(intention['specialty'])}",
+              "base_name": "{intention['specialty']}",
+              "variation": "{self.get_variation_from_title(title)}",
+              "rpm": {country_data['rpm']},
+              "target_country": "{country_data['code']}",
+              "country_data": {json.dumps(country_data)},
+              "seo_data": {{
+                "title": "{rankmath_data['rank_math_title']}",
+                "description": "{rankmath_data['rank_math_description']}",
+                "keywords": "{rankmath_data['rank_math_keywords']}",
+                "focus_keyword": "{rankmath_data['rank_math_focus_keyword']}"
+              }}
+            }};
+            </script>'''
 
             # Add to CSV data with global optimization
             self.updated_csv_data.append({
                 "post_title": title,
                 "post_name": original_slug,
-                "post_content": page_body.replace('"', '""'),
+                "post_content": page_body,
                 "post_excerpt": rankmath_data["rank_math_description"],
                 "post_status": "publish",
                 "post_type": "page",
