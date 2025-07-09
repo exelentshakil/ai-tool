@@ -4,7 +4,6 @@ from openai import OpenAI
 from utils.database import get_openai_cost_today, get_openai_cost_month, log_openai_cost
 from utils.cache import check_cache, store_cache
 from config.settings import API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
-from flask import jsonify
 
 client = OpenAI(api_key=API_KEY)
 
@@ -148,10 +147,8 @@ def generate_ai_analysis(tool_config, user_data, base_result, ip):
 
     except Exception as e:
         print(f"AI analysis failed: {str(e)}")
-        return jsonify({
-            "error": "AI analysis failed",
-            "message": "Please check your inputs and try again"
-        }), 500
+        return create_fallback_response(tool_config, user_data, base_result)
+
 
 def generate_rich_html_response(ai_analysis, user_data, base_result, tool_config):
     """Generate rich HTML response with charts, graphs and value ladder"""
