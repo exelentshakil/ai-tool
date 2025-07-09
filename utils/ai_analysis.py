@@ -2874,6 +2874,559 @@ def generate_legal_insights(user_data, currency, country):
     """
 
 
+def generate_insurance_recommendations(user_data, currency):
+    """Generate detailed insurance recommendations"""
+    coverage = user_data.get('coverage_amount', 100000)
+    age = user_data.get('age', 30)
+    return f"""
+    <div class="recommendations-container">
+        <div class="recommendation-priority-high">
+            <div class="rec-header">
+                <span class="priority-badge high">HIGH PRIORITY</span>
+                <h4>Immediate Coverage Actions (0-30 days)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Coverage Gap Analysis:</strong> Review current policies for gaps in auto, home, life, and disability coverage</li>
+                    <li><strong>Comparison Shopping:</strong> Get quotes from 5+ insurers to optimize rates and coverage</li>
+                    <li><strong>Bundle Optimization:</strong> Combine policies with single insurer for 10-25% discounts</li>
+                    <li><strong>Deductible Strategy:</strong> Increase deductibles to {currency}1,000+ to reduce premiums by 20-40%</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="recommendation-priority-medium">
+            <div class="rec-header">
+                <span class="priority-badge medium">MEDIUM PRIORITY</span>
+                <h4>Coverage Optimization (1-6 months)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Umbrella Policy:</strong> Add {currency}1-2M umbrella coverage for additional liability protection</li>
+                    <li><strong>Life Insurance Ladder:</strong> Implement term life strategy with decreasing coverage needs over time</li>
+                    <li><strong>Disability Insurance:</strong> Secure 60-70% income replacement through employer and supplemental policies</li>
+                    <li><strong>Annual Review Process:</strong> Schedule yearly policy reviews to adjust coverage and shop rates</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_insurance_actions(user_data):
+    """Generate detailed action items for insurance"""
+    return """
+    <div class="action-plan-comprehensive">
+        <div class="action-timeline immediate">
+            <h4>⚡ Immediate Actions (This Week)</h4>
+            <div class="action-cards-grid">
+                <div class="action-card urgent">
+                    <div class="action-header">
+                        <span class="action-icon">📋</span>
+                        <span class="action-priority high">URGENT</span>
+                    </div>
+                    <h5>Policy Inventory & Assessment</h5>
+                    <p>Gather all current insurance policies and create comprehensive coverage inventory.</p>
+                    <div class="action-details">
+                        <span class="time-estimate">⏱️ 3 hours</span>
+                        <span class="effort-level">💪 Easy</span>
+                        <span class="impact-score">📊 High Impact</span>
+                    </div>
+                </div>
+
+                <div class="action-card urgent">
+                    <div class="action-header">
+                        <span class="action-icon">💰</span>
+                        <span class="action-priority high">URGENT</span>
+                    </div>
+                    <h5>Rate Shopping Campaign</h5>
+                    <p>Obtain quotes from 5+ insurers for all coverage types to identify savings opportunities.</p>
+                    <div class="action-details">
+                        <span class="time-estimate">⏱️ 4 hours</span>
+                        <span class="effort-level">💪 Moderate</span>
+                        <span class="impact-score">📊 Very High Impact</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_insurance_additional(user_data, currency):
+    """Generate additional insurance resources"""
+    return f"""
+    <div class="insurance-resources">
+        <h4>🛡️ Insurance Optimization Tools</h4>
+        <div class="resource-cards">
+            <div class="resource-card">
+                <h5>Coverage Calculator</h5>
+                <p>Determine optimal coverage amounts based on assets, income, and dependents.</p>
+            </div>
+            <div class="resource-card">
+                <h5>Premium Tracking</h5>
+                <p>Monitor rate changes and renewal dates to ensure continuous optimization.</p>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_real_estate_recommendations(user_data, currency):
+    """Generate detailed real estate recommendations"""
+    home_price = user_data.get('home_price', 400000)
+    down_payment = user_data.get('down_payment', 80000)
+    return f"""
+    <div class="recommendations-container">
+        <div class="recommendation-priority-high">
+            <div class="rec-header">
+                <span class="priority-badge high">HIGH PRIORITY</span>
+                <h4>Property Investment Strategy (0-60 days)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Market Analysis:</strong> Research comparable sales, price trends, and neighborhood development plans</li>
+                    <li><strong>Financing Optimization:</strong> Shop mortgage rates with 3+ lenders for best terms on {currency}{home_price - down_payment:,.0f} loan</li>
+                    <li><strong>Inspection & Appraisal:</strong> Secure professional property inspection and accurate valuation</li>
+                    <li><strong>Down Payment Strategy:</strong> Optimize between 20% down vs. lower down with PMI removal plan</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="recommendation-priority-medium">
+            <div class="rec-header">
+                <span class="priority-badge medium">MEDIUM PRIORITY</span>
+                <h4>Long-term Wealth Building (6+ months)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Equity Acceleration:</strong> Consider bi-weekly payments to save {currency}{(home_price - down_payment) * 0.23:,.0f} in interest</li>
+                    <li><strong>Property Improvement ROI:</strong> Focus on kitchen/bathroom upgrades with 70-80% return on investment</li>
+                    <li><strong>Rental Income Potential:</strong> Evaluate ADU or room rental opportunities for additional cash flow</li>
+                    <li><strong>Portfolio Expansion:</strong> Plan for investment property acquisition in 3-5 years</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_real_estate_actions(user_data):
+    """Generate detailed action items for real estate"""
+    return """
+    <div class="action-plan-comprehensive">
+        <div class="action-timeline immediate">
+            <h4>⚡ Immediate Actions (This Month)</h4>
+            <div class="action-cards-grid">
+                <div class="action-card urgent">
+                    <div class="action-header">
+                        <span class="action-icon">🏠</span>
+                        <span class="action-priority high">URGENT</span>
+                    </div>
+                    <h5>Property Market Research</h5>
+                    <p>Analyze comparable sales, price trends, and neighborhood development prospects.</p>
+                    <div class="action-details">
+                        <span class="time-estimate">⏱️ 6 hours</span>
+                        <span class="effort-level">💪 Moderate</span>
+                        <span class="impact-score">📊 High Impact</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_real_estate_additional(user_data, currency):
+    """Generate additional real estate resources"""
+    return """
+    <div class="real-estate-resources">
+        <h4>🏠 Real Estate Investment Tools</h4>
+        <div class="resource-cards">
+            <div class="resource-card">
+                <h5>Property Analysis Calculator</h5>
+                <p>Evaluate cash flow, cap rates, and return on investment for rental properties.</p>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_automotive_recommendations(user_data, currency):
+    """Generate detailed automotive recommendations"""
+    vehicle_price = user_data.get('vehicle_price', 35000)
+    down_payment = user_data.get('down_payment', 7000)
+    return f"""
+    <div class="recommendations-container">
+        <div class="recommendation-priority-high">
+            <div class="rec-header">
+                <span class="priority-badge high">HIGH PRIORITY</span>
+                <h4>Vehicle Purchase Strategy (0-30 days)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Total Cost Analysis:</strong> Calculate 5-year TCO including depreciation, maintenance, fuel, and insurance</li>
+                    <li><strong>Financing Optimization:</strong> Compare dealer financing vs. bank/credit union rates for {currency}{vehicle_price - down_payment:,.0f} loan</li>
+                    <li><strong>Certified Pre-Owned Evaluation:</strong> Consider 2-3 year old vehicles for optimal value retention</li>
+                    <li><strong>Electric Vehicle Analysis:</strong> Evaluate EV options for potential {currency}5,000+ annual fuel savings</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_automotive_actions(user_data):
+    """Generate detailed action items for automotive"""
+    return """
+    <div class="action-plan-comprehensive">
+        <div class="action-timeline immediate">
+            <h4>⚡ Immediate Actions (This Week)</h4>
+            <div class="action-cards-grid">
+                <div class="action-card urgent">
+                    <div class="action-header">
+                        <span class="action-icon">🚗</span>
+                        <span class="action-priority high">URGENT</span>
+                    </div>
+                    <h5>Vehicle Research & Comparison</h5>
+                    <p>Research reliability ratings, resale values, and total cost of ownership.</p>
+                    <div class="action-details">
+                        <span class="time-estimate">⏱️ 4 hours</span>
+                        <span class="effort-level">💪 Easy</span>
+                        <span class="impact-score">📊 High Impact</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_automotive_additional(user_data, currency):
+    """Generate additional automotive resources"""
+    return """
+    <div class="automotive-resources">
+        <h4>🚗 Vehicle Decision Tools</h4>
+        <div class="resource-cards">
+            <div class="resource-card">
+                <h5>TCO Calculator</h5>
+                <p>Compare total cost of ownership across different vehicle options and fuel types.</p>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_health_recommendations(user_data):
+    """Generate detailed health recommendations"""
+    age = user_data.get('age', 30)
+    weight = user_data.get('weight', 150)
+    return f"""
+    <div class="recommendations-container">
+        <div class="recommendation-priority-high">
+            <div class="rec-header">
+                <span class="priority-badge high">HIGH PRIORITY</span>
+                <h4>Foundation Health Actions (0-30 days)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Baseline Assessments:</strong> Complete comprehensive physical, blood work, and body composition analysis</li>
+                    <li><strong>Nutrition Foundation:</strong> Establish caloric needs and macronutrient targets for age {age}</li>
+                    <li><strong>Movement Habits:</strong> Start with 150 minutes moderate exercise weekly per WHO guidelines</li>
+                    <li><strong>Sleep Optimization:</strong> Establish consistent 7-9 hour sleep schedule with proper sleep hygiene</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="recommendation-priority-medium">
+            <div class="rec-header">
+                <span class="priority-badge medium">MEDIUM PRIORITY</span>
+                <h4>Progressive Optimization (1-6 months)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Strength Training:</strong> Add 2-3 resistance training sessions weekly for muscle preservation</li>
+                    <li><strong>Stress Management:</strong> Implement daily stress reduction techniques and mindfulness practices</li>
+                    <li><strong>Metabolic Health:</strong> Monitor blood glucose, lipid panel, and inflammatory markers</li>
+                    <li><strong>Performance Tracking:</strong> Use wearables to monitor HRV, sleep quality, and recovery metrics</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_health_actions(user_data):
+    """Generate detailed action items for health"""
+    return """
+    <div class="action-plan-comprehensive">
+        <div class="action-timeline immediate">
+            <h4>⚡ Immediate Actions (This Week)</h4>
+            <div class="action-cards-grid">
+                <div class="action-card urgent">
+                    <div class="action-header">
+                        <span class="action-icon">🏥</span>
+                        <span class="action-priority high">URGENT</span>
+                    </div>
+                    <h5>Health Baseline Assessment</h5>
+                    <p>Schedule comprehensive physical exam and establish baseline health metrics.</p>
+                    <div class="action-details">
+                        <span class="time-estimate">⏱️ 2 hours</span>
+                        <span class="effort-level">💪 Easy</span>
+                        <span class="impact-score">📊 High Impact</span>
+                    </div>
+                </div>
+
+                <div class="action-card urgent">
+                    <div class="action-header">
+                        <span class="action-icon">🥗</span>
+                        <span class="action-priority high">URGENT</span>
+                    </div>
+                    <h5>Nutrition Plan Development</h5>
+                    <p>Create personalized meal plan with proper macronutrient distribution.</p>
+                    <div class="action-details">
+                        <span class="time-estimate">⏱️ 3 hours</span>
+                        <span class="effort-level">💪 Moderate</span>
+                        <span class="impact-score">📊 Very High Impact</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_health_additional(user_data):
+    """Generate additional health resources"""
+    return """
+    <div class="health-resources">
+        <h4>💪 Health Optimization Tools</h4>
+        <div class="resource-cards">
+            <div class="resource-card">
+                <h5>Nutrition Tracker</h5>
+                <p>Monitor macronutrients, micronutrients, and meal timing for optimal results.</p>
+            </div>
+            <div class="resource-card">
+                <h5>Progress Monitor</h5>
+                <p>Track body composition, performance metrics, and health biomarkers.</p>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_education_recommendations(user_data, currency):
+    """Generate detailed education recommendations"""
+    tuition_cost = user_data.get('tuition_cost', 25000)
+    years = user_data.get('years', 4)
+    return f"""
+    <div class="recommendations-container">
+        <div class="recommendation-priority-high">
+            <div class="rec-header">
+                <span class="priority-badge high">HIGH PRIORITY</span>
+                <h4>Education Investment Strategy (0-60 days)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Financial Aid Optimization:</strong> Complete FAFSA and scholarship applications to reduce {currency}{tuition_cost * years:,.0f} total cost</li>
+                    <li><strong>529 Plan Maximization:</strong> Utilize tax-advantaged education savings for qualified expenses</li>
+                    <li><strong>ROI Analysis:</strong> Evaluate program outcomes, employment rates, and salary expectations</li>
+                    <li><strong>Alternative Pathways:</strong> Consider community college transfer options to reduce costs by 30-50%</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_education_actions(user_data):
+    """Generate detailed action items for education"""
+    return """
+    <div class="action-plan-comprehensive">
+        <div class="action-timeline immediate">
+            <h4>⚡ Immediate Actions (This Month)</h4>
+            <div class="action-cards-grid">
+                <div class="action-card urgent">
+                    <div class="action-header">
+                        <span class="action-icon">🎓</span>
+                        <span class="action-priority high">URGENT</span>
+                    </div>
+                    <h5>Financial Aid Applications</h5>
+                    <p>Complete FAFSA, scholarship applications, and grant opportunities.</p>
+                    <div class="action-details">
+                        <span class="time-estimate">⏱️ 8 hours</span>
+                        <span class="effort-level">💪 Moderate</span>
+                        <span class="impact-score">📊 Very High Impact</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_education_additional(user_data, currency):
+    """Generate additional education resources"""
+    return """
+    <div class="education-resources">
+        <h4>🎓 Education Investment Tools</h4>
+        <div class="resource-cards">
+            <div class="resource-card">
+                <h5>ROI Calculator</h5>
+                <p>Evaluate education investment returns based on career outcomes and salary projections.</p>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_legal_recommendations(user_data, currency):
+    """Generate detailed legal recommendations"""
+    case_type = user_data.get('case_type', 'Business')
+    complexity = user_data.get('complexity', 'Moderate')
+    return f"""
+    <div class="recommendations-container">
+        <div class="recommendation-priority-high">
+            <div class="rec-header">
+                <span class="priority-badge high">HIGH PRIORITY</span>
+                <h4>Legal Strategy Optimization (0-30 days)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Attorney Selection:</strong> Interview 3+ specialists in {case_type.lower()} law with relevant experience</li>
+                    <li><strong>Cost-Benefit Analysis:</strong> Evaluate litigation vs. settlement options for {complexity.lower()} complexity cases</li>
+                    <li><strong>Alternative Dispute Resolution:</strong> Consider mediation/arbitration to reduce costs by 50-70%</li>
+                    <li><strong>Documentation Strategy:</strong> Organize all relevant documents and evidence systematically</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_legal_actions(user_data):
+    """Generate detailed action items for legal"""
+    return """
+    <div class="action-plan-comprehensive">
+        <div class="action-timeline immediate">
+            <h4>⚡ Immediate Actions (This Week)</h4>
+            <div class="action-cards-grid">
+                <div class="action-card urgent">
+                    <div class="action-header">
+                        <span class="action-icon">⚖️</span>
+                        <span class="action-priority high">URGENT</span>
+                    </div>
+                    <h5>Legal Consultation</h5>
+                    <p>Schedule consultations with qualified attorneys to assess case strength and strategy.</p>
+                    <div class="action-details">
+                        <span class="time-estimate">⏱️ 4 hours</span>
+                        <span class="effort-level">💪 Moderate</span>
+                        <span class="impact-score">📊 High Impact</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_legal_additional(user_data, currency):
+    """Generate additional legal resources"""
+    return """
+    <div class="legal-resources">
+        <h4>⚖️ Legal Strategy Tools</h4>
+        <div class="resource-cards">
+            <div class="resource-card">
+                <h5>Case Evaluation Framework</h5>
+                <p>Assess case strength, timeline, and potential outcomes for informed decision-making.</p>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_general_insights(user_data, currency, country):
+    """Generate general insights for unknown categories"""
+    return """
+    <div class="insights-grid">
+        <div class="insight-card primary">
+            <div class="insight-icon">🎯</div>
+            <div class="insight-content">
+                <h4>Strategic Analysis Complete</h4>
+                <p>Your data has been analyzed using proven frameworks to identify <strong>optimization opportunities</strong> and strategic advantages for maximum value creation.</p>
+                <div class="insight-metrics">
+                    <span class="metric-pill positive">Analysis: Complete</span>
+                    <span class="metric-pill positive">Quality: High</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_general_recommendations(user_data, currency):
+    """Generate general recommendations"""
+    return """
+    <div class="recommendations-container">
+        <div class="recommendation-priority-high">
+            <div class="rec-header">
+                <span class="priority-badge high">HIGH PRIORITY</span>
+                <h4>Strategic Actions (0-30 days)</h4>
+            </div>
+            <div class="rec-content">
+                <ul class="action-list">
+                    <li><strong>Goal Clarification:</strong> Define specific, measurable objectives with clear success criteria</li>
+                    <li><strong>Resource Assessment:</strong> Inventory available resources and identify gaps</li>
+                    <li><strong>Timeline Development:</strong> Create realistic implementation schedule with milestones</li>
+                    <li><strong>Risk Mitigation:</strong> Identify potential obstacles and develop contingency plans</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_general_actions(user_data):
+    """Generate general action items"""
+    return """
+    <div class="action-plan-comprehensive">
+        <div class="action-timeline immediate">
+            <h4>⚡ Immediate Actions (This Week)</h4>
+            <div class="action-cards-grid">
+                <div class="action-card urgent">
+                    <div class="action-header">
+                        <span class="action-icon">📋</span>
+                        <span class="action-priority high">URGENT</span>
+                    </div>
+                    <h5>Strategic Planning Session</h5>
+                    <p>Conduct comprehensive planning session to define objectives and action steps.</p>
+                    <div class="action-details">
+                        <span class="time-estimate">⏱️ 2 hours</span>
+                        <span class="effort-level">💪 Easy</span>
+                        <span class="impact-score">📊 High Impact</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
+
+
+def generate_general_additional(user_data, currency):
+    """Generate additional general resources"""
+    return """
+    <div class="general-resources">
+        <h4>🛠️ Strategic Tools & Resources</h4>
+        <div class="resource-cards">
+            <div class="resource-card">
+                <h5>Progress Tracker</h5>
+                <p>Monitor advancement toward goals with systematic measurement and adjustment.</p>
+            </div>
+        </div>
+    </div>
+    """
+
+
 # Generate additional content functions for all categories...
 
 def generate_fallback_charts_content(user_data, category, currency):
@@ -5034,5 +5587,4 @@ def generate_enhanced_fallback_styles_additional():
         }
     }
     """
-
 
