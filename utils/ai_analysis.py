@@ -1351,7 +1351,661 @@ def create_fallback_response(tool_config, user_data, base_result):
     .upgrade-banner h3 {{
     margin-top: 0;
     }}
-    </style>
+    
+.ai-analysis-container {{
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}}
+
+.analysis-header {{
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 15px;
+    padding: 30px;
+    color: white;
+    text-align: center;
+    margin-bottom: 30px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}}
+
+.primary-result {{
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin: 0;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}}
+
+.result-subtitle {{
+    font-size: 1.1rem;
+    opacity: 0.9;
+    margin: 10px 0 0 0;
+}}
+
+.key-metrics {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}}
+
+.metric-card {{
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    border-left: 4px solid #4CAF50;
+    transition: transform 0.3s ease;
+}}
+
+.metric-card:hover {{
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}}
+
+.metric-value {{
+    font-size: 2rem;
+    font-weight: bold;
+    color: #2c3e50;
+    margin: 0;
+}}
+
+.metric-label {{
+    color: #7f8c8d;
+    font-size: 0.9rem;
+    margin: 5px 0 0 0;
+}}
+
+.chart-container {{
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    margin: 20px 0;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}}
+
+.value-ladder {{
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    border-radius: 15px;
+    padding: 30px;
+    margin: 30px 0;
+    color: white;
+}}
+
+.ladder-step {{
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 15px 0;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+}}
+
+.action-grid {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}}
+
+.action-item {{
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    border-left: 4px solid #007bff;
+}}
+
+.comparison-table {{
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+    margin: 20px 0;
+}}
+
+.comparison-table table {{
+    width: 100%;
+    border-collapse: collapse;
+}}
+
+.comparison-table th,
+.comparison-table td {{
+    padding: 15px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}}
+
+.comparison-table th {{
+    background: #f8f9fa;
+    font-weight: 600;
+    color: #2c3e50;
+}}
+
+@media (max-width: 768px) {{
+    .key-metrics {{
+        grid-template-columns: 1fr;
+    }}
+
+    .action-grid {{
+        grid-template-columns: 1fr;
+    }}
+
+    .primary-result {{
+        font-size: 2rem;
+    }}
+}}
+
+/* Enhanced Calculator Sections CSS */
+
+/* Section Titles */
+.section-title {{
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0 0 25px 0;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e9ecef;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}}
+
+/* Action Items Section */
+.action-items-section {{
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 30px;
+    margin: 30px 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+}}
+
+.action-items-section::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #4CAF50, #2196F3, #FF9800, #9C27B0);
+    border-radius: 16px 16px 0 0;
+}}
+
+.action-items-grid {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}}
+
+.action-item-card {{
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+}}
+
+.action-item-card::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.6s;
+}}
+
+.action-item-card:hover::before {{
+    left: 100%;
+}}
+
+.action-item-card:hover {{
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    border-color: #007bff;
+}}
+
+.action-item-card[data-priority="high"] {{
+    border-left: 4px solid #dc3545;
+    background: linear-gradient(135deg, #ffffff 0%, #fff5f5 100%);
+}}
+
+.action-item-card[data-priority="medium"] {{
+    border-left: 4px solid #ffc107;
+    background: linear-gradient(135deg, #ffffff 0%, #fffbf0 100%);
+}}
+
+.action-item-card[data-priority="low"] {{
+    border-left: 4px solid #28a745;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fff9 100%);
+}}
+
+.action-header {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}}
+
+.action-icon {{
+    font-size: 1.5rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 45px;
+    height: 45px;
+    background: rgba(0, 123, 255, 0.1);
+    border-radius: 10px;
+    border: 2px solid rgba(0, 123, 255, 0.2);
+}}
+
+.action-priority {{
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}}
+
+.action-priority.high {{
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+}}
+
+.action-priority.medium {{
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    color: #212529;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}}
+
+.action-priority.low {{
+    background: linear-gradient(135deg, #28a745, #1e7e34);
+    color: white;
+    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}}
+
+.action-title {{
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin: 0 0 10px 0;
+    line-height: 1.3;
+}}
+
+.action-description {{
+    color: #6c757d;
+    margin: 0 0 15px 0;
+    line-height: 1.5;
+    font-size: 0.95rem;
+}}
+
+.action-meta {{
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+}}
+
+.action-timeline,
+.action-effort {{
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 6px 12px;
+    background: rgba(108, 117, 125, 0.1);
+    border-radius: 20px;
+    font-size: 0.85rem;
+    color: #495057;
+    font-weight: 500;
+}}
+
+/* Metrics Dashboard */
+.metrics-dashboard {{
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 30px;
+    margin: 30px 0;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    overflow: hidden;
+}}
+
+.metrics-dashboard::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    border-radius: 16px 16px 0 0;
+}}
+
+.metrics-grid-enhanced {{
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}}
+
+.metric-card-enhanced {{
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 24px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}}
+
+.metric-card-enhanced::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    transition: left 0.6s;
+}}
+
+.metric-card-enhanced:hover::before {{
+    left: 100%;
+}}
+
+.metric-card-enhanced:hover {{
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+}}
+
+.metric-card-enhanced.primary {{
+    border-color: #007bff;
+    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+}}
+
+.metric-card-enhanced.success {{
+    border-color: #28a745;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fff9 100%);
+}}
+
+.metric-card-enhanced.info {{
+    border-color: #17a2b8;
+    background: linear-gradient(135deg, #ffffff 0%, #f0fdff 100%);
+}}
+
+.metric-card-enhanced.warning {{
+    border-color: #ffc107;
+    background: linear-gradient(135deg, #ffffff 0%, #fffbf0 100%);
+}}
+
+.metric-icon {{
+    font-size: 2rem;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 123, 255, 0.1);
+    border-radius: 12px;
+    flex-shrink: 0;
+}}
+
+.metric-content {{
+    flex: 1;
+}}
+
+.metric-value {{
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin: 0 0 5px 0;
+    line-height: 1.2;
+}}
+
+.metric-label {{
+    color: #6c757d;
+    font-size: 0.9rem;
+    margin: 0 0 8px 0;
+    font-weight: 500;
+}}
+
+.metric-change {{
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}}
+
+.metric-change.positive {{
+    background: rgba(40, 167, 69, 0.1);
+    color: #28a745;
+}}
+
+.metric-change.negative {{
+    background: rgba(220, 53, 69, 0.1);
+    color: #dc3545;
+}}
+
+.metric-change.neutral {{
+    background: rgba(108, 117, 125, 0.1);
+    color: #6c757d;
+}}
+
+/* Value Ladder Enhanced */
+.value-ladder-enhanced {{
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 16px;
+    padding: 30px;
+    margin: 30px 0;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}}
+
+.value-ladder-enhanced::before {{
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: pulse 4s ease-in-out infinite;
+    pointer-events: none;
+}}
+
+@keyframes pulse {{
+    0%, 100% {{ transform: scale(1); opacity: 0.5; }}
+    50% {{ transform: scale(1.05); opacity: 0.8; }}
+}}
+
+.ladder-container {{
+    position: relative;
+    z-index: 1;
+}}
+
+.ladder-step-enhanced {{
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 24px;
+    margin: 20px 0;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+}}
+
+.ladder-step-enhanced::before {{
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.6s;
+}}
+
+.ladder-step-enhanced:hover::before {{
+    left: 100%;
+}}
+
+.ladder-step-enhanced:hover {{
+    background: rgba(255, 255, 255, 0.25);
+    transform: translateX(10px);
+}}
+
+.step-number {{
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}}
+
+.step-content {{
+    flex: 1;
+}}
+
+.step-title {{
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+    color: white;
+}}
+
+.step-description {{
+    color: rgba(255, 255, 255, 0.9);
+    margin: 0 0 10px 0;
+    line-height: 1.4;
+}}
+
+.step-value {{
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #ffd700;
+    margin: 0 0 5px 0;
+}}
+
+.step-timeline {{
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}}
+
+.step-icon {{
+    font-size: 2rem;
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}}
+
+/* Copy Button */
+.copy-section-btn {{
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: rgba(0, 0, 0, 0.1);
+    border: none;
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: all 0.3s ease;
+    opacity: 0.7;
+    color: #6c757d;
+    font-weight: 500;
+}}
+
+.copy-section-btn:hover {{
+    background: rgba(0, 0, 0, 0.2);
+    opacity: 1;
+    transform: translateY(-1px);
+}}
+
+/* Responsive Design */
+@media (max-width: 768px) {{
+    .action-items-grid {{
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }}
+    
+    .metrics-grid-enhanced {{
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }}
+    
+    .action-item-card,
+    .metric-card-enhanced {{
+        padding: 20px;
+    }}
+    
+    .metric-card-enhanced {{
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }}
+    
+    .ladder-step-enhanced {{
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+        padding: 20px;
+    }}
+    
+    .section-title {{
+        font-size: 1.3rem;
+        flex-direction: column;
+        gap: 5px;
+        text-align: center;
+    }}
+}}
+
+@media (max-width: 480px) {{
+    .action-items-section,
+    .metrics-dashboard,
+    .value-ladder-enhanced {{
+        padding: 20px;
+        margin: 20px 0;
+    }}
+    
+    .metric-value {{
+        font-size: 1.5rem;
+    }}
+    
+    .action-title {{
+        font-size: 1rem;
+    }}
+}}
+</style>
     """
 
     return fallback_html
