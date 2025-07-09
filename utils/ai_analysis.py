@@ -4,6 +4,7 @@ from openai import OpenAI
 from utils.database import get_openai_cost_today, get_openai_cost_month, log_openai_cost
 from utils.cache import check_cache, store_cache
 from config.settings import API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
+from flask import jsonify
 
 client = OpenAI(api_key=API_KEY)
 
@@ -147,8 +148,10 @@ def generate_ai_analysis(tool_config, user_data, base_result, ip):
 
     except Exception as e:
         print(f"AI analysis failed: {str(e)}")
-        return create_fallback_response(tool_config, user_data, base_result)
-
+        return jsonify({
+            "error": "Processing failed",
+            "message": "Please check your inputs and try again"
+        }), 500
 
 def generate_rich_html_response(ai_analysis, user_data, base_result, tool_config):
     """Generate rich HTML response with charts, graphs and value ladder"""
@@ -1787,59 +1790,3 @@ def convert_markdown_to_html(markdown_text):
                 formatted_paragraphs.append(f'<p>{para.replace(chr(10), "<br>")}</p>')
 
     return '\n'.join(formatted_paragraphs)
-
-
-def generate_charts_html(user_data, base_result, category):
-    """Generate interactive charts based on category"""
-    if category == "health":
-        return f"""
-        <div class="chart-container">
-            <h3>📈 Health Progress Tracker</h3>
-            <canvas id="healthChart" width="400" height="200"></canvas>
-            <script>
-                // Wait for Chart.js to be available
-                function createHealthChart() {{
-                    if (typeof Chart === 'undefined') {{
-                        console.log('Chart.js not loaded yet, retrying...');
-                        setTimeout(createHealthChart, 500);
-                        return;
-                    }}
-
-                    const ctx = document.getElementById('healthChart');
-                    if (!ctx) return;
-
-                    new Chart(ctx, {{
-                        type: 'line',
-                        data: {{
-                            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
-                            datasets: [{{
-                                label: 'Progress',
-                                data: [0, 10, 25, 40, 60, 80],
-                                borderColor: '#4CAF50',
-                                backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                                tension: 0.4
-                            }}]
-                        }},
-                        options: {{
-                            responsive: true,
-                            scales: {{
-                                y: {{
-                                    beginAtZero: true,
-                                    max: 100
-                                }}
-                            }}
-                        }}
-                    }});
-                }}
-
-                // Try to create chart immediately, or wait for page load
-                if (document.readyState === 'loading') {{
-                    document.addEventListener('DOMContentLoaded', createHealthChart);
-                }} else {{
-                    createHealthChart();
-                }}
-            </script>
-        </div>
-        """
-
-    # Similar pattern for other categories...

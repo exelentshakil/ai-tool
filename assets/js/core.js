@@ -187,7 +187,7 @@ class EnhancedCalculatorCore {
     // Get cache version to invalidate when tool logic changes
     getCacheVersion() {
         // You can update this when tool calculation logic changes
-        return '1.0.0';
+        return '1.0.1';
     }
 
     // Enhanced cache key validation
