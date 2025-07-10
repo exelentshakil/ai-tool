@@ -166,12 +166,10 @@ def process_tool():
 # Import and register all blueprints including face analysis
 from routes.tools_routes import tools_bp
 from routes.admin_routes import admin_bp
-from routes.legacy_routes import legacy_bp
 from routes.face_analysis_routes import face_bp  # New face analysis routes
 
 app.register_blueprint(tools_bp)
 app.register_blueprint(admin_bp)
-app.register_blueprint(legacy_bp)
 app.register_blueprint(face_bp)  # Register face analysis blueprint
 
 # ─── HEALTH CHECK ───────────────────────────────────────────────────────────────
