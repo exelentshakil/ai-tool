@@ -140,7 +140,6 @@ def generate_rich_html_response(ai_analysis, user_data, tool_config, localizatio
     analysis_html = format_analysis_content(ai_analysis)
 
     return f"""
-{get_modern_css()}
 <div class="ai-analysis-container">
     {header_html}
     {metrics_html}
