@@ -80,8 +80,8 @@ else:
 
 # ─── OPENAI CONFIGURATION ───────────────────────────────────────────────────
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
-DAILY_OPENAI_BUDGET = os.getenv('DAILY_OPENAI_BUDGET')
-MONTHLY_OPENAI_BUDGET = os.getenv('MONTHLY_OPENAI_BUDGET')
+DAILY_OPENAI_BUDGET = os.getenv('DAILY_OPENAI_BUDGET', 0.0)
+MONTHLY_OPENAI_BUDGET = os.getenv('MONTHLY_OPENAI_BUDGET', 0.0)
 TOOLS_CONFIG_FILE= "tools_config.json"
 
 if OPENAI_API_KEY:
