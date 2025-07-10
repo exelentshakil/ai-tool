@@ -133,10 +133,11 @@ def process_tool():
         }), 200
 
     except Exception as e:
+        app.logger.error(f"Process tool error: {str(e)}")
         return jsonify({
             "error": "Processing failed",
             "message": "Please check your inputs and try again",
-            "exception": e
+            "error_type": str(e),
         }), 500
 
 # Import and register all blueprints including face analysis
