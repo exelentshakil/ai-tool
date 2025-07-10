@@ -11,7 +11,7 @@ from datetime import datetime
 from utils.database import init_databases, get_openai_cost_today
 from utils.rate_limiting import get_remote_address, check_user_limit, is_premium_user, increment_user_usage
 from utils.validation import validate_tool_inputs
-from utils.ai_analysis import generate_ai_analysis, create_fallback_response
+from utils.ai_analysis import generate_ai_analysis, create_simple_fallback
 from utils.tools_config import load_all_tools
 from utils import tools_config
 from config.settings import *
@@ -118,7 +118,7 @@ def process_tool():
             ai_analysis = generate_ai_analysis(tool_config, validated_data, ip, localization)
             increment_user_usage(ip, tool_slug)
         else:
-            ai_analysis = create_fallback_response(tool_config, validated_data, localization)
+            ai_analysis = create_simple_fallback(tool_config, validated_data, localization)
             if limit_check.get("blocked", False):
                 # Add rate limit message in appropriate language
                 rate_limit_messages = {
