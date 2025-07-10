@@ -2,10 +2,11 @@
 from flask import Blueprint, request, jsonify
 from flask_limiter import Limiter
 from utils.rate_limiting import get_remote_address, check_user_limit, is_premium_user, increment_user_usage
-from utils.ai_analysis import generate_ai_analysis
+from utils.database import is_ip_blocked, log_openai_cost_enhanced, log_tool_usage
 import json
 import random
 import math
+import time
 from datetime import datetime, timedelta
 import logging
 import traceback
@@ -35,9 +36,12 @@ class AIPersonalityAnalyzer:
         if not openai_client:
             raise Exception("OpenAI client not available")
 
-    def generate_ai_personality_analysis(self, traits, face_data, user_profile):
-        """Generate comprehensive AI-powered personality analysis"""
+    def generate_ai_personality_analysis(self, traits, face_data, user_profile, ip):
+        """Generate comprehensive AI-powered personality analysis with cost tracking"""
         logger.info("Generating AI personality analysis")
+
+        # Start timing for response time tracking
+        start_time = time.time()
 
         try:
             # Prepare the prompt for OpenAI
@@ -47,7 +51,7 @@ class AIPersonalityAnalyzer:
 
             # Call OpenAI API
             response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",  # Using the latest efficient model
+                model="gpt-4o-mini",
                 messages=[
                     {
                         "role": "system",
@@ -65,16 +69,77 @@ class AIPersonalityAnalyzer:
 
             logger.info("Received response from OpenAI")
 
+            # Calculate response time
+            response_time = int((time.time() - start_time) * 1000)  # milliseconds
+
+            # Extract usage data
+            usage = response.usage
+            prompt_tokens = usage.prompt_tokens
+            completion_tokens = usage.completion_tokens
+            total_tokens = prompt_tokens + completion_tokens
+
+            # Calculate cost (gpt-4o-mini pricing)
+            # Input: $0.00015 per 1K tokens, Output: $0.0006 per 1K tokens
+            cost = (prompt_tokens * 0.00015 + completion_tokens * 0.0006) / 1000
+
+            logger.info(
+                f"OpenAI API usage - Tokens: {total_tokens}, Cost: ${cost:.6f}, Response time: {response_time}ms")
+
+            # Log the OpenAI cost with enhanced tracking
+            try:
+                log_success = log_openai_cost_enhanced(
+                    cost=cost,
+                    tokens=total_tokens,
+                    model="gpt-4o-mini",
+                    ip=ip,
+                    tools_slug="face_analysis_ai",
+                    response_time=response_time
+                )
+
+                if log_success:
+                    logger.info(f"✅ OpenAI cost logged successfully: ${cost:.6f}")
+                else:
+                    logger.warning("⚠️ OpenAI cost logging failed")
+
+            except Exception as cost_log_error:
+                logger.error(f"❌ Error logging OpenAI cost: {cost_log_error}")
+
             # Parse the response
             ai_response = json.loads(response.choices[0].message.content)
 
             # Structure the response according to our expected format
             structured_response = self._structure_ai_response(ai_response, traits)
 
+            # Add cost and performance metadata
+            structured_response.update({
+                'api_usage': {
+                    'tokens_used': total_tokens,
+                    'cost': cost,
+                    'response_time_ms': response_time,
+                    'model': 'gpt-4o-mini'
+                }
+            })
+
             logger.info("AI analysis generated successfully")
             return structured_response
 
         except Exception as e:
+            # Calculate error response time
+            error_response_time = int((time.time() - start_time) * 1000)
+
+            # Log failed request (cost=0 for errors)
+            try:
+                log_openai_cost_enhanced(
+                    cost=0,
+                    tokens=0,
+                    model="gpt-4o-mini-error",
+                    ip=ip,
+                    tools_slug="face_analysis_ai",
+                    response_time=error_response_time
+                )
+            except:
+                pass  # Don't fail on error logging
+
             logger.error(f"Error generating AI analysis: {str(e)}")
             logger.error(f"Traceback: {traceback.format_exc()}")
             raise Exception(f"AI analysis failed: {str(e)}")
@@ -203,32 +268,28 @@ IMPORTANT GUIDELINES:
                     (1 - traits.get('neuroticism', 0.5)) * 0.2
             )
 
-            # FIX: Ensure personality_insights are strings
+            # Process personality insights to ensure they're strings
             personality_insights = ai_response.get('personality_insights', [])
-            if personality_insights:
-                # Convert any objects to strings
-                processed_insights = []
-                for insight in personality_insights:
-                    if isinstance(insight, dict):
-                        # If it's a dict, try to extract text
-                        insight_text = insight.get('text') or insight.get('message') or insight.get('insight') or str(
-                            insight)
-                        processed_insights.append(insight_text)
-                    elif isinstance(insight, str):
-                        processed_insights.append(insight)
-                    else:
-                        processed_insights.append(str(insight))
-            else:
-                processed_insights = []
+            processed_insights = []
+            for insight in personality_insights:
+                if isinstance(insight, dict):
+                    insight_text = insight.get('text') or insight.get('message') or insight.get('insight') or str(
+                        insight)
+                    processed_insights.append(insight_text)
+                elif isinstance(insight, str):
+                    processed_insights.append(insight)
+                else:
+                    processed_insights.append(str(insight))
 
             ai_models = [
                 'Claude-Persona-4', 'GPT-PersonaVision', 'Gemini-PersonaCore',
                 'NeuraCore-PersonaAI', 'CogniVision-Pro', 'MindScan-Ultra',
                 'PsychoCore-4.0', 'DeepInsight-AI', 'PersonalyticAI-3.5'
             ]
+
             # Structure the response
             structured_response = {
-                'personality_insights': processed_insights,  # Now guaranteed to be strings
+                'personality_insights': processed_insights,
                 'career_recommendations': ai_response.get('career_recommendations', []),
                 'growth_roadmap': ai_response.get('growth_roadmap', []),
                 'life_predictions': ai_response.get('life_predictions', {}),
@@ -250,7 +311,7 @@ IMPORTANT GUIDELINES:
 
 @face_bp.route('/analyze-face-enhanced', methods=['POST', 'OPTIONS'])
 def analyze_face_enhanced():
-    """AI-powered face analysis endpoint - ONLY uses AI, no fallbacks"""
+    """AI-powered face analysis endpoint with complete tracking"""
     if request.method == 'OPTIONS':
         logger.info("Received OPTIONS request for face analysis")
         return jsonify({}), 200
@@ -267,25 +328,29 @@ def analyze_face_enhanced():
                 'service_status': 'offline'
             }), 503
 
-        # Initialize database to prevent upsert errors
-        try:
-            from utils.database import init_databases
-            init_databases()
-            logger.debug("Database initialized successfully")
-        except Exception as db_error:
-            logger.warning(f"Database initialization warning: {str(db_error)}")
-
         data = request.get_json()
-        logger.debug(f"Received request data keys: {list(data.keys()) if data else 'None'}")
-
         if not data:
             logger.warning("No data provided in request")
             return jsonify({'error': 'No data provided'}), 400
 
-        # Get user IP for rate limiting
+        # Get user IP and check if blocked
         ip = get_remote_address()
-        logger.info(f"Processing request from IP: {ip}")
+        logger.info(f"Processing face analysis request from IP: {ip}")
 
+        # Check if IP is blocked
+        try:
+            if is_ip_blocked(ip):
+                logger.warning(f"🚫 Blocked IP attempted face analysis: {ip}")
+                return jsonify({
+                    'error': 'Access denied',
+                    'message': 'Your IP address has been blocked for policy violations',
+                    'blocked': True,
+                    'contact': 'Contact support if you believe this is an error'
+                }), 403
+        except Exception as block_error:
+            logger.warning(f"Error checking IP block status: {str(block_error)}")
+
+        # Check premium status
         try:
             is_premium = is_premium_user(ip)
             logger.debug(f"User premium status: {is_premium}")
@@ -293,12 +358,12 @@ def analyze_face_enhanced():
             logger.warning(f"Error checking premium status: {str(premium_error)}")
             is_premium = False
 
-        # Check rate limits - AI analysis requires higher limits
+        # Check rate limits
         try:
             limit_check = check_user_limit(ip, is_premium)
             logger.debug(f"Rate limit check result: {limit_check}")
 
-            # For AI analysis, we need stricter limits
+            # For AI analysis, stricter limits
             if not is_premium and limit_check.get("usage_count", 0) >= 3:
                 logger.info("Rate limit exceeded for non-premium user")
                 return jsonify({
@@ -316,14 +381,10 @@ def analyze_face_enhanced():
                 'message': 'Unable to verify usage limits. Please try again.'
             }), 503
 
-        # Extract face data and user profile
+        # Extract and validate face data
         face_data = data.get('face_data', {})
         user_profile = data.get('user_profile', {})
 
-        logger.debug(f"Face data structure: {list(face_data.keys())}")
-        logger.debug(f"User profile: {user_profile}")
-
-        # Validate required data
         personality_traits = face_data.get('personality_traits')
         if not personality_traits:
             basic_data = face_data.get('basic', {})
@@ -335,7 +396,20 @@ def analyze_face_enhanced():
                 }), 400
 
             # Generate basic traits from expressions if not provided
-            personality_traits = self._generate_traits_from_expressions(basic_data.get('expressions', {}))
+            personality_traits = _generate_traits_from_expressions(basic_data.get('expressions', {}))
+
+        # Log tool usage for analytics
+        try:
+            log_tool_usage('face_analysis_ai', ip, {
+                'analysis_type': 'enhanced_ai_analysis',
+                'user_tier': 'premium' if is_premium else 'free',
+                'has_personality_traits': bool(personality_traits),
+                'has_face_data': bool(face_data),
+                'timestamp': datetime.now().isoformat()
+            })
+            logger.debug("Tool usage logged for face analysis")
+        except Exception as usage_log_error:
+            logger.warning(f"Error logging tool usage: {str(usage_log_error)}")
 
         # Initialize AI analyzer
         try:
@@ -348,29 +422,39 @@ def analyze_face_enhanced():
                 'message': 'The AI analysis service is currently unavailable. Please try again later.'
             }), 503
 
-        # Generate AI analysis
+        # Generate AI analysis with cost tracking
         try:
             logger.info("Starting AI analysis generation")
             ai_analysis = analyzer.generate_ai_personality_analysis(
                 personality_traits,
                 face_data,
-                user_profile
+                user_profile,
+                ip  # Pass IP for cost tracking
             )
 
             logger.info("AI analysis completed successfully")
 
-            # Increment usage for AI analysis
+            # Increment usage counter for rate limiting
             try:
-                increment_user_usage(ip, 'ai_face_analysis')
-                logger.debug("Usage incremented for AI analysis")
+                increment_user_usage(ip, 'face_analysis_ai')
+                logger.debug("Usage incremented for AI face analysis")
             except Exception as usage_error:
                 logger.warning(f"Error incrementing usage: {str(usage_error)}")
 
         except Exception as ai_error:
             logger.error(f"AI analysis failed: {str(ai_error)}")
-            logger.error(f"Traceback: {traceback.format_exc()}")
 
-            # Check if it's an OpenAI API error
+            # Log the failed attempt
+            try:
+                log_tool_usage('face_analysis_ai', ip, {
+                    'analysis_type': 'failed_ai_analysis',
+                    'error': str(ai_error),
+                    'timestamp': datetime.now().isoformat()
+                })
+            except:
+                pass
+
+            # Check specific error types
             if "rate_limit" in str(ai_error).lower():
                 return jsonify({
                     'error': 'AI service temporarily overloaded',
@@ -390,16 +474,11 @@ def analyze_face_enhanced():
                     'technical_details': str(ai_error) if logger.level <= logging.DEBUG else None
                 }), 500
 
-        # Add user information to response
-        # NEW CODE (fixed):
+        # Calculate remaining analyses
         remaining_count = max(0, (50 if is_premium else 3) - limit_check.get("usage_count", 0) - 1)
+        remaining_analyses = 999999 if is_premium and remaining_count >= 50 else remaining_count
 
-        # Handle infinity/unlimited for premium users
-        if is_premium and remaining_count >= 50:
-            remaining_analyses = 999999  # Use large number instead of Infinity
-        else:
-            remaining_analyses = remaining_count
-
+        # Add user information to response
         ai_analysis.update({
             'user_tier': 'premium' if is_premium else 'free',
             'remaining_analyses': remaining_analyses
@@ -412,7 +491,7 @@ def analyze_face_enhanced():
             'user_info': {
                 'analysis_quality': 'premium' if is_premium else 'basic',
                 'is_rate_limited': False,
-                'remaining_analyses': remaining_analyses,  # Now safe for JSON
+                'remaining_analyses': remaining_analyses,
                 'upgrade_available': not is_premium,
                 'ai_powered': True
             },
@@ -462,14 +541,12 @@ def _generate_traits_from_expressions(expressions):
     return traits
 
 
-# Health check endpoint for AI face analysis
 @face_bp.route('/face-analysis/health', methods=['GET'])
 def face_analysis_health():
-    """Health check specifically for AI face analysis system"""
+    """Health check for AI face analysis system"""
     logger.info("AI face analysis health check requested")
 
     try:
-        # Test OpenAI connection
         if not openai_client:
             return jsonify({
                 'status': 'unhealthy',
@@ -485,10 +562,8 @@ def face_analysis_health():
             max_tokens=5
         )
 
-        if test_response.choices[0].message.content.strip().upper() == 'OK':
-            openai_status = 'operational'
-        else:
-            openai_status = 'responding_incorrectly'
+        openai_status = 'operational' if test_response.choices[
+                                             0].message.content.strip().upper() == 'OK' else 'responding_incorrectly'
 
         health_data = {
             'status': 'healthy',
@@ -503,15 +578,16 @@ def face_analysis_health():
                 'Success predictions',
                 'Motivational analysis'
             ],
+            'cost_tracking': 'enabled',
+            'rate_limiting': 'enabled',
+            'ip_blocking': 'enabled',
             'timestamp': datetime.now().isoformat()
         }
 
-        logger.info("AI face analysis health check passed")
         return jsonify(health_data)
 
     except Exception as e:
         logger.error(f"AI face analysis health check failed: {str(e)}")
-
         return jsonify({
             'status': 'unhealthy',
             'ai_service': 'error',
@@ -521,7 +597,6 @@ def face_analysis_health():
         }), 500
 
 
-# Rate limiting check endpoint
 @face_bp.route('/check-face-analysis-limit', methods=['POST'])
 def check_face_analysis_limit():
     """Check if user can perform AI face analysis"""
@@ -529,6 +604,21 @@ def check_face_analysis_limit():
 
     try:
         ip = get_remote_address()
+
+        # Check if IP is blocked
+        try:
+            if is_ip_blocked(ip):
+                logger.warning(f"🚫 Blocked IP attempted limit check: {ip}")
+                return jsonify({
+                    'can_analyze': False,
+                    'remaining_analyses': 0,
+                    'is_premium': False,
+                    'blocked': True,
+                    'message': 'IP address blocked'
+                }), 403
+        except Exception as block_error:
+            logger.warning(f"Error checking IP block status: {str(block_error)}")
+
         is_premium = is_premium_user(ip)
         limit_check = check_user_limit(ip, is_premium)
 
@@ -558,7 +648,6 @@ def check_face_analysis_limit():
 
     except Exception as e:
         logger.error(f"Error checking AI face analysis limits: {str(e)}")
-
         return jsonify({
             'can_analyze': False,
             'remaining_analyses': 0,
