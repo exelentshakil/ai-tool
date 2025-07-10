@@ -523,22 +523,21 @@ def get_database_stats():
                 'total_users': 0
             }
 
-        # Get current hour users
-        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
-        current_hour_result = supabase.table('user_limits').select('*').eq('hour_key', current_hour).execute()
-        current_hour_users = len(current_hour_result.data) if current_hour_result.data else 0
+        # Get today's active users (instead of just current hour)
+        today = datetime.now().date().isoformat()  # "2025-07-10"
+        today_users_result = supabase.table('user_limits').select('ip').like('hour_key', f'{today}%').execute()
+        active_users_today = len(set(row['ip'] for row in today_users_result.data)) if today_users_result.data else 0
 
         # Get today's total requests
-        today = datetime.now().date().isoformat()
         today_limits = supabase.table('user_limits').select('count').like('hour_key', f'{today}%').execute()
         total_requests = sum(row['count'] for row in today_limits.data) if today_limits.data else 0
 
-        # Get total unique users
+        # Get total unique users (all time)
         all_users = supabase.table('user_limits').select('ip').execute()
         total_users = len(set(row['ip'] for row in all_users.data)) if all_users.data else 0
 
         return {
-            'current_hour_users': current_hour_users,
+            'current_hour_users': active_users_today,  # Changed from current hour to today
             'total_requests': total_requests,
             'total_users': total_users
         }
@@ -550,21 +549,6 @@ def get_database_stats():
             'total_requests': 0,
             'total_users': 0
         }
-
-
-def get_current_hour_users():
-    """Get current hour users count"""
-    try:
-        if not supabase:
-            return 0
-
-        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
-        result = supabase.table('user_limits').select('ip').eq('hour_key', current_hour).execute()
-        return len(set(row['ip'] for row in result.data)) if result.data else 0
-
-    except Exception as e:
-        print(f"Error getting current hour users: {e}")
-        return 0
 
 
 def clean_old_cache(hours=24):
