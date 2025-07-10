@@ -1,113 +1,28 @@
-import hashlib
-from datetime import datetime
 from openai import OpenAI
 from utils.database import get_openai_cost_today, get_openai_cost_month, log_openai_cost
-from utils.cache import check_cache, store_cache
 from config.settings import API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
 
 client = OpenAI(api_key=API_KEY)
 
 
-def build_analysis_prompt(tool_name, category, user_data, localization=None):
-    """Build AI analysis prompt without base result"""
-    if not localization:
-        localization = {}
-
-    language = localization.get('language', 'English')
-    country_name = localization.get('country_name', '')
-    currency = localization.get('currency', 'USD')
-
-    # Fix currency encoding issue
-    if currency == 'u20ac':
-        currency = 'EUR'
-
-    context_items = []
-
-    # Safe extraction of location data - handle both dict and string
-    location_data = user_data.get('locationData', {})
-    if isinstance(location_data, str):
-        # If locationData is a string, create a basic dict
-        location_data = {'name': country_name}
-    elif not isinstance(location_data, dict):
-        # If it's neither string nor dict, use empty dict
-        location_data = {}
-
-    city = location_data.get('city', '')
-    region = location_data.get('region', '')
-    country = location_data.get('name', location_data.get('country', country_name))
-    local_currency = location_data.get('currency', currency)
-
-    # Fix currency encoding for local_currency too
-    if local_currency == 'u20ac':
-        local_currency = 'EUR'
-
-    # Build user context safely
-    for key, value in user_data.items():
-        if key == 'locationData':
-            if city and region:
-                context_items.append(f"Location: {city}, {region}, {country}")
-            elif country:
-                context_items.append(f"Country: {country}")
-        elif isinstance(value, (int, float)) and value > 1000:
-            context_items.append(f"{key.replace('_', ' ').title()}: {local_currency}{value:,.0f}")
-        elif isinstance(value, str) and value.strip():  # Only add non-empty strings
-            context_items.append(f"{key.replace('_', ' ').title()}: {value}")
-        elif isinstance(value, (int, float)):
-            context_items.append(f"{key.replace('_', ' ').title()}: {value}")
-
-    user_context = " | ".join(context_items[:8])  # Increased to 8 items
-
-    prompt = f"""
-You are an expert analyst providing comprehensive strategic insights for a {tool_name}.
-
-USER CONTEXT: {user_context}
-CATEGORY: {category}
-LANGUAGE: {language}
-CURRENCY: {local_currency}
-COUNTRY: {country}
-
-Analyze the user's situation and provide a complete strategic analysis including:
-
-1. MAIN RESULT/CALCULATION (calculate the primary result for this tool)
-2. KEY INSIGHTS (3-4 strategic observations)
-3. STRATEGIC RECOMMENDATIONS (4-5 specific actions)
-4. VALUE LADDER (4-step progression with specific values and timelines)
-5. KEY METRICS (4 important numbers with labels)
-6. COMPARISON TABLE (relevant options with ratings)
-7. ACTION ITEMS (4 prioritized tasks with timelines and effort levels)
-8. OPTIMIZATION OPPORTUNITIES (3-4 immediate improvements)
-9. MARKET INTELLIGENCE (future outlook and timing)
-
-Respond entirely in {language}. Include specific numbers, percentages, and actionable steps. Make everything highly specific to their situation and market context in {country}.
-
-Use {local_currency} currency for all financial calculations. Calculate the main result first, then provide comprehensive analysis around that result.
-"""
-
-    return prompt
-
-
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
-    """Generate pure AI analysis without base result"""
     if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
         return create_fallback_response(tool_config, user_data, localization)
 
     category = tool_config.get("category", "general")
-    tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
+    tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
 
-    # Clean up user_data before processing
-    cleaned_user_data = clean_user_data(user_data)
-
-    # Build AI prompt
-    prompt = build_analysis_prompt(tool_name, category, cleaned_user_data, localization)
+    cleaned_data = clean_user_data(user_data)
+    prompt = build_prompt(tool_name, category, cleaned_data, localization)
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": get_ai_system_prompt(localization)},
+                {"role": "system", "content": get_system_prompt(localization)},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=2000,
+            max_tokens=1500,
             temperature=0.7
         )
 
@@ -116,522 +31,298 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         cost = (pt * 0.00015 + ct * 0.0006) / 1000
         log_openai_cost(tool_config['slug'], pt, ct, cost)
 
-        # Generate rich HTML response
-        rich_response = generate_rich_html_response(ai_analysis, cleaned_user_data, tool_config, localization)
-        return rich_response
+        return generate_html_response(ai_analysis, cleaned_data, tool_config, localization)
 
     except Exception as e:
         print(f"AI analysis failed: {str(e)}")
-        return create_fallback_response(tool_config, cleaned_user_data, localization)
+        return create_fallback_response(tool_config, cleaned_data, localization)
 
 
 def clean_user_data(user_data):
-    """Clean and normalize user data"""
-    cleaned_data = {}
-
+    cleaned = {}
     for key, value in user_data.items():
         if key == 'locationData':
-            # Ensure locationData is always a dict
             if isinstance(value, dict):
-                cleaned_data[key] = value
-            elif isinstance(value, str):
-                cleaned_data[key] = {'name': value}
+                cleaned[key] = value
             else:
-                cleaned_data[key] = {}
+                cleaned[key] = {'name': str(value)}
         elif key in ['currency', 'currency_symbol']:
-            # Fix currency encoding
             if value == 'u20ac':
-                cleaned_data[key] = 'EUR'
+                cleaned[key] = 'EUR'
             else:
-                cleaned_data[key] = value
+                cleaned[key] = value
         else:
-            cleaned_data[key] = value
+            cleaned[key] = value
+    return cleaned
 
-    return cleaned_data
 
-
-def get_ai_system_prompt(localization=None):
-    """Get AI system prompt with localization support"""
+def build_prompt(tool_name, category, user_data, localization=None):
     if not localization:
         localization = {}
 
     language = localization.get('language', 'English')
     currency = localization.get('currency', 'USD')
-    country_name = localization.get('country_name', '')
+    country = localization.get('country_name', '')
 
-    # Fix currency encoding
     if currency == 'u20ac':
         currency = 'EUR'
 
-    base_prompt = f"""You are an expert financial and business analyst. Provide strategic insights that are actionable, data-driven, and tailored to specific contexts.
+    context_items = []
+    for key, value in user_data.items():
+        if key == 'locationData' and isinstance(value, dict):
+            name = value.get('name', country)
+            if name:
+                context_items.append(f"Location: {name}")
+        elif isinstance(value, (int, float)) and value > 0:
+            if key in ['amount', 'budget', 'income', 'price']:
+                context_items.append(f"{key.title()}: {currency} {value:,.0f}")
+            else:
+                context_items.append(f"{key.title()}: {value}")
+        elif isinstance(value, str) and value.strip():
+            context_items.append(f"{key.title()}: {value}")
 
-Use {currency} currency for all calculations. Adapt recommendations to {country_name} market context when relevant. 
+    user_context = " | ".join(context_items[:6])
 
-Structure your response with clear sections and include specific numbers, percentages, and actionable steps. Make everything highly practical and implementable."""
+    return f"""Calculate and analyze this {tool_name} request:
+
+USER INPUT: {user_context}
+CATEGORY: {category}
+COUNTRY: {country}
+CURRENCY: {currency}
+LANGUAGE: {language}
+
+Provide a clear, actionable analysis:
+
+1. MAIN RESULT (calculate the key number/outcome)
+2. KEY INSIGHTS (3 important points)
+3. RECOMMENDATIONS (3 specific actions)
+4. NEXT STEPS (what to do immediately)
+
+Be direct, practical, and valuable. Use {currency} for all money amounts. Respond in {language}."""
+
+
+def get_system_prompt(localization=None):
+    if not localization:
+        localization = {}
+
+    language = localization.get('language', 'English')
+    currency = localization.get('currency', 'USD')
+    country = localization.get('country_name', '')
+
+    if currency == 'u20ac':
+        currency = 'EUR'
+
+    prompt = f"You are a practical analyst providing clear, actionable insights. Use {currency} currency. Focus on {country} context when relevant."
 
     if language != 'English':
-        base_prompt += f"\n\nRespond entirely in {language}."
+        prompt += f" Respond entirely in {language}."
 
-    return base_prompt
+    return prompt
 
 
-def create_fallback_response(tool_config, user_data, localization=None):
-    """Create fallback response when AI analysis is unavailable"""
+def generate_html_response(ai_analysis, user_data, tool_config, localization=None):
     if not localization:
         localization = {}
 
     language = localization.get('language', 'English')
     currency = localization.get('currency', 'USD')
 
-    # Fix currency encoding
     if currency == 'u20ac':
         currency = 'EUR'
 
-    tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
-    category = tool_config.get("category", "general")
+    tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
+
+    formatted_content = format_content(ai_analysis)
 
     return f"""
-    {get_modern_css()}
-    <div class="ai-analysis-container">
-        <div class="fallback-section">
-            <div class="fallback-header">
-                <div class="fallback-icon">⚡</div>
-                <h2>{get_localized_text('analysis_complete', language)}</h2>
-                <p class="fallback-subtitle">{tool_name} - {category.title()}</p>
-            </div>
+<style>
+.ai-results {{
+    max-width: 800px;
+    margin: 20px auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+    color: #333;
+}}
+.result-header {{
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    text-align: center;
+}}
+.result-title {{
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+}}
+.result-subtitle {{
+    opacity: 0.9;
+    font-size: 1rem;
+}}
+.content-section {{
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}}
+.content-section h3 {{
+    color: #2d3748;
+    font-size: 1.3rem;
+    margin-bottom: 15px;
+    font-weight: 600;
+}}
+.content-section h4 {{
+    color: #4a5568;
+    font-size: 1.1rem;
+    margin: 20px 0 10px 0;
+    font-weight: 600;
+}}
+.content-section p {{
+    margin: 12px 0;
+    color: #4a5568;
+}}
+.content-section ul {{
+    margin: 15px 0;
+    padding-left: 0;
+}}
+.content-section li {{
+    background: #f7fafc;
+    margin: 8px 0;
+    padding: 12px 16px;
+    border-left: 4px solid #667eea;
+    border-radius: 0 8px 8px 0;
+    list-style: none;
+}}
+.content-section strong {{
+    color: #2d3748;
+    font-weight: 600;
+}}
+@media (max-width: 768px) {{
+    .ai-results {{ padding: 16px; }}
+    .result-header, .content-section {{ padding: 20px; }}
+    .result-title {{ font-size: 1.5rem; }}
+}}
+</style>
 
-            <div class="result-card">
-                <div class="result-value">AI Analysis Temporarily Unavailable</div>
-                <p class="result-note">Upgrade for comprehensive strategic insights and recommendations</p>
-            </div>
-
-            <div class="upgrade-section">
-                <h3>🚀 Get Complete AI Analysis</h3>
-                <p>Unlock strategic insights, value ladder, metrics, and action plans</p>
-                <div class="support-button">
-                    <a href="https://www.buymeacoffee.com/shakdiesel" target="_blank">
-                        <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px;">
-                    </a>
-                </div>
-            </div>
-        </div>
+<div class="ai-results">
+    <div class="result-header">
+        <div class="result-title">🎯 {tool_name}</div>
+        <div class="result-subtitle">{get_text('analysis_complete', language)}</div>
     </div>
-    """
 
-
-def generate_rich_html_response(ai_analysis, user_data, tool_config, localization=None):
-    """Generate modern material design HTML response"""
-    if not localization:
-        localization = {}
-
-    language = localization.get('language', 'English')
-    currency = localization.get('currency', 'USD')
-    category = tool_config.get("category", "general")
-
-    # Parse AI analysis into structured components
-    parsed_analysis = parse_ai_analysis(ai_analysis)
-
-    # Generate components
-    header_html = generate_header(tool_config, currency, language)
-    metrics_html = generate_metrics_from_ai(parsed_analysis.get('metrics', []), currency, language)
-    insights_html = generate_insights_from_ai(parsed_analysis.get('insights', []), language)
-    ladder_html = generate_value_ladder_from_ai(parsed_analysis.get('ladder', []), currency, language)
-    comparison_html = generate_comparison_from_ai(parsed_analysis.get('comparison', []), language)
-    actions_html = generate_actions_from_ai(parsed_analysis.get('actions', []), language)
-    analysis_html = format_analysis_content(ai_analysis)
-
-    return f"""
-<div class="ai-analysis-container">
-    {header_html}
-    {metrics_html}
-    {insights_html}
-    {ladder_html}
-    {comparison_html}
-    {actions_html}
-
-    <div class="analysis-section">
-        <div class="section-header">
-            <h3>🤖 {get_localized_text('ai_analysis', language)}</h3>
-        </div>
-        <div class="analysis-content">
-            {analysis_html}
-        </div>
+    <div class="content-section">
+        {formatted_content}
     </div>
 </div>
 """
 
-def parse_ai_analysis(ai_text):
-    """Parse AI analysis into structured components"""
-    sections = {
-        'insights': [],
-        'metrics': [],
-        'ladder': [],
-        'comparison': [],
-        'actions': []
-    }
 
-    lines = ai_text.split('\n')
-    current_section = None
-    current_content = []
+def format_content(content):
+    if not content:
+        return '<p>No analysis available.</p>'
+
+    formatted = content
+    formatted = formatted.replace('**', '<strong>').replace('**', '</strong>')
+    formatted = formatted.replace('*', '<em>').replace('*', '</em>')
+
+    lines = formatted.split('\n')
+    html_lines = []
+    in_list = False
 
     for line in lines:
         line = line.strip()
         if not line:
             continue
 
-        # Detect sections
-        if any(keyword in line.lower() for keyword in ['insight', 'key point', 'observation']):
-            current_section = 'insights'
-        elif any(keyword in line.lower() for keyword in ['metric', 'number', 'statistic']):
-            current_section = 'metrics'
-        elif any(keyword in line.lower() for keyword in ['ladder', 'step', 'phase', 'level']):
-            current_section = 'ladder'
-        elif any(keyword in line.lower() for keyword in ['comparison', 'table', 'option']):
-            current_section = 'comparison'
-        elif any(keyword in line.lower() for keyword in ['action', 'task', 'todo', 'next step']):
-            current_section = 'actions'
-
-        if current_section and line.startswith(('-', '•', '1.', '2.', '3.', '4.')):
-            sections[current_section].append(line)
-
-    return sections
-
-def generate_header(tool_config, currency, language):
-    """Generate modern header section"""
-    tool_name = tool_config.get('seo_data', {}).get('title', 'Analysis Tool')
-
-    return f"""
-    <div class="header-section">
-        <div class="header-content">
-            <div class="result-display">
-                <div class="result-icon">🎯</div>
-                <div class="result-info">
-                    <p class="result-subtitle">{tool_name} {get_localized_text('analysis_complete', language)}</p>
-                </div>
-            </div>
-            <div class="header-badge">
-                <span class="ai-badge">🤖 AI-Powered</span>
-            </div>
-        </div>
-    </div>
-    """
-
-def generate_metrics_from_ai(metrics_data, currency, language):
-    """Generate metrics cards from AI data"""
-    if not metrics_data:
-        # Generate default metrics based on common patterns
-        metrics_data = [
-            "Analysis Score: 95%",
-            "Confidence Level: High",
-            "Implementation Time: 30 days",
-            "Expected ROI: 15-25%"
-        ]
-
-    metrics_html = ""
-    for i, metric in enumerate(metrics_data[:4]):
-        # Parse metric value and label
-        parts = metric.split(':')
-        if len(parts) >= 2:
-            label = parts[0].strip()
-            value = parts[1].strip()
-        else:
-            label = f"Metric {i + 1}"
-            value = metric.strip()
-
-        icon = ["📊", "🎯", "⏱️", "💡"][i]
-        color = ["primary", "success", "warning", "info"][i]
-
-        metrics_html += f"""
-        <div class="metric-card {color}">
-            <div class="metric-icon">{icon}</div>
-            <div class="metric-content">
-                <div class="metric-value">{value}</div>
-                <div class="metric-label">{label}</div>
-            </div>
-        </div>
-        """
-
-    return f"""
-    <div class="metrics-section">
-        <div class="section-header">
-            <h3>📊 {get_localized_text('key_metrics', language)}</h3>
-        </div>
-        <div class="metrics-grid">
-            {metrics_html}
-        </div>
-    </div>
-    """
-
-def generate_insights_from_ai(insights_data, language):
-    """Generate insights section from AI data"""
-    if not insights_data:
-        insights_data = [
-            "Strategic positioning shows strong potential for growth",
-            "Market conditions favor immediate implementation",
-            "Risk factors are manageable with proper planning",
-            "Optimization opportunities identified for 20% improvement"
-        ]
-
-    insights_html = ""
-    for i, insight in enumerate(insights_data[:4]):
-        icon = ["🎯", "💡", "⚠️", "⚡"][i]
-        insights_html += f"""
-        <div class="insight-card">
-            <div class="insight-icon">{icon}</div>
-            <div class="insight-text">{insight.strip('- ')}</div>
-        </div>
-        """
-
-    return f"""
-    <div class="insights-section">
-        <div class="section-header">
-            <h3>💡 {get_localized_text('key_insights', language)}</h3>
-        </div>
-        <div class="insights-grid">
-            {insights_html}
-        </div>
-    </div>
-    """
-
-def generate_value_ladder_from_ai(ladder_data, currency, language):
-    """Generate value ladder from AI data"""
-    if not ladder_data:
-        # Generate default ladder steps
-        ladder_data = [
-            "Phase 1: Foundation - Establish baseline (Month 1-2)",
-            "Phase 2: Growth - Build momentum (Month 3-6)",
-            "Phase 3: Scale - Accelerate progress (Month 7-12)",
-            "Phase 4: Optimize - Maximize results (Year 2+)"
-        ]
-
-    ladder_html = ""
-    for i, step in enumerate(ladder_data[:4]):
-        step_number = i + 1
-        # Parse step content
-        parts = step.split('-')
-        if len(parts) >= 2:
-            title = parts[0].strip()
-            description = '-'.join(parts[1:]).strip()
-        else:
-            title = f"Step {step_number}"
-            description = step.strip('- ')
-
-        ladder_html += f"""
-        <div class="ladder-step">
-            <div class="step-number">{step_number}</div>
-            <div class="step-content">
-                <h4 class="step-title">{title}</h4>
-                <p class="step-description">{description}</p>
-            </div>
-            <div class="step-arrow">→</div>
-        </div>
-        """
-
-    return f"""
-    <div class="ladder-section">
-        <div class="section-header">
-            <h3>🚀 {get_localized_text('value_ladder', language)}</h3>
-        </div>
-        <div class="ladder-container">
-            {ladder_html}
-        </div>
-    </div>
-    """
-
-def generate_comparison_from_ai(comparison_data, language):
-    """Generate comparison table from AI data"""
-    if not comparison_data:
-        return ""
-
-    rows_html = ""
-    for item in comparison_data[:5]:
-        # Parse comparison data
-        parts = item.split('-')
-        if len(parts) >= 2:
-            option = parts[0].strip()
-            details = parts[1].strip()
-        else:
-            option = item.strip('- ')
-            details = "See analysis for details"
-
-        rows_html += f"""
-        <tr>
-            <td>{option}</td>
-            <td>{details}</td>
-        </tr>
-        """
-
-    return f"""
-    <div class="comparison-section">
-        <div class="section-header">
-            <h3>⚖️ {get_localized_text('comparison', language)}</h3>
-        </div>
-        <div class="comparison-table">
-            <table>
-                <thead>
-                    <tr>
-                        <th>{get_localized_text('option', language)}</th>
-                        <th>{get_localized_text('details', language)}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {rows_html}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    """
-
-def generate_actions_from_ai(actions_data, language):
-    """Generate action items from AI data"""
-    if not actions_data:
-        actions_data = [
-            "Review and validate current approach (High priority, 1 week)",
-            "Implement recommended changes (Medium priority, 2-3 weeks)",
-            "Monitor progress and adjust strategy (Medium priority, Ongoing)",
-            "Optimize based on results (Low priority, Monthly)"
-        ]
-
-    actions_html = ""
-    priorities = ["high", "medium", "low"]
-    for i, action in enumerate(actions_data[:4]):
-        priority = priorities[i % 3]
-
-        # Parse action content
-        if '(' in action and ')' in action:
-            main_text = action.split('(')[0].strip()
-            meta_text = action.split('(')[1].split(')')[0]
-        else:
-            main_text = action.strip('- ')
-            meta_text = "Standard priority, 1-2 weeks"
-
-        icon = ["🎯", "⚡", "📊", "🔧"][i]
-
-        actions_html += f"""
-        <div class="action-item {priority}">
-            <div class="action-header">
-                <div class="action-icon">{icon}</div>
-                <span class="action-priority">{priority}</span>
-            </div>
-            <div class="action-content">
-                <h4 class="action-title">{main_text}</h4>
-                <p class="action-meta">{meta_text}</p>
-            </div>
-        </div>
-        """
-
-    return f"""
-    <div class="actions-section">
-        <div class="section-header">
-            <h3>📋 {get_localized_text('action_items', language)}</h3>
-        </div>
-        <div class="actions-grid">
-            {actions_html}
-        </div>
-    </div>
-    """
-
-def format_analysis_content(ai_analysis):
-    """Format the full AI analysis content"""
-    # Convert markdown-style formatting to HTML
-    html = ai_analysis
-    html = html.replace('**', '<strong>').replace('**', '</strong>')
-    html = html.replace('*', '<em>').replace('*', '</em>')
-
-    # Convert bullet points to HTML lists
-    lines = html.split('\n')
-    formatted_lines = []
-    in_list = False
-
-    for line in lines:
-        line = line.strip()
-        if line.startswith(('- ', '• ')):
+        if line.startswith('- ') or line.startswith('• '):
             if not in_list:
-                formatted_lines.append('<ul>')
+                html_lines.append('<ul>')
                 in_list = True
-            formatted_lines.append(f'<li>{line[2:]}</li>')
+            html_lines.append(f'<li>{line[2:]}</li>')
         else:
             if in_list:
-                formatted_lines.append('</ul>')
+                html_lines.append('</ul>')
                 in_list = False
-            if line:
-                if line.startswith('#'):
-                    level = len(line) - len(line.lstrip('#'))
-                    formatted_lines.append(f'<h{level + 2}>{line.lstrip("# ")}</h{level + 2}>')
-                else:
-                    formatted_lines.append(f'<p>{line}</p>')
+
+            if line.startswith('#'):
+                level = len(line) - len(line.lstrip('#'))
+                html_lines.append(f'<h{level + 2}>{line.lstrip("# ")}</h{level + 2}>')
+            else:
+                html_lines.append(f'<p>{line}</p>')
 
     if in_list:
-        formatted_lines.append('</ul>')
+        html_lines.append('</ul>')
 
-    return '\n'.join(formatted_lines)
+    return '\n'.join(html_lines)
 
-def get_localized_text(key, language):
-    """Get localized text for UI elements"""
+
+def get_text(key, language):
     texts = {
-        'ai_analysis': {
-            'English': 'AI Strategic Analysis',
-            'Spanish': 'Análisis Estratégico IA',
-            'French': 'Analyse Stratégique IA',
-            'German': 'KI-Strategische Analyse',
-            'Italian': 'Analisi Strategica IA'
-        },
         'analysis_complete': {
             'English': 'Analysis Complete',
             'Spanish': 'Análisis Completo',
             'French': 'Analyse Terminée',
             'German': 'Analyse Abgeschlossen',
-            'Italian': 'Analisi Completa'
-        },
-        'key_metrics': {
-            'English': 'Key Metrics',
-            'Spanish': 'Métricas Clave',
-            'French': 'Métriques Clés',
-            'German': 'Wichtige Kennzahlen',
-            'Italian': 'Metriche Chiave'
-        },
-        'key_insights': {
-            'English': 'Key Insights',
-            'Spanish': 'Puntos Clave',
-            'French': 'Insights Clés',
-            'German': 'Wichtige Erkenntnisse',
-            'Italian': 'Insights Chiave'
-        },
-        'value_ladder': {
-            'English': 'Value Ladder',
-            'Spanish': 'Escalera de Valor',
-            'French': 'Échelle de Valeur',
-            'German': 'Wertleiter',
-            'Italian': 'Scala del Valore'
-        },
-        'comparison': {
-            'English': 'Comparison',
-            'Spanish': 'Comparación',
-            'French': 'Comparaison',
-            'German': 'Vergleich',
-            'Italian': 'Confronto'
-        },
-        'action_items': {
-            'English': 'Action Items',
-            'Spanish': 'Elementos de Acción',
-            'French': 'Éléments d\'Action',
-            'German': 'Aktionspunkte',
-            'Italian': 'Elementi d\'Azione'
-        },
-        'option': {
-            'English': 'Option',
-            'Spanish': 'Opción',
-            'French': 'Option',
-            'German': 'Option',
-            'Italian': 'Opzione'
-        },
-        'details': {
-            'English': 'Details',
-            'Spanish': 'Detalles',
-            'French': 'Détails',
-            'German': 'Details',
-            'Italian': 'Dettagli'
+            'Italian': 'Analisi Completa',
+            'Dutch': 'Analyse Voltooid'
         }
     }
-
     return texts.get(key, {}).get(language, texts.get(key, {}).get('English', key))
+
+
+def create_fallback_response(tool_config, user_data, localization=None):
+    if not localization:
+        localization = {}
+
+    language = localization.get('language', 'English')
+    tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
+
+    return f"""
+<style>
+.fallback-results {{
+    max-width: 600px;
+    margin: 20px auto;
+    text-align: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}}
+.fallback-header {{
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 40px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}}
+.fallback-title {{
+    font-size: 2rem;
+    margin-bottom: 10px;
+}}
+.upgrade-section {{
+    background: #f7fafc;
+    padding: 30px;
+    border-radius: 12px;
+}}
+.upgrade-button {{
+    display: inline-block;
+    margin-top: 20px;
+}}
+</style>
+
+<div class="fallback-results">
+    <div class="fallback-header">
+        <div class="fallback-title">⚡ {tool_name}</div>
+        <p>AI analysis temporarily unavailable</p>
+    </div>
+
+    <div class="upgrade-section">
+        <h3>🚀 Get AI Analysis</h3>
+        <p>Support us to unlock detailed insights and recommendations</p>
+        <div class="upgrade-button">
+            <a href="https://www.buymeacoffee.com/shakdiesel" target="_blank">
+                <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Support" style="height: 50px;">
+            </a>
+        </div>
+    </div>
+</div>
+"""
