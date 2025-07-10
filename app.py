@@ -48,7 +48,7 @@ print(f"🔍 Tools loaded successfully: {load_result}")
 @app.route('/process-tool', methods=['POST', 'OPTIONS'])
 @limiter.limit("50 per minute")
 def process_tool():
-    """Main tool processing endpoint with AI analysis integration"""
+    """Main tool processing endpoint with pure AI analysis"""
     if request.method == 'OPTIONS':
         return jsonify({}), 200
 
@@ -95,7 +95,7 @@ def process_tool():
         category = tool_config.get("category", "general")
         validated_data = validate_tool_inputs(user_data, category)
 
-        # Generate AI analysis if not rate limited
+        # Generate pure AI analysis if not rate limited
         if limit_check.get("can_ai", False) and request_ai_analysis:
             ai_analysis = generate_ai_analysis(tool_config, validated_data, ip, localization)
             increment_user_usage(ip, tool_slug)
@@ -110,7 +110,8 @@ def process_tool():
                     'Italian': f"\n\n**Limite di Velocità:** {limit_check.get('message', 'Limite orario raggiunto')}"
                 }
                 language = localization.get('language', 'English')
-                rate_message = rate_limit_messages.get(language, f"\n\n**Rate Limit:** {limit_check.get('message', 'Hourly limit reached')}")
+                rate_message = rate_limit_messages.get(language,
+                                                       f"\n\n**Rate Limit:** {limit_check.get('message', 'Hourly limit reached')}")
                 ai_analysis += rate_message
 
         is_rate_limited = limit_check.get("blocked", False)
@@ -134,10 +135,14 @@ def process_tool():
 
     except Exception as e:
         app.logger.error(f"Process tool error: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
         return jsonify({
             "error": "Processing failed",
             "message": "Please check your inputs and try again",
-            "error_type": str(e),
+            "error_type": str(type(e).__name__),
+            "error_details": str(e)
         }), 500
 
 # Import and register all blueprints including face analysis

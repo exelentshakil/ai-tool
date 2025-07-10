@@ -8,8 +8,44 @@ from config.settings import API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
 client = OpenAI(api_key=API_KEY)
 
 
+def generate_ai_analysis(tool_config, user_data, ip, localization=None):
+    """Generate pure AI analysis without base result"""
+    if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
+        return create_fallback_response(tool_config, user_data, localization)
+
+    category = tool_config.get("category", "general")
+    tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
+
+    # Build AI prompt without base_result
+    prompt = build_analysis_prompt(tool_name, category, user_data, localization)
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": get_ai_system_prompt(localization)},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=2000,
+            temperature=0.7
+        )
+
+        ai_analysis = response.choices[0].message.content
+        pt, ct = response.usage.prompt_tokens, response.usage.completion_tokens
+        cost = (pt * 0.00015 + ct * 0.0006) / 1000
+        log_openai_cost(tool_config['slug'], pt, ct, cost)
+
+        # Generate rich HTML response
+        rich_response = generate_rich_html_response(ai_analysis, user_data, tool_config, localization)
+        return rich_response
+
+    except Exception as e:
+        print(f"AI analysis failed: {str(e)}")
+        return create_fallback_response(tool_config, user_data, localization)
+
+
 def build_analysis_prompt(tool_name, category, user_data, localization=None):
-    """Build comprehensive AI analysis prompt with localization support"""
+    """Build AI analysis prompt without base result"""
     if not localization:
         localization = {}
 
@@ -39,62 +75,70 @@ def build_analysis_prompt(tool_name, category, user_data, localization=None):
     user_context = " | ".join(context_items[:6])
 
     prompt = f"""
-You are an expert analyst providing comprehensive strategic insights. Generate a complete analysis including:
+You are an expert analyst providing comprehensive strategic insights for a {tool_name}.
 
 USER CONTEXT: {user_context}
 CATEGORY: {category}
 LANGUAGE: {language}
 CURRENCY: {local_currency}
 
-Please respond entirely in {language} and provide:
+Analyze the user's situation and provide a complete strategic analysis including:
 
-1. KEY INSIGHTS (3-4 strategic observations)
-2. STRATEGIC RECOMMENDATIONS (4-5 specific actions)
-3. VALUE LADDER (4-step progression with specific values and timelines)
-4. KEY METRICS (4 important numbers with labels)
-5. COMPARISON TABLE (relevant options with ratings)
-6. ACTION ITEMS (4 prioritized tasks with timelines and effort levels)
-7. OPTIMIZATION OPPORTUNITIES (3-4 immediate improvements)
-8. MARKET INTELLIGENCE (future outlook and timing)
+1. MAIN RESULT/CALCULATION (calculate the primary result for this tool)
+2. KEY INSIGHTS (3-4 strategic observations)
+3. STRATEGIC RECOMMENDATIONS (4-5 specific actions)
+4. VALUE LADDER (4-step progression with specific values and timelines)
+5. KEY METRICS (4 important numbers with labels)
+6. COMPARISON TABLE (relevant options with ratings)
+7. ACTION ITEMS (4 prioritized tasks with timelines and effort levels)
+8. OPTIMIZATION OPPORTUNITIES (3-4 immediate improvements)
+9. MARKET INTELLIGENCE (future outlook and timing)
 
-Format as structured sections. Include specific numbers, percentages, and actionable steps. Make everything highly specific to their situation and market context.
+Respond entirely in {language}. Include specific numbers, percentages, and actionable steps. Make everything highly specific to their situation and market context.
+
+Calculate the main result first, then provide comprehensive analysis around that result.
 """
 
     return prompt
 
 
-def generate_ai_analysis(tool_config, user_data, ip, localization=None):
-    """Generate comprehensive AI analysis with all components"""
-    if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
-        return create_fallback_response(tool_config, user_data, localization)
+def create_fallback_response(tool_config, user_data, localization=None):
+    """Create fallback response when AI analysis is unavailable"""
+    if not localization:
+        localization = {}
 
-    category = tool_config.get("category", "general")
+    language = localization.get('language', 'English')
+    currency = localization.get('currency', 'USD')
+
     tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
-    prompt = build_analysis_prompt(tool_name, category, user_data, localization)
+    category = tool_config.get("category", "general")
 
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": get_ai_system_prompt(localization)},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=2000,
-            temperature=0.7
-        )
+    return f"""
+    <div class="ai-analysis-container">
+        <div class="fallback-section">
+            <div class="fallback-header">
+                <div class="fallback-icon">⚡</div>
+                <h2>{get_localized_text('analysis_complete', language)}</h2>
+                <p class="fallback-subtitle">{tool_name} - {category.title()}</p>
+            </div>
 
-        ai_analysis = response.choices[0].message.content
-        pt, ct = response.usage.prompt_tokens, response.usage.completion_tokens
-        cost = (pt * 0.00015 + ct * 0.0006) / 1000
-        log_openai_cost(tool_config['slug'], pt, ct, cost)
+            <div class="result-card">
+                <div class="result-value">AI Analysis Temporarily Unavailable</div>
+                <p class="result-note">Upgrade for comprehensive strategic insights and recommendations</p>
+            </div>
 
-        # Generate rich HTML response
-        rich_response = generate_rich_html_response(ai_analysis, user_data, tool_config, localization)
-        return rich_response
-
-    except Exception as e:
-        print(f"AI analysis failed: {str(e)}")
-        return create_fallback_response(tool_config, user_data, localization)
+            <div class="upgrade-section">
+                <h3>🚀 Get Complete AI Analysis</h3>
+                <p>Unlock strategic insights, value ladder, metrics, and action plans</p>
+                <div class="support-button">
+                    <a href="https://www.buymeacoffee.com/shakdiesel" target="_blank">
+                        <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px;">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    """
 
 
 def get_ai_system_prompt(localization=None):
@@ -543,30 +587,3 @@ def get_localized_text(key, language):
     }
 
     return texts.get(key, {}).get(language, texts.get(key, {}).get('English', key))
-
-
-def create_fallback_response(tool_config, user_data, localization=None):
-    """Create fallback response when AI analysis is unavailable"""
-    if not localization:
-        localization = {}
-
-    language = localization.get('language', 'English')
-    currency = localization.get('currency', 'USD')
-
-    tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
-
-    return f"""
-    <div class="ai-analysis-container">
-        <div class="fallback-section">
-            <div class="upgrade-section">
-                <h3>🚀 Get Complete AI Analysis</h3>
-                <p>Unlock strategic insights, recommendations, and action plans</p>
-                <div class="support-button">
-                    <a href="https://www.buymeacoffee.com/shakdiesel" target="_blank">
-                        <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px;">
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    """
