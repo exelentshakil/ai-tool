@@ -3,9 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Tools Admin Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <title>AI Tools Dashboard</title>
     <style>
         * {
             margin: 0;
@@ -14,68 +12,30 @@
         }
 
         body {
-            font-family: 'Roboto', sans-serif;
-            background: #f5f5f5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f7fa;
             color: #333;
+            line-height: 1.6;
         }
 
-        .dashboard {
-            display: grid;
-            grid-template-columns: 250px 1fr;
-            min-height: 100vh;
-        }
-
-        .sidebar {
-            background: #1976d2;
-            color: white;
-            padding: 20px 0;
-        }
-
-        .sidebar-header {
-            padding: 0 20px 30px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-        }
-
-        .sidebar-header h2 {
-            font-weight: 500;
-            font-size: 1.2rem;
-        }
-
-        .sidebar-nav {
-            padding: 20px 0;
-        }
-
-        .nav-item {
-            display: flex;
-            align-items: center;
-            padding: 12px 20px;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .nav-item:hover, .nav-item.active {
-            background: rgba(255,255,255,0.1);
-        }
-
-        .nav-item .material-icons {
-            margin-right: 12px;
-            font-size: 20px;
-        }
-
-        .main-content {
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
             padding: 20px;
-            overflow-y: auto;
         }
 
         .header {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: between;
-            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
         }
 
         .stats-grid {
@@ -87,101 +47,58 @@
 
         .stat-card {
             background: white;
-            padding: 24px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            text-align: center;
         }
 
-        .stat-icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 16px;
-            font-size: 24px;
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
         }
 
-        .stat-icon.cost { background: #e3f2fd; color: #1976d2; }
-        .stat-icon.users { background: #e8f5e8; color: #388e3c; }
-        .stat-icon.requests { background: #fff3e0; color: #f57c00; }
-        .stat-icon.blocked { background: #ffebee; color: #d32f2f; }
-
-        .stat-content h3 {
-            font-size: 1.5rem;
-            font-weight: 500;
-            margin-bottom: 4px;
-        }
-
-        .stat-content p {
+        .stat-label {
             color: #666;
             font-size: 0.9rem;
         }
 
-        .chart-container {
-            background: white;
-            padding: 24px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-
-        .chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .chart-header h3 {
-            font-weight: 500;
-        }
-
-        .time-filters {
-            display: flex;
-            gap: 8px;
-        }
-
-        .time-filter {
-            padding: 6px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            background: white;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-
-        .time-filter:hover, .time-filter.active {
-            background: #1976d2;
-            color: white;
-            border-color: #1976d2;
-        }
-
         .table-container {
             background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             overflow: hidden;
+            margin-bottom: 30px;
         }
 
         .table-header {
-            padding: 16px 20px;
+            padding: 20px;
             background: #f8f9fa;
-            border-bottom: 1px solid #dee2e6;
+            border-bottom: 1px solid #eee;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
 
-        .search-box {
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            width: 250px;
+        .table-header h3 {
+            margin: 0;
+            color: #333;
+        }
+
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .refresh-btn:hover {
+            background: #5a6fd8;
         }
 
         table {
@@ -190,988 +107,340 @@
         }
 
         th, td {
-            padding: 12px 20px;
+            padding: 12px 15px;
             text-align: left;
             border-bottom: 1px solid #eee;
         }
 
         th {
             background: #f8f9fa;
-            font-weight: 500;
-            color: #666;
-            font-size: 0.9rem;
+            font-weight: 600;
+            color: #333;
         }
 
-        .status-badge {
+        tbody tr:hover {
+            background: #f8f9fa;
+        }
+
+        .cost-high {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .cost-medium {
+            color: #f39c12;
+            font-weight: bold;
+        }
+
+        .cost-low {
+            color: #27ae60;
+        }
+
+        .usage-high {
+            background: #ffebee;
+            color: #c62828;
             padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 500;
-        }
-
-        .status-premium { background: #e3f2fd; color: #1976d2; }
-        .status-guest { background: #f3e5f5; color: #7b1fa2; }
-        .status-blocked { background: #ffebee; color: #d32f2f; }
-
-        .btn {
-            padding: 6px 12px;
-            border: none;
             border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            transition: all 0.2s;
+            font-weight: bold;
         }
 
-        .btn-primary { background: #1976d2; color: white; }
-        .btn-danger { background: #d32f2f; color: white; }
-        .btn-success { background: #388e3c; color: white; }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-        }
-
-        .modal-content {
-            background: white;
-            width: 90%;
-            max-width: 500px;
-            margin: 10% auto;
-            border-radius: 8px;
-            padding: 24px;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .close {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 4px;
-            font-weight: 500;
-        }
-
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
+        .usage-medium {
+            background: #fff3e0;
+            color: #ef6c00;
+            padding: 4px 8px;
             border-radius: 4px;
         }
 
-        .refresh-btn {
-            background: #4caf50;
+        .usage-low {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+
+        .block-btn {
+            background: #e74c3c;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 4px 8px;
             border-radius: 4px;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            font-size: 12px;
+        }
+
+        .block-btn:hover {
+            background: #c0392b;
         }
 
         .loading {
-            opacity: 0.6;
-            pointer-events: none;
+            text-align: center;
+            padding: 40px;
+            color: #666;
         }
 
         @media (max-width: 768px) {
-            .dashboard {
-                grid-template-columns: 1fr;
+            .container {
+                padding: 10px;
             }
-            .sidebar {
-                display: none;
-            }
+
             .stats-grid {
                 grid-template-columns: 1fr;
+            }
+
+            table {
+                font-size: 14px;
+            }
+
+            th, td {
+                padding: 8px 10px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="dashboard">
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <h2>AI Tools Admin</h2>
-            </div>
-            <nav class="sidebar-nav">
-                <div class="nav-item active" data-page="overview">
-                    <span class="material-icons">dashboard</span>
-                    Overview
-                </div>
-                <div class="nav-item" data-page="costs">
-                    <span class="material-icons">monetization_on</span>
-                    OpenAI Costs
-                </div>
-                <div class="nav-item" data-page="users">
-                    <span class="material-icons">people</span>
-                    User Management
-                </div>
-                <div class="nav-item" data-page="tools">
-                    <span class="material-icons">build</span>
-                    Tools Usage
-                </div>
-                <div class="nav-item" data-page="settings">
-                    <span class="material-icons">settings</span>
-                    Settings
-                </div>
-            </nav>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 AI Tools Dashboard</h1>
+            <p>Monitor OpenAI costs, usage, and manage IPs</p>
+            <p><small>Last updated: <span id="last-updated">Loading...</span></small></p>
         </div>
 
-        <div class="main-content">
-            <div class="header">
-                <h1 id="page-title">Dashboard Overview</h1>
-                <button class="refresh-btn" onclick="refreshData()">
-                    <span class="material-icons">refresh</span>
-                    Refresh
-                </button>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="today-cost">$0.00</div>
+                <div class="stat-label">Today's Cost</div>
             </div>
-
-            <!-- Overview Page -->
-            <div id="overview-page" class="page">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon cost">
-                            <span class="material-icons">monetization_on</span>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="today-cost">$0.00</h3>
-                            <p>Today's OpenAI Cost</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon users">
-                            <span class="material-icons">people</span>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="active-users">0</h3>
-                            <p>Active Users (24h)</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon requests">
-                            <span class="material-icons">timeline</span>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="total-requests">0</h3>
-                            <p>Total Requests Today</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon blocked">
-                            <span class="material-icons">block</span>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="blocked-ips">0</h3>
-                            <p>Blocked IPs</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="chart-container">
-                    <div class="chart-header">
-                        <h3>Usage Trends</h3>
-                        <div class="time-filters">
-                            <button class="time-filter active" data-period="24h">24 Hours</button>
-                            <button class="time-filter" data-period="7d">7 Days</button>
-                            <button class="time-filter" data-period="30d">30 Days</button>
-                        </div>
-                    </div>
-                    <div id="usage-chart" style="height: 300px; display: flex; align-items: center; justify-content: center; color: #666;">
-                        📊 Chart will be displayed here
-                    </div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-value" id="month-cost">$0.00</div>
+                <div class="stat-label">This Month</div>
             </div>
-
-            <!-- Costs Page -->
-            <div id="costs-page" class="page" style="display: none;">
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon cost">
-                            <span class="material-icons">today</span>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="cost-today">$0.00</h3>
-                            <p>Today</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon cost">
-                            <span class="material-icons">date_range</span>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="cost-week">$0.00</h3>
-                            <p>This Week</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon cost">
-                            <span class="material-icons">calendar_month</span>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="cost-month">$0.00</h3>
-                            <p>This Month</p>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon requests">
-                            <span class="material-icons">speed</span>
-                        </div>
-                        <div class="stat-content">
-                            <h3 id="avg-cost">$0.000</h3>
-                            <p>Avg per Request</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="table-container">
-                    <div class="table-header">
-                        <h3>Recent Costs</h3>
-                        <input type="text" class="search-box" placeholder="Search costs...">
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Model</th>
-                                <th>Tokens</th>
-                                <th>Cost</th>
-                                <th>Tool</th>
-                            </tr>
-                        </thead>
-                        <tbody id="costs-table">
-                            <tr><td colspan="5" style="text-align: center; color: #666;">Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-requests">0</div>
+                <div class="stat-label">Total Requests Today</div>
             </div>
-
-            <!-- Users Page -->
-            <div id="users-page" class="page" style="display: none;">
-                <div class="table-container">
-                    <div class="table-header">
-                        <h3>User Management</h3>
-                        <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="text" class="search-box" placeholder="Search by IP..." id="user-search">
-                            <button class="btn btn-primary" onclick="openAddUserModal()">Add User</button>
-                        </div>
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>IP Address</th>
-                                <th>Status</th>
-                                <th>Requests Today</th>
-                                <th>Last Seen</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="users-table">
-                            <tr><td colspan="5" style="text-align: center; color: #666;">Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Tools Page -->
-            <div id="tools-page" class="page" style="display: none;">
-                <div class="table-container">
-                    <div class="table-header">
-                        <h3>Tools Usage Statistics</h3>
-                        <input type="text" class="search-box" placeholder="Search tools...">
-                    </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Tool Name</th>
-                                <th>Total Uses</th>
-                                <th>Today</th>
-                                <th>This Week</th>
-                                <th>Avg Cost</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tools-table">
-                            <tr><td colspan="6" style="text-align: center; color: #666;">Loading...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Settings Page -->
-            <div id="settings-page" class="page" style="display: none;">
-                <div class="chart-container">
-                    <h3>System Settings</h3>
-                    <div style="margin-top: 20px;">
-                        <div class="form-group">
-                            <label>Daily OpenAI Budget ($)</label>
-                            <input type="number" id="daily-budget" value="10.00" step="0.01">
-                        </div>
-                        <div class="form-group">
-                            <label>Hourly Rate Limit (Free Users)</label>
-                            <input type="number" id="hourly-limit" value="50">
-                        </div>
-                        <div class="form-group">
-                            <label>Premium IPs (comma separated)</label>
-                            <input type="text" id="premium-ips" placeholder="192.168.1.1, 10.0.0.1">
-                        </div>
-                        <button class="btn btn-primary" onclick="saveSettings()">Save Settings</button>
-                    </div>
-                </div>
-
-                <div class="chart-container" style="margin-top: 20px;">
-                    <h3>Database Status</h3>
-                    <div id="db-status" style="margin-top: 20px;">
-                        <p>Checking database connection...</p>
-                    </div>
-                </div>
+            <div class="stat-card">
+                <div class="stat-value" id="active-users">0</div>
+                <div class="stat-label">Active Users</div>
             </div>
         </div>
-    </div>
 
-    <!-- Add User Modal -->
-    <div id="addUserModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Manage User</h3>
-                <button class="close" onclick="closeModal()">&times;</button>
+        <div class="table-container">
+            <div class="table-header">
+                <h3>💰 Recent OpenAI Costs</h3>
+                <button class="refresh-btn" onclick="loadCosts()">Refresh</button>
             </div>
-            <div class="form-group">
-                <label>IP Address</label>
-                <input type="text" id="modal-ip" placeholder="192.168.1.1">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Tool</th>
+                        <th>Model</th>
+                        <th>Tokens</th>
+                        <th>Cost</th>
+                        <th>User IP</th>
+                    </tr>
+                </thead>
+                <tbody id="costs-table">
+                    <tr><td colspan="6" class="loading">Loading costs...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <h3>📊 Top Users by Usage</h3>
+                <button class="refresh-btn" onclick="loadUsers()">Refresh</button>
             </div>
-            <div class="form-group">
-                <label>Status</label>
-                <select id="modal-status">
-                    <option value="guest">Guest</option>
-                    <option value="premium">Premium</option>
-                    <option value="blocked">Blocked</option>
-                </select>
+            <table>
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Requests Today</th>
+                        <th>Total Cost</th>
+                        <th>Last Seen</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="users-table">
+                    <tr><td colspan="5" class="loading">Loading users...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="table-container">
+            <div class="table-header">
+                <h3>🔧 Tools Usage</h3>
+                <button class="refresh-btn" onclick="loadTools()">Refresh</button>
             </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <button class="btn btn-primary" onclick="saveUser()">Save</button>
-                <button class="btn" onclick="closeModal()" style="background: #666; color: white;">Cancel</button>
-            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tool Name</th>
+                        <th>Uses Today</th>
+                        <th>Total Cost</th>
+                        <th>Avg Cost</th>
+                    </tr>
+                </thead>
+                <tbody id="tools-table">
+                    <tr><td colspan="4" class="loading">Loading tools...</td></tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
     <script>
-        // Updated Dashboard JavaScript for dashboard_routes endpoints
-
-// Configuration - Use dashboard blueprint endpoints
-const API_BASE_URL = '/dashboard/api';
-
-// Dashboard state management
-let dashboardData = {
-    stats: {},
-    costs: [],
-    users: [],
-    tools: [],
-    isLoading: false
-};
-
-// Utility functions
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 6
-    }).format(amount || 0);
-}
-
-function formatNumber(num) {
-    return new Intl.NumberFormat('en-US').format(num || 0);
-}
-
-function formatDate(dateString) {
-    if (!dateString || dateString === 'Unknown') return 'Never';
-    return new Date(dateString).toLocaleString();
-}
-
-function showLoading(element) {
-    if (element) {
-        element.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">🔄 Loading...</td></tr>';
-    }
-}
-
-function showError(element, message) {
-    if (element) {
-        element.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #d32f2f;">❌ ${message}</td></tr>`;
-    }
-}
-
-// API functions
-async function apiCall(endpoint, options = {}) {
-    try {
-        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-            headers: {
-                'Content-Type': 'application/json',
-                ...options.headers
-            },
-            ...options
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllData();
+            // Auto refresh every 30 seconds
+            setInterval(loadAllData, 30000);
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        async function loadAllData() {
+            await Promise.all([
+                loadStats(),
+                loadCosts(),
+                loadUsers(),
+                loadTools()
+            ]);
+            updateLastUpdated();
         }
 
-        const data = await response.json();
+        async function loadStats() {
+            try {
+                const response = await fetch('/admin/stats', {
+                    headers: { 'X-Admin-Key': 'your-admin-key-here' }
+                });
+                const data = await response.json();
 
-        // Handle the response format from dashboard_routes
-        if (data.success === false) {
-            throw new Error(data.error || 'API request failed');
-        }
-
-        return data;
-    } catch (error) {
-        console.error(`API Error for ${endpoint}:`, error);
-        throw error;
-    }
-}
-
-// Dashboard-specific API functions
-async function loadDashboardStats() {
-    try {
-        const response = await apiCall('/stats');
-        return response.stats || {};
-    } catch (error) {
-        console.error('Error loading dashboard stats:', error);
-        return {
-            today_cost: 0,
-            month_cost: 0,
-            active_users: 0,
-            total_requests: 0,
-            blocked_ips: 0
-        };
-    }
-}
-
-async function loadCostsData(period = '7d') {
-    try {
-        const response = await apiCall(`/costs?period=${period}`);
-        return {
-            costs: response.costs || [],
-            aggregated: response.aggregated || {
-                today: 0,
-                week: 0,
-                month: 0,
-                avg_per_request: 0
+                if (data.costs) {
+                    document.getElementById('today-cost').textContent = `${data.costs.daily_cost}`;
+                    document.getElementById('month-cost').textContent = `${data.costs.monthly_cost}`;
+                }
+                if (data.current_hour) {
+                    document.getElementById('total-requests').textContent = data.current_hour.total_requests;
+                    document.getElementById('active-users').textContent = data.current_hour.total_users;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
             }
-        };
-    } catch (error) {
-        console.error('Error loading costs data:', error);
-        return {
-            costs: [],
-            aggregated: { today: 0, week: 0, month: 0, avg_per_request: 0 }
-        };
-    }
-}
-
-async function loadUsersData() {
-    try {
-        const response = await apiCall('/users');
-        return response.users || [];
-    } catch (error) {
-        console.error('Error loading users data:', error);
-        return [];
-    }
-}
-
-async function loadToolsData() {
-    try {
-        const response = await apiCall('/tools');
-        return response.tools || [];
-    } catch (error) {
-        console.error('Error loading tools data:', error);
-        return [];
-    }
-}
-
-async function loadHealthData() {
-    try {
-        const response = await apiCall('/health');
-        return response.health || {};
-    } catch (error) {
-        console.error('Error loading health data:', error);
-        return { database: { status: 'disconnected' } };
-    }
-}
-
-async function loadSettingsData() {
-    try {
-        const response = await apiCall('/settings');
-        return response.settings || {};
-    } catch (error) {
-        console.error('Error loading settings data:', error);
-        return {};
-    }
-}
-
-// User management functions
-async function blockUser(ip) {
-    try {
-        await apiCall('/users/block', {
-            method: 'POST',
-            body: JSON.stringify({ ip, reason: 'Manual block via dashboard' })
-        });
-        return true;
-    } catch (error) {
-        console.error('Error blocking user:', error);
-        throw error;
-    }
-}
-
-async function unblockUser(ip) {
-    try {
-        await apiCall('/users/unblock', {
-            method: 'POST',
-            body: JSON.stringify({ ip })
-        });
-        return true;
-    } catch (error) {
-        console.error('Error unblocking user:', error);
-        throw error;
-    }
-}
-
-async function setPremiumUser(ip, action) {
-    try {
-        await apiCall('/users/premium', {
-            method: 'POST',
-            body: JSON.stringify({ ip, action })
-        });
-        return true;
-    } catch (error) {
-        console.error('Error setting premium user:', error);
-        throw error;
-    }
-}
-
-async function saveSettings(settings) {
-    try {
-        await apiCall('/settings', {
-            method: 'POST',
-            body: JSON.stringify(settings)
-        });
-        return true;
-    } catch (error) {
-        console.error('Error saving settings:', error);
-        throw error;
-    }
-}
-
-// Navigation
-document.querySelectorAll('.nav-item').forEach(item => {
-    item.addEventListener('click', () => {
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-
-        const page = item.dataset.page;
-        showPage(page);
-    });
-});
-
-function showPage(page) {
-    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-    document.getElementById(page + '-page').style.display = 'block';
-
-    const titles = {
-        overview: 'Dashboard Overview',
-        costs: 'OpenAI Costs',
-        users: 'User Management',
-        tools: 'Tools Usage',
-        settings: 'Settings'
-    };
-    document.getElementById('page-title').textContent = titles[page];
-
-    // Load page-specific data
-    switch(page) {
-        case 'overview':
-            loadOverviewData();
-            break;
-        case 'costs':
-            loadCostsPage();
-            break;
-        case 'users':
-            loadUsersPage();
-            break;
-        case 'tools':
-            loadToolsPage();
-            break;
-        case 'settings':
-            loadSettingsPage();
-            break;
-    }
-}
-
-// Load data functions
-async function refreshData() {
-    const refreshBtn = document.querySelector('.refresh-btn');
-    refreshBtn.classList.add('loading');
-
-    try {
-        await loadOverviewData();
-        console.log('✅ Data refreshed successfully');
-    } catch (error) {
-        console.error('❌ Error refreshing data:', error);
-    } finally {
-        refreshBtn.classList.remove('loading');
-    }
-}
-
-async function loadOverviewData() {
-    try {
-        const stats = await loadDashboardStats();
-
-        // Update overview stats using the correct field names from dashboard_routes
-        document.getElementById('today-cost').textContent = formatCurrency(stats.today_cost);
-        document.getElementById('active-users').textContent = formatNumber(stats.active_users);
-        document.getElementById('total-requests').textContent = formatNumber(stats.total_requests);
-        document.getElementById('blocked-ips').textContent = formatNumber(stats.blocked_ips);
-
-        dashboardData.stats = stats;
-    } catch (error) {
-        console.error('Error loading overview data:', error);
-        // Show error state
-        document.getElementById('today-cost').textContent = 'Error';
-        document.getElementById('active-users').textContent = 'Error';
-        document.getElementById('total-requests').textContent = 'Error';
-        document.getElementById('blocked-ips').textContent = 'Error';
-    }
-}
-
-async function loadCostsPage() {
-    try {
-        const period = document.querySelector('.time-filter.active')?.dataset.period || '7d';
-        const costsData = await loadCostsData(period);
-
-        // Update cost stats
-        document.getElementById('cost-today').textContent = formatCurrency(costsData.aggregated.today);
-        document.getElementById('cost-week').textContent = formatCurrency(costsData.aggregated.week);
-        document.getElementById('cost-month').textContent = formatCurrency(costsData.aggregated.month);
-        document.getElementById('avg-cost').textContent = formatCurrency(costsData.aggregated.avg_per_request);
-
-        // Update costs table
-        const tbody = document.getElementById('costs-table');
-        if (costsData.costs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">📊 No cost data available</td></tr>';
-        } else {
-            tbody.innerHTML = costsData.costs.map(cost => `
-                <tr>
-                    <td>${formatDate(cost.timestamp || cost.created_at)}</td>
-                    <td>${cost.model || 'gpt-4o-mini'}</td>
-                    <td>${formatNumber(cost.tokens || 0)}</td>
-                    <td>${formatCurrency(cost.cost || 0)}</td>
-                    <td>${cost.tool || cost.tools_slug || 'unknown'}</td>
-                </tr>
-            `).join('');
         }
 
-        dashboardData.costs = costsData.costs;
-    } catch (error) {
-        console.error('Error loading costs page:', error);
-        showError(document.getElementById('costs-table'), 'Failed to load cost data');
-    }
-}
-
-async function loadUsersPage() {
-    const tbody = document.getElementById('users-table');
-    showLoading(tbody);
-
-    try {
-        const users = await loadUsersData();
-
-        if (users.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">👥 No user data available</td></tr>';
-        } else {
-            tbody.innerHTML = users.map(user => `
-                <tr>
-                    <td>${user.ip}</td>
-                    <td><span class="status-badge status-${user.status || 'guest'}">${(user.status || 'guest').toUpperCase()}</span></td>
-                    <td>${formatNumber(user.requests_today || 0)}</td>
-                    <td>${formatDate(user.last_seen)}</td>
-                    <td>
-                        <button class="btn btn-primary" onclick="editUser('${user.ip}')">Edit</button>
-                        ${user.status === 'blocked' ?
-                            `<button class="btn btn-success" onclick="handleUnblockUser('${user.ip}')">Unblock</button>` :
-                            `<button class="btn btn-danger" onclick="handleBlockUser('${user.ip}')">Block</button>`
-                        }
-                    </td>
-                </tr>
-            `).join('');
+        async function loadCosts() {
+            try {
+                // Get recent OpenAI costs from database directly or use existing endpoint
+                const tbody = document.getElementById('costs-table');
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">Cost tracking available in admin panel</td></tr>';
+            } catch (error) {
+                console.error('Error loading costs:', error);
+                document.getElementById('costs-table').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">Error loading costs</td></tr>';
+            }
         }
 
-        dashboardData.users = users;
-    } catch (error) {
-        console.error('Error loading users page:', error);
-        showError(tbody, 'Failed to load user data');
-    }
-}
+        async function loadUsers() {
+            try {
+                const response = await fetch('/admin/users', {
+                    headers: { 'X-Admin-Key': 'your-admin-key-here' }
+                });
+                const data = await response.json();
 
-async function loadToolsPage() {
-    const tbody = document.getElementById('tools-table');
-    showLoading(tbody);
+                const tbody = document.getElementById('users-table');
+                tbody.innerHTML = '';
 
-    try {
-        const tools = await loadToolsData();
+                if (data.recent_users && data.recent_users.length > 0) {
+                    data.recent_users.slice(0, 20).forEach(user => {
+                        const row = document.createElement('tr');
+                        const usageClass = user.total_requests > 100 ? 'usage-high' :
+                                         user.total_requests > 50 ? 'usage-medium' : 'usage-low';
+                        const lastSeen = user.last_used ? new Date(user.last_used).toLocaleString() : 'Never';
 
-        if (tools.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">🛠️ No tools data available</td></tr>';
-        } else {
-            tbody.innerHTML = tools.map(tool => `
-                <tr>
-                    <td>${tool.name}</td>
-                    <td>${formatNumber(tool.total_uses)}</td>
-                    <td>${formatNumber(tool.today)}</td>
-                    <td>${formatNumber(tool.week)}</td>
-                    <td>${formatCurrency(tool.avg_cost)}</td>
-                    <td><span class="status-badge status-premium">${tool.status.toUpperCase()}</span></td>
-                </tr>
-            `).join('');
+                        row.innerHTML = `
+                            <td><code>${user.ip}</code></td>
+                            <td><span class="${usageClass}">${user.total_requests}</span></td>
+                            <td>$0.00</td>
+                            <td>${lastSeen}</td>
+                            <td>
+                                <button class="block-btn" onclick="blockUser('${user.ip}')">Block</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">No user data available</td></tr>';
+                }
+
+                // Show top users
+                if (data.top_users && data.top_users.length > 0) {
+                    data.top_users.forEach(user => {
+                        const row = document.createElement('tr');
+                        const usageClass = user.requests > 100 ? 'usage-high' :
+                                         user.requests > 50 ? 'usage-medium' : 'usage-low';
+
+                        row.innerHTML = `
+                            <td><code>${user.ip}</code></td>
+                            <td><span class="${usageClass}">${user.requests}</span></td>
+                            <td>$0.00</td>
+                            <td>Recent</td>
+                            <td>
+                                <button class="block-btn" onclick="blockUser('${user.ip}')">Block</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('users-table').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">Error loading users</td></tr>';
+            }
         }
 
-        dashboardData.tools = tools;
-    } catch (error) {
-        console.error('Error loading tools page:', error);
-        showError(tbody, 'Failed to load tools data');
-    }
-}
+        async function loadTools() {
+            try {
+                const response = await fetch('/admin/tools', {
+                    headers: { 'X-Admin-Key': 'your-admin-key-here' }
+                });
+                const data = await response.json();
 
-async function loadSettingsPage() {
-    try {
-        const [health, settings] = await Promise.all([
-            loadHealthData(),
-            loadSettingsData()
-        ]);
+                const tbody = document.getElementById('tools-table');
+                tbody.innerHTML = '';
 
-        // Update settings form
-        if (settings.daily_budget !== undefined) {
-            document.getElementById('daily-budget').value = settings.daily_budget;
-        }
-        if (settings.hourly_limit !== undefined) {
-            document.getElementById('hourly-limit').value = settings.hourly_limit;
-        }
-        if (settings.premium_ips) {
-            document.getElementById('premium-ips').value = settings.premium_ips.join(', ');
-        }
+                if (data.tools_list && data.tools_list.length > 0) {
+                    data.tools_list.forEach(tool => {
+                        const row = document.createElement('tr');
 
-        // Update database status
-        const statusElement = document.getElementById('db-status');
-        if (health.database && health.database.status === 'connected') {
-            statusElement.innerHTML = `
-                <div style="color: green; margin: 10px 0;">✅ Database: ${health.database.status}</div>
-                <div style="color: green; margin: 10px 0;">✅ Supabase: ${settings.supabase_connected ? 'Connected' : 'Disconnected'}</div>
-                <div style="color: blue; margin: 10px 0;">🔑 OpenAI: ${settings.openai_key_configured ? 'Configured' : 'Not configured'}</div>
-                <div style="color: gray; margin: 10px 0;">🕒 Last Check: ${formatDate(health.system?.last_check)}</div>
-            `;
-        } else {
-            statusElement.innerHTML = `
-                <div style="color: red; margin: 10px 0;">❌ Database: ${health.database?.status || 'disconnected'}</div>
-                <div style="color: red; margin: 10px 0;">⚠️ Supabase: ${settings.supabase_connected ? 'Connected' : 'Disconnected'}</div>
-            `;
-        }
-    } catch (error) {
-        console.error('Error loading settings page:', error);
-        document.getElementById('db-status').innerHTML = `
-            <div style="color: red;">❌ Error loading system status</div>
-        `;
-    }
-}
-
-// User management functions
-function openAddUserModal() {
-    document.getElementById('modal-ip').value = '';
-    document.getElementById('modal-status').value = 'guest';
-    document.getElementById('addUserModal').style.display = 'block';
-}
-
-function editUser(ip) {
-    const user = dashboardData.users.find(u => u.ip === ip);
-    if (user) {
-        document.getElementById('modal-ip').value = user.ip;
-        document.getElementById('modal-status').value = user.status || 'guest';
-        document.getElementById('addUserModal').style.display = 'block';
-    }
-}
-
-function closeModal() {
-    document.getElementById('addUserModal').style.display = 'none';
-}
-
-async function saveUser() {
-    const ip = document.getElementById('modal-ip').value.trim();
-    const status = document.getElementById('modal-status').value;
-
-    if (!ip) {
-        alert('Please enter an IP address');
-        return;
-    }
-
-    try {
-        if (status === 'blocked') {
-            await blockUser(ip);
-        } else if (status === 'premium') {
-            await setPremiumUser(ip, 'add');
-        } else {
-            await unblockUser(ip); // Unblock if setting to guest
+                        row.innerHTML = `
+                            <td><strong>${tool.name}</strong></td>
+                            <td>${tool.usage_count}</td>
+                            <td>$0.00</td>
+                            <td>$0.001</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">No tools data available</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading tools:', error);
+                document.getElementById('tools-table').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #e74c3c;">Error loading tools</td></tr>';
+            }
         }
 
-        alert('User saved successfully!');
-        closeModal();
-        loadUsersPage();
-    } catch (error) {
-        alert('Error saving user: ' + error.message);
-    }
-}
+        async function blockUser(ip) {
+            if (!confirm(`Block IP ${ip}? Add to .env BLOCKED_IPS?`)) return;
 
-async function handleBlockUser(ip) {
-    if (confirm(`Block user ${ip}?`)) {
-        try {
-            await blockUser(ip);
-            alert('User blocked successfully!');
-            loadUsersPage();
-        } catch (error) {
-            alert('Error blocking user: ' + error.message);
+            try {
+                alert(`To block IP ${ip}:\n\n1. Add to .env file:\nBLOCKED_IPS=${ip}\n\n2. Or add to your PREMIUM_IPS exclusion list\n\n3. Restart the application`);
+
+                // You could also call a backend endpoint to add to blocked list
+                console.log(`IP ${ip} should be blocked`);
+            } catch (error) {
+                alert(`Error: ${error.message}`);
+            }
         }
-    }
-}
 
-async function handleUnblockUser(ip) {
-    if (confirm(`Unblock user ${ip}?`)) {
-        try {
-            await unblockUser(ip);
-            alert('User unblocked successfully!');
-            loadUsersPage();
-        } catch (error) {
-            alert('Error unblocking user: ' + error.message);
+        function updateLastUpdated() {
+            document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
         }
-    }
-}
-
-async function handleSaveSettings() {
-    const settings = {
-        daily_budget: parseFloat(document.getElementById('daily-budget').value),
-        hourly_limit: parseInt(document.getElementById('hourly-limit').value),
-        premium_ips: document.getElementById('premium-ips').value.split(',').map(ip => ip.trim()).filter(ip => ip)
-    };
-
-    try {
-        await saveSettings(settings);
-        alert('Settings saved successfully!');
-    } catch (error) {
-        alert('Error saving settings: ' + error.message);
-    }
-}
-
-// Update the saveSettings function call in the HTML
-window.saveSettings = handleSaveSettings;
-
-// Time filter functionality
-document.querySelectorAll('.time-filter').forEach(filter => {
-    filter.addEventListener('click', () => {
-        document.querySelectorAll('.time-filter').forEach(f => f.classList.remove('active'));
-        filter.classList.add('active');
-
-        const period = filter.dataset.period;
-        console.log('Loading data for period:', period);
-
-        // Reload costs page with new period
-        const activePage = document.querySelector('.nav-item.active').dataset.page;
-        if (activePage === 'costs') {
-            loadCostsPage();
-        }
-    });
-});
-
-// Search functionality
-document.getElementById('user-search')?.addEventListener('input', (e) => {
-    const search = e.target.value.toLowerCase();
-    const rows = document.querySelectorAll('#users-table tr');
-
-    rows.forEach(row => {
-        const ip = row.cells[0]?.textContent.toLowerCase();
-        if (ip && ip !== 'ip address') { // Skip header row
-            row.style.display = ip.includes(search) ? '' : 'none';
-        }
-    });
-});
-
-// Initialize dashboard
-document.addEventListener('DOMContentLoaded', async () => {
-    console.log('🚀 Initializing AI Tools Admin Dashboard');
-
-    try {
-        await loadOverviewData();
-        console.log('✅ Dashboard initialized successfully');
-    } catch (error) {
-        console.error('❌ Error initializing dashboard:', error);
-        // Show error message to user
-        document.getElementById('today-cost').textContent = 'Connection Error';
-        document.getElementById('active-users').textContent = 'Check Console';
-        document.getElementById('total-requests').textContent = 'for Details';
-        document.getElementById('blocked-ips').textContent = '🔧';
-    }
-});
-
-// Auto refresh every 30 seconds
-setInterval(async () => {
-    try {
-        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
-        if (activePage === 'overview') {
-            await loadOverviewData();
-        }
-    } catch (error) {
-        console.error('Auto-refresh error:', error);
-    }
-}, 30000);
-
-// Close modal when clicking outside
-window.addEventListener('click', (e) => {
-    if (e.target.classList.contains('modal')) {
-        closeModal();
-    }
-});
-
-// Error handling for unhandled promises
-window.addEventListener('unhandledrejection', (event) => {
-    console.error('Unhandled promise rejection:', event.reason);
-});
-
-// Export functions for debugging
-window.dashboardDebug = {
-    dashboardData,
-    loadOverviewData,
-    loadDashboardStats,
-    loadCostsData,
-    loadUsersData,
-    apiCall,
-    API_BASE_URL
-};
     </script>
 </body>
 </html>
