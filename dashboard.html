@@ -308,9 +308,7 @@
 
         async function loadStats() {
             try {
-                const response = await fetch('/api/stats', {
-                    headers: { 'X-Admin-Key': 'shak97531.!' }
-                });
+                const response = await fetch('/api/stats');
                 const data = await response.json();
 
                 if (data.costs) {
