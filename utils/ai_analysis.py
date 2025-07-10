@@ -1,19 +1,22 @@
 from openai import OpenAI
-from utils.database import get_openai_cost_today, get_openai_cost_month, log_openai_cost
+from utils.database import get_openai_cost_today, get_openai_cost_month, log_openai_cost, log_openai_cost_enhanced
 from config.settings import OPENAI_API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
+    import time
+    start_time = time.time()  # Start timing the response
+
     # Convert string budget values to float for comparison
     try:
         daily_budget = float(DAILY_OPENAI_BUDGET)
         monthly_budget = float(MONTHLY_OPENAI_BUDGET)
     except (ValueError, TypeError):
         # If conversion fails, use default values
-        daily_budget = 0.0
-        monthly_budget = 0.0
+        daily_budget = 10.0
+        monthly_budget = 100.0
 
     if get_openai_cost_today() >= daily_budget or get_openai_cost_month() >= monthly_budget:
         return create_simple_fallback(tool_config, user_data, localization)
@@ -38,17 +41,48 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
 
         ai_analysis = response.choices[0].message.content
         pt, ct = response.usage.prompt_tokens, response.usage.completion_tokens
+        total_tokens = pt + ct
         cost = (pt * 0.00015 + ct * 0.0006) / 1000
 
-        # Updated call with model parameter
-        log_openai_cost(cost, pt + ct, model_name)
+        # Calculate response time
+        response_time = int((time.time() - start_time) * 1000)  # milliseconds
+
+        # Use your existing enhanced logging function
+        success = log_openai_cost_enhanced(
+            cost=cost,
+            tokens=total_tokens,
+            model=model_name,
+            ip=ip,
+            tools_slug=tool_name,
+            response_time=response_time  # Add this parameter
+        )
+
+        if success:
+            print(f"✅ Cost logged successfully: {tool_name} took {response_time}ms")
+        else:
+            print(f"⚠️ Cost logging failed for {tool_name}")
 
         return generate_html_response(ai_analysis, cleaned_data, tool_config, localization)
 
     except Exception as e:
-        print(f"AI analysis failed: {str(e)}")
-        return create_simple_fallback(tool_config, cleaned_data, localization)
+        # Calculate error response time
+        response_time = int((time.time() - start_time) * 1000)
 
+        print(f"❌ AI analysis failed after {response_time}ms: {str(e)}")
+
+        # Log the error attempt (cost=0 for failed requests)
+        try:
+            log_openai_cost_enhanced(
+                cost=0,
+                tokens=0,
+                model="error",
+                ip=ip,
+                tools_slug=tool_name
+            )
+        except:
+            pass  # Don't fail on error logging
+
+        return create_simple_fallback(tool_config, cleaned_data, localization)
 
 def clean_user_data(user_data):
     cleaned = {}

@@ -233,7 +233,7 @@ def increment_user_usage(ip: str, tools_slug: str = None) -> bool:
 # =============================================================================
 
 def log_openai_cost_enhanced(cost: float, tokens: int, model: str = "gpt-4o-mini",
-                           ip: str = None, tools_slug: str = None) -> bool:
+                           ip: str = None, tools_slug: str = None, response_time: int = None) -> bool:
     """
     Enhanced OpenAI cost logging with additional context
 
@@ -243,6 +243,7 @@ def log_openai_cost_enhanced(cost: float, tokens: int, model: str = "gpt-4o-mini
         model: OpenAI model name
         ip: User IP address (optional)
         tools_slug: Tool identifier (optional)
+        response_time: Response time in milliseconds (optional)
 
     Returns:
         bool: Success status
@@ -256,19 +257,23 @@ def log_openai_cost_enhanced(cost: float, tokens: int, model: str = "gpt-4o-mini
             'cost': round(float(cost), 8),
             'tokens': int(tokens),
             'model': str(model),
+            'date': datetime.now().date().isoformat(),  # Add date field
+            'timestamp': datetime.now().isoformat(),     # Add timestamp field
             'created_at': datetime.now().isoformat()
         }
 
         # Add optional fields if provided
         if ip:
-            data['ip'] = str(ip)
+            data['user_ip'] = str(ip)  # Changed from 'ip' to 'user_ip' to match your table
         if tools_slug:
-            data['tools_slug'] = str(tools_slug)
+            data['tool'] = str(tools_slug)  # Changed from 'tools_slug' to 'tool' to match your table
+        if response_time:
+            data['response_time_ms'] = int(response_time)  # Add response time
 
         result = supabase.table('openai_costs').insert(data).execute()
 
         if result.data:
-            logger.info(f"✅ Enhanced OpenAI cost logged: ${cost:.6f} ({tokens} tokens, {model})")
+            logger.info(f"✅ Enhanced OpenAI cost logged: ${cost:.6f} ({tokens} tokens, {model}, {response_time}ms)")
             return True
         else:
             logger.warning("⚠️ Enhanced OpenAI cost insert returned no data")
