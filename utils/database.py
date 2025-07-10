@@ -16,7 +16,7 @@ supabase_lock = threading.Lock()
 
 
 def initialize_supabase():
-    """Initialize Supabase client with proper error handling"""
+    """Initialize Supabase client"""
     global supabase
 
     if supabase is not None:
@@ -27,50 +27,19 @@ def initialize_supabase():
             return supabase
 
         try:
-            # Get from environment variables
-            supabase_url = os.getenv('SUPABASE_URL')
+            supabase_url = os.getenv('SUPABASE_URL', 'https://qjhxufjaqspwmjfnmsrz.supabase.co')
             supabase_key = os.getenv('SUPABASE_KEY')
 
-            if not supabase_url or not supabase_key:
-                logger.error("❌ SUPABASE_URL or SUPABASE_KEY not found in environment variables")
-                logger.error("Please add these to your .env file:")
-                logger.error("SUPABASE_URL=your_supabase_project_url")
-                logger.error("SUPABASE_KEY=your_supabase_anon_key")
+            if not supabase_key:
+                logger.error("❌ SUPABASE_KEY not found")
                 return None
 
-            # Clean URL and key (remove any whitespace)
-            supabase_url = supabase_url.strip()
-            supabase_key = supabase_key.strip()
-
-            # Create Supabase client with minimal parameters only
-            try:
-                supabase = create_client(supabase_url, supabase_key)
-                logger.info("✅ Supabase client initialized successfully")
-            except TypeError as e:
-                if "proxy" in str(e):
-                    # Fallback for older versions that don't support certain parameters
-                    logger.warning("⚠️ Trying alternative Supabase initialization...")
-                    from supabase.client import Client
-                    from postgrest import APIError
-                    supabase = Client(supabase_url, supabase_key)
-                    logger.info("✅ Supabase client initialized with fallback method")
-                else:
-                    raise e
-
-            # Test connection
-            try:
-                result = supabase.table('user_limits').select('*').limit(1).execute()
-                logger.info("✅ Supabase connection test successful")
-            except Exception as e:
-                logger.error(f"❌ Supabase connection test failed: {str(e)}")
-                logger.error("Make sure your Supabase tables are created")
-
+            supabase = create_client(supabase_url, supabase_key)
+            logger.info("✅ Supabase initialized")
             return supabase
 
         except Exception as e:
-            logger.error(f"❌ Failed to initialize Supabase client: {str(e)}")
-            logger.error(f"Error type: {type(e).__name__}")
-            logger.error("Try reinstalling supabase: pip install --force-reinstall supabase==2.0.0")
+            logger.error(f"❌ Supabase init failed: {str(e)}")
             return None
 
 
