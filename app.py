@@ -10,7 +10,7 @@ load_dotenv()
 
 # Import our modules
 from utils.database import (
-    initialize_supabase,
+    init_supabase,
     get_openai_cost_today,
     health_check as db_health_check,
     supabase
