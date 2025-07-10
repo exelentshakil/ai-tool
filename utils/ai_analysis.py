@@ -25,8 +25,9 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     prompt = build_prompt(tool_name, category, cleaned_data, localization)
 
     try:
+        model_name = "gpt-4o-mini"
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=model_name,
             messages=[
                 {"role": "system", "content": get_system_prompt(localization)},
                 {"role": "user", "content": prompt}
@@ -38,7 +39,9 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         ai_analysis = response.choices[0].message.content
         pt, ct = response.usage.prompt_tokens, response.usage.completion_tokens
         cost = (pt * 0.00015 + ct * 0.0006) / 1000
-        log_openai_cost(cost, pt + ct)
+
+        # Updated call with model parameter
+        log_openai_cost(cost, pt + ct, model_name)
 
         return generate_html_response(ai_analysis, cleaned_data, tool_config, localization)
 

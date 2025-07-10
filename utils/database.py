@@ -129,7 +129,7 @@ def get_current_hour_users() -> int:
 
 # ─── OPENAI COST TRACKING ───────────────────────────────────────────────────
 def log_openai_cost(cost: float, tokens: int, model: str = "gpt-4o-mini") -> bool:
-    """Log OpenAI API cost"""
+    """Log OpenAI API cost and token usage"""
     if not supabase:
         logger.error("❌ Supabase not initialized, cannot log cost")
         return False
@@ -139,14 +139,13 @@ def log_openai_cost(cost: float, tokens: int, model: str = "gpt-4o-mini") -> boo
             'cost': cost,
             'tokens': tokens,
             'model': model,
-            'date': datetime.now().date().isoformat(),
-            'timestamp': datetime.now().isoformat()
+            'created_at': datetime.now().isoformat()
         }
 
         result = supabase.table('openai_costs').insert(data).execute()
 
         if result.data:
-            logger.info(f"✅ OpenAI cost logged: ${cost:.6f}")
+            logger.info(f"✅ OpenAI cost logged: ${cost:.6f} ({tokens} tokens, {model})")
             return True
         return False
 
