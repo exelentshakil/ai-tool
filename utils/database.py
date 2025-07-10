@@ -48,16 +48,22 @@ supabase = initialize_supabase()
 
 
 # ─── USER LIMITS FUNCTIONS ──────────────────────────────────────────────────
-def get_user_usage_current_hour(ip: str) -> int:
-    """Get current hour usage for a user"""
+def get_user_usage_current_hour(ip: str, tools_slug: str = None) -> int:
+    """Get user usage for current hour, optionally filtered by tool"""
     if not supabase:
-        logger.error("❌ Supabase not initialized, returning 0 usage")
+        logger.error("❌ Supabase not initialized, cannot get usage")
         return 0
 
     try:
         current_hour = datetime.now().strftime('%Y-%m-%d-%H')
 
-        result = supabase.table('user_limits').select('count').eq('ip', ip).eq('hour_key', current_hour).execute()
+        query = supabase.table('user_limits').select('count').eq('ip', ip).eq('hour_key', current_hour)
+
+        # If tools_slug is provided, filter by it
+        if tools_slug:
+            query = query.eq('tools_slug', tools_slug)
+
+        result = query.execute()
 
         if result.data:
             return result.data[0]['count']
@@ -68,7 +74,7 @@ def get_user_usage_current_hour(ip: str) -> int:
         return 0
 
 
-def increment_user_usage(ip: str) -> bool:
+def increment_user_usage(ip: str, tools_slug: str = None) -> bool:
     """Increment user usage for current hour"""
     if not supabase:
         logger.error("❌ Supabase not initialized, cannot increment usage")
@@ -86,17 +92,20 @@ def increment_user_usage(ip: str) -> bool:
             'updated_at': datetime.now().isoformat()
         }
 
+        # Add tools_slug if provided
+        if tools_slug:
+            data['tools_slug'] = tools_slug
+
         result = supabase.table('user_limits').upsert(data, on_conflict='ip,hour_key').execute()
 
         if result.data:
-            logger.info(f"✅ User usage incremented for {ip}")
+            logger.info(f"✅ User usage incremented for {ip}" + (f" (tool: {tools_slug})" if tools_slug else ""))
             return True
         return False
 
     except Exception as e:
         logger.error(f"❌ Error incrementing user usage: {str(e)}")
         return False
-
 
 def get_current_hour_users() -> int:
     """Get number of unique users in current hour"""
