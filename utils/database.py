@@ -575,6 +575,20 @@ def get_database_stats():
         logger.error(f"❌ Error getting database stats: {str(e)}")
         return {}
 
+def clean_old_cache(hours=24):
+    """Clean old cache entries - placeholder function"""
+    try:
+        if not supabase:
+            return 0
+
+        # Clean old usage logs
+        cutoff = datetime.now() - timedelta(hours=hours)
+        result = supabase.table('usage_logs').delete().lt('timestamp', cutoff.isoformat()).execute()
+        return len(result.data) if result.data else 0
+    except Exception as e:
+        print(f"Error cleaning cache: {e}")
+        return 0
+
 # Initialize on import
 if not supabase:
     initialize_supabase()

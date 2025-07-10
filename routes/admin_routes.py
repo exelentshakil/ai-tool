@@ -6,7 +6,7 @@ import shutil
 import zipfile
 from utils.database import (
     get_openai_cost_today, get_openai_cost_month,
-    get_database_stats, supabase,
+    get_database_stats, clean_old_cache, supabase,
     get_user_usage_current_hour
 )
 from utils.tools_config import load_all_tools
