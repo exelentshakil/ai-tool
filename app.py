@@ -15,10 +15,13 @@ from utils.ai_analysis import generate_ai_analysis, create_fallback_response
 from utils.tools_config import load_all_tools
 from utils import tools_config
 from config.settings import *
+# Add this to your existing app.py file
 
+from utils.security import init_security
 # ─── ENV & APP SETUP ────────────────────────────────────────────────────────────
 load_dotenv()
 app = Flask(__name__)
+
 
 # Update CORS to include your WordPress site
 CORS(app, origins=[
@@ -27,6 +30,21 @@ CORS(app, origins=[
     "https://your-wordpress-site.com"  # Add your actual WordPress domain
 ])
 CORS(app, expose_headers=['Retry-After'])
+
+# Initialize security (add this line)
+security = init_security(app)
+
+# Optional: Add a security status endpoint
+@app.route('/security-status', methods=['GET'])
+def security_status():
+    """Public endpoint to check security status"""
+    stats = security.get_security_stats()
+    return jsonify({
+        'security_active': True,
+        'blocked_ips_count': stats['blocked_count'],
+        'patterns_monitored': stats['patterns_monitored'],
+        'status': 'protected'
+    })
 
 # Initialize rate limiter
 limiter = Limiter(
