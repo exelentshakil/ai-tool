@@ -513,67 +513,59 @@ def get_database_health():
     """Database health check (backward compatible)"""
     return get_database_health()
 
-def get_current_hour_users():
-    """Get users active in current hour"""
-    if not supabase:
-        return []
-
-    try:
-        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
-
-        result = supabase.table('user_limits') \
-            .select('ip') \
-            .eq('hour_key', current_hour) \
-            .execute()
-
-        unique_ips = list(set(record['ip'] for record in result.data)) if result.data else []
-        return unique_ips
-
-    except Exception as e:
-        logger.error(f"❌ Error getting current hour users: {str(e)}")
-        return []
-
 def get_database_stats():
     """Get database statistics"""
-    if not supabase:
-        return {}
-
     try:
-        stats = {}
+        if not supabase:
+            return {
+                'current_hour_users': 0,
+                'total_requests': 0,
+                'total_users': 0
+            }
 
-        # Get table counts
-        for table in ['openai_costs', 'user_limits']:
-            try:
-                result = supabase.table(table).select('count(*)', count='exact').execute()
-                stats[f'{table}_count'] = result.count if hasattr(result, 'count') else 0
-            except Exception as e:
-                stats[f'{table}_count'] = 0
+        # Get current hour users
+        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
+        current_hour_result = supabase.table('user_limits').select('*').eq('hour_key', current_hour).execute()
+        current_hour_users = len(current_hour_result.data) if current_hour_result.data else 0
 
-        # Get recent activity
-        today = datetime.now().strftime('%Y-%m-%d')
+        # Get today's total requests
+        today = datetime.now().date().isoformat()
+        today_limits = supabase.table('user_limits').select('count').like('hour_key', f'{today}%').execute()
+        total_requests = sum(row['count'] for row in today_limits.data) if today_limits.data else 0
 
-        try:
-            # Today's requests
-            requests_result = supabase.table('user_limits') \
-                .select('count') \
-                .gte('hour_key', today) \
-                .execute()
-            stats['requests_today'] = sum(
-                r.get('count', 0) for r in requests_result.data) if requests_result.data else 0
-        except:
-            stats['requests_today'] = 0
+        # Get total unique users
+        all_users = supabase.table('user_limits').select('ip').execute()
+        total_users = len(set(row['ip'] for row in all_users.data)) if all_users.data else 0
 
-        try:
-            # Today's cost
-            stats['cost_today'] = get_openai_cost_today()
-        except:
-            stats['cost_today'] = 0
-
-        return stats
+        return {
+            'current_hour_users': current_hour_users,
+            'total_requests': total_requests,
+            'total_users': total_users
+        }
 
     except Exception as e:
-        logger.error(f"❌ Error getting database stats: {str(e)}")
-        return {}
+        print(f"Error getting database stats: {e}")
+        return {
+            'current_hour_users': 0,
+            'total_requests': 0,
+            'total_users': 0
+        }
+
+
+def get_current_hour_users():
+    """Get current hour users count"""
+    try:
+        if not supabase:
+            return 0
+
+        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
+        result = supabase.table('user_limits').select('ip').eq('hour_key', current_hour).execute()
+        return len(set(row['ip'] for row in result.data)) if result.data else 0
+
+    except Exception as e:
+        print(f"Error getting current hour users: {e}")
+        return 0
+
 
 def clean_old_cache(hours=24):
     """Clean old cache entries - placeholder function"""
