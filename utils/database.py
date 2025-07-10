@@ -425,7 +425,7 @@ def check_rate_limit(ip: str, limit: int = 50, tools_slug: str = None) -> Dict[s
         'percentage_used': (current_usage / limit) * 100 if limit > 0 else 0
     }
 
-def health_check() -> Dict[str, Any]:
+def db_health_check() -> Dict[str, Any]:
     """Get comprehensive database health information"""
     health = {
         'connection': check_connection(),
