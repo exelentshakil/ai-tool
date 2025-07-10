@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 # Initialize Supabase client
 supabase: Optional[Client] = None
 
-def init_supabase() -> bool:
+def initialize_supabase() -> bool:
     """Initialize Supabase client with error handling"""
     global supabase
 
@@ -425,7 +425,7 @@ def check_rate_limit(ip: str, limit: int = 50, tools_slug: str = None) -> Dict[s
         'percentage_used': (current_usage / limit) * 100 if limit > 0 else 0
     }
 
-def get_database_health() -> Dict[str, Any]:
+def health_check() -> Dict[str, Any]:
     """Get comprehensive database health information"""
     health = {
         'connection': check_connection(),
