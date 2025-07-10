@@ -308,7 +308,7 @@
 
         async function loadStats() {
             try {
-                const response = await fetch('/api/stats');
+                const response = await fetch('/dashboard/api/stats');
                 const data = await response.json();
 
                 if (data.costs) {
@@ -337,9 +337,8 @@
 
         async function loadUsers() {
             try {
-                const response = await fetch('/admin/users', {
-                    headers: { 'X-Admin-Key': 'your-admin-key-here' }
-                });
+                                const response = await fetch('/dashboard/api/users');
+
                 const data = await response.json();
 
                 const tbody = document.getElementById('users-table');
@@ -394,9 +393,8 @@
 
         async function loadTools() {
             try {
-                const response = await fetch('/admin/tools', {
-                    headers: { 'X-Admin-Key': 'your-admin-key-here' }
-                });
+                                const response = await fetch('/dashboard/api/tools');
+
                 const data = await response.json();
 
                 const tbody = document.getElementById('tools-table');
