@@ -38,9 +38,24 @@ def initialize_supabase():
                 logger.error("SUPABASE_KEY=your_supabase_anon_key")
                 return None
 
-            # Create Supabase client (without proxy argument)
-            supabase = create_client(supabase_url, supabase_key)
-            logger.info("✅ Supabase client initialized successfully")
+            # Clean URL and key (remove any whitespace)
+            supabase_url = supabase_url.strip()
+            supabase_key = supabase_key.strip()
+
+            # Create Supabase client with minimal parameters only
+            try:
+                supabase = create_client(supabase_url, supabase_key)
+                logger.info("✅ Supabase client initialized successfully")
+            except TypeError as e:
+                if "proxy" in str(e):
+                    # Fallback for older versions that don't support certain parameters
+                    logger.warning("⚠️ Trying alternative Supabase initialization...")
+                    from supabase.client import Client
+                    from postgrest import APIError
+                    supabase = Client(supabase_url, supabase_key)
+                    logger.info("✅ Supabase client initialized with fallback method")
+                else:
+                    raise e
 
             # Test connection
             try:
@@ -54,6 +69,8 @@ def initialize_supabase():
 
         except Exception as e:
             logger.error(f"❌ Failed to initialize Supabase client: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error("Try reinstalling supabase: pip install --force-reinstall supabase==2.0.0")
             return None
 
 
