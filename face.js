@@ -1485,7 +1485,7 @@ function createUltraModernShareableImage(traits, analysis) {
 if (!traits) return null;
 
 try {
-    const userName = $('#user-name').val().trim() || 'Your';
+    const userName = $('#user-name').val().trim() || '';
     const canvas = document.createElement('canvas');
     canvas.width = 1080;  // Perfect for social sharing
     canvas.height = 1350; // Optimized aspect ratio
@@ -1579,10 +1579,11 @@ try {
     }
 
     // User name with modern typography
+    var newUserName = userName ? userName + 's' : 'Your';
     ctx.font = 'bold 32px system-ui, -apple-system, sans-serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(`${userName}'s Personality`, canvas.width / 2, 175);
+    ctx.fillText(`${newUserName} Personality`, canvas.width / 2, 175);
 
     ctx.font = 'bold 28px system-ui, -apple-system, sans-serif';
     ctx.fillStyle = '#64b5f6';

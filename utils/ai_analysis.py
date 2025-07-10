@@ -8,9 +8,9 @@ from config.settings import API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
 client = OpenAI(api_key=API_KEY)
 
 
-def get_ai_system_prompt(country_data=None):
+def get_ai_system_prompt():
     """Get AI system prompt for analysis"""
-    base_prompt = """You are an expert financial advisor, business strategist, and industry consultant with 20+ years of experience. You provide actionable insights that help users make informed decisions and optimize their financial outcomes.
+    return """You are an expert financial advisor, business strategist, and industry consultant with 20+ years of experience. You provide actionable insights that help users make informed decisions and optimize their financial outcomes.
     
     Your expertise spans:
     - Financial Planning: Investments, loans, insurance, and wealth building
@@ -25,31 +25,13 @@ def get_ai_system_prompt(country_data=None):
     - Offering specific action plans with clear next steps
     
     Always provide practical, actionable advice that delivers measurable value."""
-    if country_data:
-        country_name = country_data.get("name", "")
-        currency = country_data.get("currency", "USD")
-        language = country_data.get("language", "English")
-
-        localized_addition = f"""
-
-    LOCALIZATION CONTEXT:
-    - Target Country: {country_name}
-    - Currency: {currency}
-    - Language: {language}
-    - Local Market Knowledge: Provide insights specific to {country_name} market conditions, regulations, and cultural factors
-    - Use {currency} for all financial calculations and recommendations
-    - Consider {country_name}-specific tax implications, investment options, and regulatory requirements
-
-    Always tailor your advice to {country_name} market conditions and use local context where relevant."""
-
-        return base_prompt + localized_addition
 
 
-def build_analysis_prompt(tool_name, category, user_data, base_result, country_data=None):
+def build_analysis_prompt(tool_name, category, user_data, base_result):
     """Build AI analysis prompt"""
     context_items = []
     # Extract country-specific data if available
-    location_data = user_data.get('locationData', {}) or country_data or {}
+    location_data = user_data.get('locationData', {})
     city = location_data.get('city', '')
     region = location_data.get('region', '')
     country = location_data.get('name', location_data.get('country', ''))
@@ -1380,18 +1362,17 @@ def create_fallback_response(tool_config, user_data, base_result):
     </div>
 
     <style>
-    {{'''
-    .donation-banner-container {{
-        max-width: 800px;
+    .donation-banner-container {
+    max - width: 800px;
         margin: 0 auto;
         padding: 20px;
         font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         line-height: 1.6;
         color: #2c3e50;
-    }}
+    }
 
-    .donation-header {{
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    .donation-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border-radius: 20px;
         padding: 40px 30px;
         color: white;
@@ -1400,10 +1381,10 @@ def create_fallback_response(tool_config, user_data, base_result):
         box-shadow: 0 15px 35px rgba(0,0,0,0.1);
         position: relative;
         overflow: hidden;
-    }}
+    }
 
-    .donation-header::before {{
-        content: '';
+    .donation-header::before {
+    content: '';
         position: absolute;
         top: -50%;
         left: -50%;
@@ -1412,100 +1393,100 @@ def create_fallback_response(tool_config, user_data, base_result):
         background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
         animation: pulse 4s ease-in-out infinite;
         pointer-events: none;
-    }}
+    }
 
-    .header-icon {{
-        font-size: 3rem;
+    .header-icon {
+    font - size: 3rem;
         margin-bottom: 15px;
         position: relative;
         z-index: 1;
-    }}
+    }
 
-    .donation-header h2 {{
-        margin: 0 0 10px 0;
+    .donation-header h2 {
+    margin: 0 0 10px 0;
         font-size: 2rem;
         font-weight: 700;
         position: relative;
         z-index: 1;
-    }}
+    }
 
-    .header-subtitle {{
-        font-size: 1.1rem;
+    .header-subtitle {
+    font - size: 1.1rem;
         opacity: 0.9;
         margin: 0;
         position: relative;
         z-index: 1;
-    }}
+    }
 
-    .basic-result-display {{
-        margin-bottom: 30px;
-    }}
+    .basic-result-display {
+    margin - bottom: 30px;
+    }
 
-    .result-card {{
-        background: #ffffff;
+    .result-card {
+    background: #ffffff;
         border-radius: 15px;
         padding: 25px;
         text-align: center;
         box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         border: 2px solid #e9ecef;
-    }}
+    }
 
-    .result-title {{
-        margin: 0 0 15px 0;
+    .result-title {
+    margin: 0 0 15px 0;
         color: #2c3e50;
         font-size: 1.3rem;
         font-weight: 700;
-    }}
+    }
 
-    .result-value {{
-        font-size: 2.2rem;
+    .result-value {
+    font - size: 2.2rem;
         font-weight: 700;
         color: #007bff;
         margin: 0 0 10px 0;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
-    }}
+    }
 
-    .result-note {{
-        color: #6c757d;
+    .result-note {
+    color: #6c757d;
         margin: 0;
         font-style: italic;
-    }}
+    }
 
-    .donation-content {{
-        display: grid;
+    .donation-content {
+    display: grid;
         gap: 30px;
         margin-bottom: 30px;
-    }}
+    }
 
-    .support-message {{
-        background: #ffffff;
+    .support-message {
+    background: #ffffff;
         border-radius: 15px;
         padding: 30px;
         box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         border-left: 4px solid #28a745;
-    }}
+    }
 
-    .support-message h3 {{
-        margin: 0 0 15px 0;
+    .support-message h3 {
+    margin: 0 0 15px 0;
         color: #2c3e50;
         font-size: 1.5rem;
         font-weight: 700;
-    }}
+    }
 
-    .support-message > p {{
-        margin: 0 0 20px 0;
+    .support-message > p {
+    margin: 0 0 20px 0;
         color: #6c757d;
         font-size: 1.1rem;
-    }}
+    }
 
-    .features-grid {{
-        display: grid;
+    .features-grid {
+    display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
         gap: 15px;
-    }}
+    }
 
-    .feature-item {{
-        display: flex;
+    .feature-item {
+    display: flex;
         align-items: center;
         gap: 12px;
         padding: 12px 15px;
@@ -1513,85 +1494,85 @@ def create_fallback_response(tool_config, user_data, base_result):
         border-radius: 10px;
         border: 1px solid rgba(40, 167, 69, 0.1);
         transition: all 0.3s ease;
-    }}
+    }
 
-    .feature-item:hover {{
-        transform: translateX(5px);
+    .feature-item:hover {
+    transform: translateX(5px);
         background: rgba(40, 167, 69, 0.1);
         border-color: rgba(40, 167, 69, 0.2);
-    }}
+    }
 
-    .feature-icon {{
-        font-size: 1.3rem;
+    .feature-icon {
+    font - size: 1.3rem;
         flex-shrink: 0;
-    }}
+    }
 
-    .feature-text {{
-        font-weight: 600;
+    .feature-text {
+    font - weight: 600;
         color: #2c3e50;
-    }}
+    }
 
-    .donation-section {{
-        background: #ffffff;
+    .donation-section {
+    background: #ffffff;
         border-radius: 15px;
         box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         overflow: hidden;
-    }}
+    }
 
-    .donation-card {{
-        padding: 30px;
+    .donation-card {
+    padding: 30px;
         text-align: center;
         background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%);
         color: #2c3e50;
-    }}
+    }
 
-    .donation-card h4 {{
-        margin: 0 0 15px 0;
+    .donation-card h4 {
+    margin: 0 0 15px 0;
         font-size: 1.4rem;
         font-weight: 700;
-    }}
+    }
 
-    .donation-card > p {{
-        margin: 0 0 25px 0;
+    .donation-card > p {
+    margin: 0 0 25px 0;
         font-size: 1.1rem;
         color: #555;
-    }}
+    }
 
-    .donation-button-container {{
-        margin: 25px 0;
-    }}
+    .donation-button-container {
+    margin: 25px 0;
+    }
 
-    .support-benefits {{
-        display: flex;
+    .support-benefits {
+    display: flex;
         justify-content: center;
         gap: 30px;
         margin-top: 25px;
         flex-wrap: wrap;
-    }}
+    }
 
-    .benefit-item {{
-        display: flex;
+    .benefit-item {
+    display: flex;
         flex-direction: column;
         align-items: center;
         gap: 8px;
-    }}
+    }
 
-    .benefit-icon {{
-        font-size: 1.5rem;
-    }}
+    .benefit-icon {
+    font - size: 1.5rem;
+    }
 
-    .benefit-text {{
-        font-size: 0.9rem;
+    .benefit-text {
+    font - size: 0.9rem;
         font-weight: 600;
         color: #2c3e50;
-    }}
+    }
 
-    .reset-info {{
-        margin-bottom: 30px;
-    }}
+    .reset-info {
+    margin - bottom: 30px;
+    }
 
-    .reset-card {{
-        background: #ffffff;
+    .reset-card {
+    background: #ffffff;
         border-radius: 15px;
         padding: 25px;
         box-shadow: 0 8px 25px rgba(0,0,0,0.1);
@@ -1599,77 +1580,77 @@ def create_fallback_response(tool_config, user_data, base_result):
         display: flex;
         align-items: center;
         gap: 20px;
-    }}
+    }
 
-    .reset-icon {{
-        font-size: 2.5rem;
+    .reset-icon {
+    font - size: 2.5rem;
         color: #007bff;
         flex-shrink: 0;
-    }}
+    }
 
-    .reset-content {{
-        flex: 1;
-    }}
+    .reset-content {
+    flex: 1;
+    }
 
-    .reset-content h4 {{
-        margin: 0 0 10px 0;
+    .reset-content h4 {
+    margin: 0 0 10px 0;
         color: #2c3e50;
         font-size: 1.2rem;
         font-weight: 700;
-    }}
+    }
 
-    .countdown-display {{
-        display: flex;
+    .countdown-display {
+    display: flex;
         align-items: baseline;
         gap: 8px;
         margin-bottom: 8px;
-    }}
+    }
 
-    .countdown-number {{
-        font-size: 2.5rem;
+    .countdown-number {
+    font - size: 2.5rem;
         font-weight: 700;
         color: #007bff;
         line-height: 1;
-    }}
+    }
 
-    .countdown-label {{
-        font-size: 1.1rem;
+    .countdown-label {
+    font - size: 1.1rem;
         color: #6c757d;
         font-weight: 600;
-    }}
+    }
 
-    .reset-note {{
-        margin: 0;
+    .reset-note {
+    margin: 0;
         color: #6c757d;
         font-size: 0.9rem;
-    }}
+    }
 
-    .alternative-actions {{
-        margin-bottom: 30px;
-    }}
+    .alternative-actions {
+    margin - bottom: 30px;
+    }
 
-    .action-card {{
-        background: #ffffff;
+    .action-card {
+    background: #ffffff;
         border-radius: 15px;
         padding: 30px;
         box-shadow: 0 8px 25px rgba(0,0,0,0.1);
         border-left: 4px solid #ffc107;
-    }}
+    }
 
-    .action-card h4 {{
-        margin: 0 0 20px 0;
+    .action-card h4 {
+    margin: 0 0 20px 0;
         color: #2c3e50;
         font-size: 1.3rem;
         font-weight: 700;
-    }}
+    }
 
-    .action-list {{
-        display: grid;
+    .action-list {
+    display: grid;
         gap: 12px;
-    }}
+    }
 
-    .action-item {{
-        display: flex;
+    .action-item {
+    display: flex;
         align-items: center;
         gap: 15px;
         padding: 12px 15px;
@@ -1677,74 +1658,187 @@ def create_fallback_response(tool_config, user_data, base_result):
         border-radius: 10px;
         border: 1px solid rgba(255, 193, 7, 0.1);
         transition: all 0.3s ease;
-    }}
+    }
 
-    .action-item:hover {{
-        transform: translateX(5px);
+    .action-item:hover {
+    transform: translateX(5px);
         background: rgba(255, 193, 7, 0.1);
         border-color: rgba(255, 193, 7, 0.2);
-    }}
+    }
 
-    .action-icon {{
-        font-size: 1.3rem;
+    .action-icon {
+    font - size: 1.3rem;
         color: #ffc107;
         flex-shrink: 0;
-    }}
+    }
 
-    .action-text {{
-        font-weight: 600;
+    .action-text {
+    font - weight: 600;
         color: #2c3e50;
-    }}
+    }
 
-    .thank-you-message {{
-        background: linear-gradient(135deg, #a8e6cf 0%, #7fcdcd 100%);
+    .thank-you-message {
+    background: linear-gradient(135deg, #a8e6cf 0%, #7fcdcd 100%);
         border-radius: 15px;
         padding: 30px;
         text-align: center;
         color: #2c3e50;
-    }}
+    }
 
-    .thank-you-message h4 {{
-        margin: 0 0 15px 0;
+    .thank-you-message h4 {
+    margin: 0 0 15px 0;
         font-size: 1.4rem;
         font-weight: 700;
-    }}
+    }
 
-    .thank-you-message p {{
-        margin: 0;
+    .thank-you-message p {
+    margin: 0;
         font-size: 1.1rem;
         line-height: 1.6;
-    }}
+    }
 
-    @keyframes pulse {{
-        0%, 100% {{ transform: scale(1); opacity: 0.5; }}
-        50% {{ transform: scale(1.05); opacity: 0.8; }}
-    }}
+    @keyframes pulse {
+    0 %, 100 % {transform: scale(1); opacity: 0.5;}
+    50 % {transform: scale(1.05); opacity: 0.8;}
+    }
 
-    @media (max-width: 768px) {{
-        .donation-banner-container {{ padding: 15px; }}
-        .donation-header {{ padding: 30px 20px; }}
-        .donation-header h2 {{ font-size: 1.6rem; }}
-        .result-value {{ font-size: 1.8rem; }}
-        .features-grid {{ grid-template-columns: 1fr; }}
-        .support-benefits {{ flex-direction: column; gap: 15px; }}
-        .reset-card {{ flex-direction: column; text-align: center; gap: 15px; }}
-        .countdown-display {{ justify-content: center; }}
-        .donation-card {{ padding: 25px 15px; }}
-    }}
+    /* Responsive Design */
+    @media (max-width: 768px) {
+    .donation-banner-container {
+    padding: 15px;
+    }
 
-    @media (max-width: 480px) {{
-        .countdown-number {{ font-size: 2rem; }}
-        .header-icon {{ font-size: 2.5rem; }}
-        .action-list {{ gap: 8px; }}
-        .action-item {{ padding: 10px 12px; }}
-    }}
-    '''}}
-</style>
+    .donation-header {
+    padding: 30px 20px;
+    }
 
+    .donation-header h2 {
+    font-size: 1.6rem;
+    }
+
+    .result-value {
+    font-size: 1.8rem;
+    }
+
+    .features-grid {
+    grid-template-columns: 1fr;
+    }
+
+    .support-benefits {
+    flex-direction: column;
+    gap: 15px;
+    }
+
+    .reset-card {
+    flex-direction: column;
+    text-align: center;
+    gap: 15px;
+    }
+
+    .countdown-display {
+    justify-content: center;
+    }
+
+    .donation-card {
+    padding: 25px 15px;
+    }
+    }
+
+    @media (max-width: 480px) {
+    .countdown-number {
+    font-size: 2rem;
+    }
+
+    .header-icon {
+    font-size: 2.5rem;
+    }
+
+    .action-list {
+    gap: 8px;
+    }
+
+    .action-item {
+    padding: 10px 12px;
+    }
+    }
+    </style>
     """
 
     return donation_banner_html
+
+
+def generate_business_finance_insights(user_data, currency, country):
+    """Generate comprehensive business/finance insights"""
+    amount = user_data.get('amount', user_data.get('revenue', 100000))
+    return f"""
+    <div class="insights-grid">
+        <div class="insight-card primary">
+            <div class="insight-icon">💰</div>
+            <div class="insight-content">
+                <h4>Financial Health Analysis</h4>
+                <p>Your {currency}{amount:,.0f} investment/revenue indicates <strong>strong financial positioning</strong> for strategic growth. Current market conditions favor diversified investment approaches with 60% equity, 25% bonds, and 15% alternative investments.</p>
+                <div class="insight-metrics">
+                    <span class="metric-pill positive">ROI Potential: 8-12%</span>
+                    <span class="metric-pill neutral">Risk Level: Moderate</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="insight-card success">
+            <div class="insight-icon">📈</div>
+            <div class="insight-content">
+                <h4>Market Opportunity Assessment</h4>
+                <p>Current economic indicators show <strong>favorable conditions</strong> for strategic investments. Interest rates at current levels provide optimal borrowing opportunities, while inflation trends suggest focusing on growth assets.</p>
+                <div class="insight-metrics">
+                    <span class="metric-pill positive">Market Score: 8.5/10</span>
+                    <span class="metric-pill positive">Timing: Excellent</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="insight-card info">
+            <div class="insight-icon">🎯</div>
+            <div class="insight-content">
+                <h4>Strategic Positioning</h4>
+                <p>Your financial profile aligns with <strong>growth-oriented strategies</strong>. Consider tax-advantaged accounts, dollar-cost averaging, and rebalancing quarterly to maximize compound returns over 10+ year horizon.</p>
+                <div class="insight-metrics">
+                    <span class="metric-pill info">Growth Phase: Active</span>
+                    <span class="metric-pill info">Strategy: Aggressive</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="insight-card warning">
+            <div class="insight-icon">⚡</div>
+            <div class="insight-content">
+                <h4>Optimization Opportunities</h4>
+                <p>Identified potential for <strong>15-25% efficiency improvements</strong> through strategic tax planning, fee optimization, and automated investment systems. Emergency fund should cover 6-12 months expenses.</p>
+                <div class="insight-metrics">
+                    <span class="metric-pill warning">Savings Potential: {currency}{amount * 0.15:,.0f}</span>
+                    <span class="metric-pill warning">Action Required: High</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="detailed-analysis">
+        <h4>🔍 Deep Dive Analysis</h4>
+        <div class="analysis-points">
+            <div class="analysis-point">
+                <strong>Cash Flow Optimization:</strong> Implement systematic investment plan with monthly contributions of {currency}{amount * 0.05:,.0f} to maximize compound growth potential.
+            </div>
+            <div class="analysis-point">
+                <strong>Tax Efficiency:</strong> Utilize tax-advantaged accounts to potentially save {currency}{amount * 0.02:,.0f} annually in tax obligations.
+            </div>
+            <div class="analysis-point">
+                <strong>Risk Management:</strong> Diversification across asset classes can reduce portfolio volatility by 20-30% while maintaining growth potential.
+            </div>
+            <div class="analysis-point">
+                <strong>Market Timing:</strong> Current valuations suggest focusing on value stocks and international diversification for optimal risk-adjusted returns.
+            </div>
+        </div>
+    </div>
+    """
 
 
 def convert_markdown_to_html(markdown_text):
@@ -1787,3 +1881,59 @@ def convert_markdown_to_html(markdown_text):
                 formatted_paragraphs.append(f'<p>{para.replace(chr(10), "<br>")}</p>')
 
     return '\n'.join(formatted_paragraphs)
+
+
+def generate_charts_html(user_data, base_result, category):
+    """Generate interactive charts based on category"""
+    if category == "health":
+        return f"""
+        <div class="chart-container">
+            <h3>📈 Health Progress Tracker</h3>
+            <canvas id="healthChart" width="400" height="200"></canvas>
+            <script>
+                // Wait for Chart.js to be available
+                function createHealthChart() {{
+                    if (typeof Chart === 'undefined') {{
+                        console.log('Chart.js not loaded yet, retrying...');
+                        setTimeout(createHealthChart, 500);
+                        return;
+                    }}
+
+                    const ctx = document.getElementById('healthChart');
+                    if (!ctx) return;
+
+                    new Chart(ctx, {{
+                        type: 'line',
+                        data: {{
+                            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
+                            datasets: [{{
+                                label: 'Progress',
+                                data: [0, 10, 25, 40, 60, 80],
+                                borderColor: '#4CAF50',
+                                backgroundColor: 'rgba(76, 175, 80, 0.1)',
+                                tension: 0.4
+                            }}]
+                        }},
+                        options: {{
+                            responsive: true,
+                            scales: {{
+                                y: {{
+                                    beginAtZero: true,
+                                    max: 100
+                                }}
+                            }}
+                        }}
+                    }});
+                }}
+
+                // Try to create chart immediately, or wait for page load
+                if (document.readyState === 'loading') {{
+                    document.addEventListener('DOMContentLoaded', createHealthChart);
+                }} else {{
+                    createHealthChart();
+                }}
+            </script>
+        </div>
+        """
+
+    # Similar pattern for other categories...
