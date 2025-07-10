@@ -37,6 +37,14 @@ CORS(app, expose_headers=['Retry-After'])
 
 # Initialize security if available
 try:
+    from routes.dashboard_routes import dashboard_bp
+
+    app.register_blueprint(dashboard_bp)
+    print("✅ Dashboard routes registered")
+except ImportError as e:
+    print(f"⚠️ Dashboard routes not found: {e}")
+
+try:
     from utils.security import init_security
 
     security = init_security(app)
