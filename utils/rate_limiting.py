@@ -2,7 +2,7 @@ from flask import request
 from datetime import datetime, timedelta
 from utils.database import supabase, get_user_usage_current_hour, increment_user_usage
 from config.settings import HOURLY_FREE_LIMIT, RESET_MINUTE, PREMIUM_IPS
-from database import is_ip_blocked, log_tool_usage
+from utils.database import is_ip_blocked, log_tool_usage
 
 def get_remote_address():
     """Get the real client IP address, handling proxies"""
