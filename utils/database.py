@@ -3,119 +3,71 @@ import json
 from datetime import datetime, timedelta
 from supabase import create_client, Client
 import threading
-from config.settings import SUPABASE_URL, SUPABASE_KEY
+from typing import Optional, Dict, Any
+import logging
 
-# ─── SUPABASE CLIENT ────────────────────────────────────────────────────────────
-supabase: Client = None
-db_lock = threading.Lock()
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# ─── SUPABASE CLIENT ─────────────────────────────────────────────────────────
+supabase: Optional[Client] = None
+supabase_lock = threading.Lock()
 
 
-def init_databases():
-    """Initialize Supabase client"""
+def initialize_supabase():
+    """Initialize Supabase client with proper error handling"""
     global supabase
 
-    try:
-        # Get credentials from environment
-        url = os.getenv('SUPABASE_URL', SUPABASE_URL)
-        key = os.getenv('SUPABASE_KEY', SUPABASE_KEY)
+    if supabase is not None:
+        return supabase
 
-        if not url or not key:
-            print("❌ Missing Supabase credentials in .env")
-            print("Add SUPABASE_URL and SUPABASE_KEY to your .env file")
-            return False
+    with supabase_lock:
+        if supabase is not None:
+            return supabase
 
-        supabase = create_client(url, key)
-        print("✅ Supabase client initialized successfully")
-
-        # Test connection
-        test_connection()
-        return True
-
-    except Exception as e:
-        print(f"❌ Failed to initialize Supabase: {e}")
-        return False
-
-
-def test_connection():
-    """Test Supabase connection"""
-    try:
-        # Try to read from a table (this will fail gracefully if table doesn't exist)
-        result = supabase.table('user_limits').select('*').limit(1).execute()
-        print("✅ Supabase connection test successful")
-        return True
-    except Exception as e:
-        print(f"⚠️ Supabase connection test: {e}")
-        # This is OK - tables might not exist yet
-        return True
-
-
-def safe_db_operation(operation_func, table_name, *args, **kwargs):
-    """Perform thread-safe database operation"""
-    if supabase is None:
-        print(f"❌ Supabase client is None")
-        return None
-
-    with db_lock:
         try:
-            return operation_func(*args, **kwargs)
+            # Get from environment variables
+            supabase_url = os.getenv('SUPABASE_URL')
+            supabase_key = os.getenv('SUPABASE_KEY')
+
+            if not supabase_url or not supabase_key:
+                logger.error("❌ SUPABASE_URL or SUPABASE_KEY not found in environment variables")
+                logger.error("Please add these to your .env file:")
+                logger.error("SUPABASE_URL=your_supabase_project_url")
+                logger.error("SUPABASE_KEY=your_supabase_anon_key")
+                return None
+
+            # Create Supabase client
+            supabase = create_client(supabase_url, supabase_key)
+            logger.info("✅ Supabase client initialized successfully")
+
+            # Test connection
+            try:
+                result = supabase.table('user_limits').select('*').limit(1).execute()
+                logger.info("✅ Supabase connection test successful")
+            except Exception as e:
+                logger.error(f"❌ Supabase connection test failed: {str(e)}")
+                logger.error("Make sure your Supabase tables are created")
+
+            return supabase
+
         except Exception as e:
-            print(f"❌ Database operation failed on {table_name}: {e}")
+            logger.error(f"❌ Failed to initialize Supabase client: {str(e)}")
             return None
 
 
-# ─── COST TRACKING FUNCTIONS ────────────────────────────────────────────────────
-def get_openai_cost_today():
-    """Get today's OpenAI costs"""
-    try:
-        today = datetime.now().strftime("%Y-%m-%d")
-        result = supabase.table('openai_costs').select('cost').eq('date', today).execute()
-
-        if result.data:
-            return sum(row['cost'] for row in result.data)
-        return 0.0
-    except Exception as e:
-        print(f"❌ Error getting today's costs: {e}")
-        return 0.0
+# Initialize on import
+supabase = initialize_supabase()
 
 
-def get_openai_cost_month():
-    """Get this month's OpenAI costs"""
-    try:
-        this_month = datetime.now().strftime("%Y-%m")
-        result = supabase.table('openai_costs').select('cost').like('date', f'{this_month}%').execute()
+# ─── USER LIMITS FUNCTIONS ──────────────────────────────────────────────────
+def get_user_usage_current_hour(ip: str) -> int:
+    """Get current hour usage for a user"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, returning 0 usage")
+        return 0
 
-        if result.data:
-            return sum(row['cost'] for row in result.data)
-        return 0.0
-    except Exception as e:
-        print(f"❌ Error getting month's costs: {e}")
-        return 0.0
-
-
-def log_openai_cost(tool_slug, prompt_tokens, completion_tokens, cost):
-    """Log OpenAI API costs"""
-    try:
-        data = {
-            "tool": tool_slug,
-            "prompt_tokens": prompt_tokens,
-            "completion_tokens": completion_tokens,
-            "cost": cost,
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "timestamp": datetime.now().isoformat()
-        }
-
-        result = supabase.table('openai_costs').insert(data).execute()
-        if result.data:
-            print(f"✅ Logged OpenAI cost: ${cost:.4f}")
-        return True
-    except Exception as e:
-        print(f"❌ Error logging OpenAI cost: {e}")
-        return False
-
-
-# ─── USAGE TRACKING FUNCTIONS ───────────────────────────────────────────────────
-def get_user_usage_current_hour(ip):
-    """Get user usage for current hour"""
     try:
         current_hour = datetime.now().strftime('%Y-%m-%d-%H')
 
@@ -124,140 +76,240 @@ def get_user_usage_current_hour(ip):
         if result.data:
             return result.data[0]['count']
         return 0
+
     except Exception as e:
-        print(f"❌ Error getting user usage: {e}")
+        logger.error(f"❌ Error getting user usage: {str(e)}")
         return 0
 
 
-def increment_user_usage(ip, tool_slug):
+def increment_user_usage(ip: str) -> bool:
     """Increment user usage for current hour"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, cannot increment usage")
+        return False
+
     try:
         current_hour = datetime.now().strftime('%Y-%m-%d-%H')
-        current_count = get_user_usage_current_hour(ip)
+        current_usage = get_user_usage_current_hour(ip)
 
+        # Upsert (insert or update)
         data = {
-            "ip": ip,
-            "hour_key": current_hour,
-            "count": current_count + 1,
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "hour": datetime.now().strftime("%H"),
-            "last_used": datetime.now().isoformat(),
-            "last_tool": tool_slug
+            'ip': ip,
+            'hour_key': current_hour,
+            'count': current_usage + 1,
+            'updated_at': datetime.now().isoformat()
         }
 
-        # Use upsert to update if exists, insert if not
         result = supabase.table('user_limits').upsert(data, on_conflict='ip,hour_key').execute()
 
         if result.data:
-            print(f"✅ Incremented usage for {ip}: {current_count + 1}")
+            logger.info(f"✅ User usage incremented for {ip}")
             return True
         return False
+
     except Exception as e:
-        print(f"❌ Error incrementing user usage: {e}")
+        logger.error(f"❌ Error incrementing user usage: {str(e)}")
         return False
 
 
-# ─── USAGE LOGGING FUNCTIONS ────────────────────────────────────────────────────
-def log_usage(tool, input_length, cached=False, ip_address=None):
-    """Log tool usage"""
+def get_current_hour_users() -> int:
+    """Get number of unique users in current hour"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, returning 0 users")
+        return 0
+
     try:
-        data = {
-            "tool": tool,
-            "input_length": input_length,
-            "cached": cached,
-            "ip_address": ip_address,
-            "timestamp": datetime.now().isoformat(),
-            "date": datetime.now().strftime("%Y-%m-%d")
-        }
+        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
 
-        result = supabase.table('usage_logs').insert(data).execute()
-        return bool(result.data)
+        result = supabase.table('user_limits').select('ip').eq('hour_key', current_hour).execute()
+
+        if result.data:
+            return len(result.data)
+        return 0
+
     except Exception as e:
-        print(f"❌ Error logging usage: {e}")
-        return False
-
-
-# ─── ANALYTICS FUNCTIONS ────────────────────────────────────────────────────────
-def log_analytics(event, data=None):
-    """Log analytics event"""
-    try:
-        entry = {
-            "event": event,
-            "data": data or {},
-            "timestamp": datetime.now().isoformat(),
-            "date": datetime.now().strftime("%Y-%m-%d")
-        }
-
-        result = supabase.table('analytics').insert(entry).execute()
-        return bool(result.data)
-    except Exception as e:
-        print(f"❌ Error logging analytics: {e}")
-        return False
-
-
-# ─── DATABASE MAINTENANCE ───────────────────────────────────────────────────────
-def clean_old_cache(hours=24):
-    """Clean old cache entries"""
-    try:
-        cutoff = datetime.now() - timedelta(hours=hours)
-
-        result = supabase.table('cache').delete().lt('created_at', cutoff.isoformat()).execute()
-        count = len(result.data) if result.data else 0
-
-        print(f"Cleaned {count} old cache entries")
-        return count
-    except Exception as e:
-        print(f"❌ Cache cleanup error: {e}")
+        logger.error(f"❌ Error getting current hour users: {str(e)}")
         return 0
 
 
-def get_database_stats():
-    """Get database statistics"""
-    try:
-        stats = {}
+# ─── OPENAI COST TRACKING ───────────────────────────────────────────────────
+def log_openai_cost(cost: float, tokens: int, model: str = "gpt-4o-mini") -> bool:
+    """Log OpenAI API cost"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, cannot log cost")
+        return False
 
-        # Get count for each table
-        tables = ['user_limits', 'usage_logs', 'openai_costs', 'analytics', 'cache']
-
-        for table in tables:
-            try:
-                result = supabase.table(table).select('id', count='exact').execute()
-                stats[f"{table}_entries"] = result.count if hasattr(result, 'count') else 0
-            except:
-                stats[f"{table}_entries"] = 0
-
-        return stats
-    except Exception as e:
-        print(f"❌ Error getting database stats: {e}")
-        return {}
-
-
-# ─── CACHE FUNCTIONS ────────────────────────────────────────────────────────────
-def check_cache(tool_slug, cache_key):
-    """Check if result is cached"""
-    try:
-        result = supabase.table('cache').select('result').eq('tool', tool_slug).eq('cache_key', cache_key).execute()
-
-        if result.data:
-            return result.data[0]['result']
-        return None
-    except Exception as e:
-        print(f"❌ Error checking cache: {e}")
-        return None
-
-
-def store_cache(tool_slug, cache_key, result):
-    """Store result in cache"""
     try:
         data = {
-            "tool": tool_slug,
-            "cache_key": cache_key,
-            "result": result,
-            "created_at": datetime.now().isoformat()
+            'cost': cost,
+            'tokens': tokens,
+            'model': model,
+            'date': datetime.now().date().isoformat(),
+            'timestamp': datetime.now().isoformat()
         }
 
-        result = supabase.table('cache').insert(data).execute()
-        return bool(result.data)
-    except Exception as e:
-        print(f"❌ Error storing cache: {e}")
+        result = supabase.table('openai_costs').insert(data).execute()
+
+        if result.data:
+            logger.info(f"✅ OpenAI cost logged: ${cost:.6f}")
+            return True
         return False
+
+    except Exception as e:
+        logger.error(f"❌ Error logging OpenAI cost: {str(e)}")
+        return False
+
+
+def get_openai_cost_today() -> float:
+    """Get today's OpenAI costs"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, returning 0 cost")
+        return 0.0
+
+    try:
+        today = datetime.now().date().isoformat()
+
+        result = supabase.table('openai_costs').select('cost').eq('date', today).execute()
+
+        if result.data:
+            return sum(row['cost'] for row in result.data)
+        return 0.0
+
+    except Exception as e:
+        logger.error(f"❌ Error getting today's costs: {str(e)}")
+        return 0.0
+
+
+def get_openai_cost_month() -> float:
+    """Get this month's OpenAI costs"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, returning 0 cost")
+        return 0.0
+
+    try:
+        # Get first day of current month
+        first_day = datetime.now().replace(day=1).date().isoformat()
+
+        result = supabase.table('openai_costs').select('cost').gte('date', first_day).execute()
+
+        if result.data:
+            return sum(row['cost'] for row in result.data)
+        return 0.0
+
+    except Exception as e:
+        logger.error(f"❌ Error getting month's costs: {str(e)}")
+        return 0.0
+
+
+# ─── DATABASE STATISTICS ────────────────────────────────────────────────────
+def get_database_stats() -> Dict[str, Any]:
+    """Get database statistics"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, returning empty stats")
+        return {
+            'total_users': 0,
+            'total_requests': 0,
+            'today_cost': 0.0,
+            'month_cost': 0.0,
+            'current_hour_users': 0
+        }
+
+    try:
+        # Get total unique users
+        users_result = supabase.table('user_limits').select('ip').execute()
+        unique_users = len(set(row['ip'] for row in users_result.data)) if users_result.data else 0
+
+        # Get total requests
+        requests_result = supabase.table('user_limits').select('count').execute()
+        total_requests = sum(row['count'] for row in requests_result.data) if requests_result.data else 0
+
+        stats = {
+            'total_users': unique_users,
+            'total_requests': total_requests,
+            'today_cost': get_openai_cost_today(),
+            'month_cost': get_openai_cost_month(),
+            'current_hour_users': get_current_hour_users()
+        }
+
+        logger.info(f"✅ Database stats retrieved: {stats}")
+        return stats
+
+    except Exception as e:
+        logger.error(f"❌ Error getting database stats: {str(e)}")
+        return {
+            'total_users': 0,
+            'total_requests': 0,
+            'today_cost': 0.0,
+            'month_cost': 0.0,
+            'current_hour_users': 0
+        }
+
+
+def clean_old_cache():
+    """Clean old cache entries (older than 7 days)"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, cannot clean cache")
+        return False
+
+    try:
+        # Calculate 7 days ago
+        seven_days_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+
+        # Delete old user limits
+        result = supabase.table('user_limits').delete().lt('hour_key', seven_days_ago).execute()
+
+        deleted_count = len(result.data) if result.data else 0
+        logger.info(f"✅ Cleaned {deleted_count} old cache entries")
+        return True
+
+    except Exception as e:
+        logger.error(f"❌ Error cleaning old cache: {str(e)}")
+        return False
+
+
+# ─── HEALTH CHECK ───────────────────────────────────────────────────────────
+def health_check() -> Dict[str, Any]:
+    """Check database health"""
+    try:
+        if not supabase:
+            return {
+                'status': 'error',
+                'message': 'Supabase client not initialized',
+                'suggestions': [
+                    'Check SUPABASE_URL in .env file',
+                    'Check SUPABASE_KEY in .env file',
+                    'Verify Supabase project is active'
+                ]
+            }
+
+        # Test connection
+        result = supabase.table('user_limits').select('*').limit(1).execute()
+
+        return {
+            'status': 'healthy',
+            'message': 'Database connection successful',
+            'tables': ['user_limits', 'openai_costs']
+        }
+
+    except Exception as e:
+        return {
+            'status': 'error',
+            'message': f'Database connection failed: {str(e)}',
+            'suggestions': [
+                'Check internet connection',
+                'Verify Supabase project status',
+                'Check if tables exist in Supabase'
+            ]
+        }
+
+
+# ─── INITIALIZATION CHECK ───────────────────────────────────────────────────
+if __name__ == "__main__":
+    print("🔍 Testing Supabase connection...")
+    health = health_check()
+    print(f"Status: {health['status']}")
+    print(f"Message: {health['message']}")
+    if 'suggestions' in health:
+        print("Suggestions:")
+        for suggestion in health['suggestions']:
+            print(f"  - {suggestion}")
