@@ -580,107 +580,293 @@
     </div>
 
     <script>
-        // Sample data - replace with actual API calls
-        let dashboardData = {
-            stats: {
-                todayCost: 2.34,
-                activeUsers: 156,
-                totalRequests: 1247,
-                blockedIps: 3
+        // Enhanced Dashboard JavaScript with Real Supabase Integration
+
+// Configuration - Replace with your actual API endpoints
+const API_BASE_URL = '/api';  // Your Flask/FastAPI backend URL
+
+// Dashboard state management
+let dashboardData = {
+    stats: {},
+    costs: [],
+    users: [],
+    tools: [],
+    isLoading: false
+};
+
+// Utility functions
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 6
+    }).format(amount);
+}
+
+function formatNumber(num) {
+    return new Intl.NumberFormat('en-US').format(num);
+}
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleString();
+}
+
+function showLoading(element) {
+    if (element) {
+        element.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">🔄 Loading...</td></tr>';
+    }
+}
+
+function showError(element, message) {
+    if (element) {
+        element.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #d32f2f;">❌ ${message}</td></tr>`;
+    }
+}
+
+// API functions
+async function apiCall(endpoint, options = {}) {
+    try {
+        const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers
             },
-            costs: [
-                { date: '2024-07-10', model: 'gpt-4o-mini', tokens: 1250, cost: 0.0045, tool: 'calculator' },
-                { date: '2024-07-10', model: 'gpt-4o-mini', tokens: 980, cost: 0.0032, tool: 'converter' }
-            ],
-            users: [
-                { ip: '192.168.1.100', status: 'premium', requests: 45, lastSeen: '2 min ago' },
-                { ip: '10.0.0.15', status: 'guest', requests: 12, lastSeen: '1 hour ago' },
-                { ip: '203.15.42.8', status: 'blocked', requests: 0, lastSeen: '3 days ago' }
-            ],
-            tools: [
-                { name: 'Calculator', totalUses: 5420, today: 156, week: 1203, avgCost: 0.003, status: 'active' },
-                { name: 'Converter', totalUses: 3210, today: 89, week: 756, avgCost: 0.002, status: 'active' }
-            ]
-        };
-
-        // Navigation
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.addEventListener('click', () => {
-                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-                item.classList.add('active');
-
-                const page = item.dataset.page;
-                showPage(page);
-            });
+            ...options
         });
 
-        function showPage(page) {
-            document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-            document.getElementById(page + '-page').style.display = 'block';
-
-            const titles = {
-                overview: 'Dashboard Overview',
-                costs: 'OpenAI Costs',
-                users: 'User Management',
-                tools: 'Tools Usage',
-                settings: 'Settings'
-            };
-            document.getElementById('page-title').textContent = titles[page];
-
-            if (page === 'users') loadUsers();
-            if (page === 'costs') loadCosts();
-            if (page === 'tools') loadTools();
-            if (page === 'settings') loadSettings();
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        // Load data functions
-        async function refreshData() {
-            const refreshBtn = document.querySelector('.refresh-btn');
-            refreshBtn.classList.add('loading');
+        return await response.json();
+    } catch (error) {
+        console.error(`API Error for ${endpoint}:`, error);
+        throw error;
+    }
+}
 
-            try {
-                // Simulate API call
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                loadOverviewStats();
-            } finally {
-                refreshBtn.classList.remove('loading');
-            }
-        }
+// Database health check
+async function checkDatabaseHealth() {
+    try {
+        const health = await apiCall('/health');
+        return health;
+    } catch (error) {
+        return { connection: false, error: error.message };
+    }
+}
 
-        function loadOverviewStats() {
-            document.getElementById('today-cost').textContent = '$' + dashboardData.stats.todayCost.toFixed(2);
-            document.getElementById('active-users').textContent = dashboardData.stats.activeUsers;
-            document.getElementById('total-requests').textContent = dashboardData.stats.totalRequests;
-            document.getElementById('blocked-ips').textContent = dashboardData.stats.blockedIps;
-        }
+// Cost tracking functions
+async function loadCostStats() {
+    try {
+        const stats = await apiCall('/costs/stats');
+        return {
+            today: stats.today || 0,
+            week: stats.week || 0,
+            month: stats.month || 0,
+            average: stats.average || 0
+        };
+    } catch (error) {
+        console.error('Error loading cost stats:', error);
+        return { today: 0, week: 0, month: 0, average: 0 };
+    }
+}
 
-        function loadCosts() {
-            const tbody = document.getElementById('costs-table');
-            tbody.innerHTML = dashboardData.costs.map(cost => `
+async function loadRecentCosts(limit = 50) {
+    try {
+        const costs = await apiCall(`/costs/recent?limit=${limit}`);
+        return costs || [];
+    } catch (error) {
+        console.error('Error loading recent costs:', error);
+        return [];
+    }
+}
+
+// User management functions
+async function loadUserStats() {
+    try {
+        const stats = await apiCall('/users/stats');
+        return {
+            activeUsers: stats.active_24h || 0,
+            totalRequests: stats.total_requests_today || 0,
+            blockedIps: stats.blocked_count || 0
+        };
+    } catch (error) {
+        console.error('Error loading user stats:', error);
+        return { activeUsers: 0, totalRequests: 0, blockedIps: 0 };
+    }
+}
+
+async function loadUsers(limit = 100) {
+    try {
+        const users = await apiCall(`/users?limit=${limit}`);
+        return users || [];
+    } catch (error) {
+        console.error('Error loading users:', error);
+        return [];
+    }
+}
+
+async function updateUserStatus(ip, status) {
+    try {
+        await apiCall('/users/status', {
+            method: 'POST',
+            body: JSON.stringify({ ip, status })
+        });
+        return true;
+    } catch (error) {
+        console.error('Error updating user status:', error);
+        throw error;
+    }
+}
+
+// Tools usage functions
+async function loadToolsStats() {
+    try {
+        const tools = await apiCall('/tools/stats');
+        return tools || [];
+    } catch (error) {
+        console.error('Error loading tools stats:', error);
+        return [];
+    }
+}
+
+// Navigation
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', () => {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+
+        const page = item.dataset.page;
+        showPage(page);
+    });
+});
+
+function showPage(page) {
+    document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+    document.getElementById(page + '-page').style.display = 'block';
+
+    const titles = {
+        overview: 'Dashboard Overview',
+        costs: 'OpenAI Costs',
+        users: 'User Management',
+        tools: 'Tools Usage',
+        settings: 'Settings'
+    };
+    document.getElementById('page-title').textContent = titles[page];
+
+    // Load page-specific data
+    switch(page) {
+        case 'overview':
+            loadOverviewData();
+            break;
+        case 'costs':
+            loadCostsPage();
+            break;
+        case 'users':
+            loadUsersPage();
+            break;
+        case 'tools':
+            loadToolsPage();
+            break;
+        case 'settings':
+            loadSettingsPage();
+            break;
+    }
+}
+
+// Load data functions
+async function refreshData() {
+    const refreshBtn = document.querySelector('.refresh-btn');
+    refreshBtn.classList.add('loading');
+
+    try {
+        await loadOverviewData();
+        console.log('✅ Data refreshed successfully');
+    } catch (error) {
+        console.error('❌ Error refreshing data:', error);
+    } finally {
+        refreshBtn.classList.remove('loading');
+    }
+}
+
+async function loadOverviewData() {
+    try {
+        // Load all overview stats in parallel
+        const [costStats, userStats] = await Promise.all([
+            loadCostStats(),
+            loadUserStats()
+        ]);
+
+        // Update overview stats
+        document.getElementById('today-cost').textContent = formatCurrency(costStats.today);
+        document.getElementById('active-users').textContent = formatNumber(userStats.activeUsers);
+        document.getElementById('total-requests').textContent = formatNumber(userStats.totalRequests);
+        document.getElementById('blocked-ips').textContent = formatNumber(userStats.blockedIps);
+
+        dashboardData.stats = { ...costStats, ...userStats };
+    } catch (error) {
+        console.error('Error loading overview data:', error);
+        // Show error state
+        document.getElementById('today-cost').textContent = 'Error';
+        document.getElementById('active-users').textContent = 'Error';
+        document.getElementById('total-requests').textContent = 'Error';
+        document.getElementById('blocked-ips').textContent = 'Error';
+    }
+}
+
+async function loadCostsPage() {
+    try {
+        const [costStats, recentCosts] = await Promise.all([
+            loadCostStats(),
+            loadRecentCosts()
+        ]);
+
+        // Update cost stats
+        document.getElementById('cost-today').textContent = formatCurrency(costStats.today);
+        document.getElementById('cost-week').textContent = formatCurrency(costStats.week);
+        document.getElementById('cost-month').textContent = formatCurrency(costStats.month);
+        document.getElementById('avg-cost').textContent = formatCurrency(costStats.average);
+
+        // Update costs table
+        const tbody = document.getElementById('costs-table');
+        if (recentCosts.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">📊 No cost data available</td></tr>';
+        } else {
+            tbody.innerHTML = recentCosts.map(cost => `
                 <tr>
-                    <td>${cost.date}</td>
-                    <td>${cost.model}</td>
-                    <td>${cost.tokens}</td>
-                    <td>$${cost.cost.toFixed(4)}</td>
-                    <td>${cost.tool}</td>
+                    <td>${formatDate(cost.created_at)}</td>
+                    <td>${cost.model || 'gpt-4o-mini'}</td>
+                    <td>${formatNumber(cost.tokens || 0)}</td>
+                    <td>${formatCurrency(cost.cost || 0)}</td>
+                    <td>${cost.tools_slug || 'unknown'}</td>
                 </tr>
             `).join('');
-
-            // Update cost stats
-            document.getElementById('cost-today').textContent = '$' + dashboardData.stats.todayCost.toFixed(2);
-            document.getElementById('cost-week').textContent = '$' + (dashboardData.stats.todayCost * 7).toFixed(2);
-            document.getElementById('cost-month').textContent = '$' + (dashboardData.stats.todayCost * 30).toFixed(2);
-            document.getElementById('avg-cost').textContent = '$' + (dashboardData.stats.todayCost / dashboardData.stats.totalRequests).toFixed(6);
         }
 
-        function loadUsers() {
-            const tbody = document.getElementById('users-table');
-            tbody.innerHTML = dashboardData.users.map(user => `
+        dashboardData.costs = recentCosts;
+    } catch (error) {
+        console.error('Error loading costs page:', error);
+        showError(document.getElementById('costs-table'), 'Failed to load cost data');
+    }
+}
+
+async function loadUsersPage() {
+    const tbody = document.getElementById('users-table');
+    showLoading(tbody);
+
+    try {
+        const users = await loadUsers();
+
+        if (users.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">👥 No user data available</td></tr>';
+        } else {
+            tbody.innerHTML = users.map(user => `
                 <tr>
                     <td>${user.ip}</td>
-                    <td><span class="status-badge status-${user.status}">${user.status.toUpperCase()}</span></td>
-                    <td>${user.requests}</td>
-                    <td>${user.lastSeen}</td>
+                    <td><span class="status-badge status-${user.status || 'guest'}">${(user.status || 'guest').toUpperCase()}</span></td>
+                    <td>${formatNumber(user.requests_today || 0)}</td>
+                    <td>${user.last_seen ? formatDate(user.last_seen) : 'Never'}</td>
                     <td>
                         <button class="btn btn-primary" onclick="editUser('${user.ip}')">Edit</button>
                         ${user.status === 'blocked' ?
@@ -692,127 +878,221 @@
             `).join('');
         }
 
-        function loadTools() {
-            const tbody = document.getElementById('tools-table');
-            tbody.innerHTML = dashboardData.tools.map(tool => `
+        dashboardData.users = users;
+    } catch (error) {
+        console.error('Error loading users page:', error);
+        showError(tbody, 'Failed to load user data');
+    }
+}
+
+async function loadToolsPage() {
+    const tbody = document.getElementById('tools-table');
+    showLoading(tbody);
+
+    try {
+        const tools = await loadToolsStats();
+
+        if (tools.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">🛠️ No tools data available</td></tr>';
+        } else {
+            tbody.innerHTML = tools.map(tool => `
                 <tr>
-                    <td>${tool.name}</td>
-                    <td>${tool.totalUses}</td>
-                    <td>${tool.today}</td>
-                    <td>${tool.week}</td>
-                    <td>$${tool.avgCost.toFixed(4)}</td>
-                    <td><span class="status-badge status-premium">${tool.status.toUpperCase()}</span></td>
+                    <td>${tool.name || tool.tools_slug}</td>
+                    <td>${formatNumber(tool.total_uses || 0)}</td>
+                    <td>${formatNumber(tool.today || 0)}</td>
+                    <td>${formatNumber(tool.week || 0)}</td>
+                    <td>${formatCurrency(tool.avg_cost || 0)}</td>
+                    <td><span class="status-badge status-premium">ACTIVE</span></td>
                 </tr>
             `).join('');
         }
 
-        function loadSettings() {
-            // Simulate loading settings from API
-            document.getElementById('db-status').innerHTML = `
-                <div style="color: green;">✅ Database: Connected</div>
-                <div style="color: green;">✅ OpenAI API: Connected</div>
-                <div style="color: green;">✅ Supabase: Connected</div>
+        dashboardData.tools = tools;
+    } catch (error) {
+        console.error('Error loading tools page:', error);
+        showError(tbody, 'Failed to load tools data');
+    }
+}
+
+async function loadSettingsPage() {
+    try {
+        const health = await checkDatabaseHealth();
+
+        const statusElement = document.getElementById('db-status');
+        if (health.connection) {
+            statusElement.innerHTML = `
+                <div style="color: green; margin: 10px 0;">✅ Database: Connected</div>
+                <div style="color: green; margin: 10px 0;">✅ Supabase: Connected</div>
+                <div style="color: blue; margin: 10px 0;">📊 Tables: ${health.tables ? Object.keys(health.tables).length : 'Unknown'}</div>
+                <div style="color: gray; margin: 10px 0;">🕒 Last Check: ${formatDate(health.timestamp)}</div>
+            `;
+        } else {
+            statusElement.innerHTML = `
+                <div style="color: red; margin: 10px 0;">❌ Database: Disconnected</div>
+                <div style="color: red; margin: 10px 0;">⚠️ Error: ${health.error || 'Connection failed'}</div>
             `;
         }
+    } catch (error) {
+        console.error('Error loading settings:', error);
+        document.getElementById('db-status').innerHTML = `
+            <div style="color: red;">❌ Error checking database status</div>
+        `;
+    }
+}
 
-        // User management functions
-        function openAddUserModal() {
-            document.getElementById('modal-ip').value = '';
-            document.getElementById('modal-status').value = 'guest';
-            document.getElementById('addUserModal').style.display = 'block';
+// User management functions
+function openAddUserModal() {
+    document.getElementById('modal-ip').value = '';
+    document.getElementById('modal-status').value = 'guest';
+    document.getElementById('addUserModal').style.display = 'block';
+}
+
+function editUser(ip) {
+    const user = dashboardData.users.find(u => u.ip === ip);
+    if (user) {
+        document.getElementById('modal-ip').value = user.ip;
+        document.getElementById('modal-status').value = user.status || 'guest';
+        document.getElementById('addUserModal').style.display = 'block';
+    }
+}
+
+function closeModal() {
+    document.getElementById('addUserModal').style.display = 'none';
+}
+
+async function saveUser() {
+    const ip = document.getElementById('modal-ip').value.trim();
+    const status = document.getElementById('modal-status').value;
+
+    if (!ip) {
+        alert('Please enter an IP address');
+        return;
+    }
+
+    try {
+        await updateUserStatus(ip, status);
+        alert('User saved successfully!');
+        closeModal();
+        loadUsersPage();
+    } catch (error) {
+        alert('Error saving user: ' + error.message);
+    }
+}
+
+async function blockUser(ip) {
+    if (confirm(`Block user ${ip}?`)) {
+        try {
+            await updateUserStatus(ip, 'blocked');
+            alert('User blocked successfully!');
+            loadUsersPage();
+        } catch (error) {
+            alert('Error blocking user: ' + error.message);
         }
+    }
+}
 
-        function editUser(ip) {
-            const user = dashboardData.users.find(u => u.ip === ip);
-            if (user) {
-                document.getElementById('modal-ip').value = user.ip;
-                document.getElementById('modal-status').value = user.status;
-                document.getElementById('addUserModal').style.display = 'block';
-            }
+async function unblockUser(ip) {
+    if (confirm(`Unblock user ${ip}?`)) {
+        try {
+            await updateUserStatus(ip, 'guest');
+            alert('User unblocked successfully!');
+            loadUsersPage();
+        } catch (error) {
+            alert('Error unblocking user: ' + error.message);
         }
+    }
+}
 
-        function closeModal() {
-            document.getElementById('addUserModal').style.display = 'none';
-        }
+async function saveSettings() {
+    const settings = {
+        dailyBudget: parseFloat(document.getElementById('daily-budget').value),
+        hourlyLimit: parseInt(document.getElementById('hourly-limit').value),
+        premiumIps: document.getElementById('premium-ips').value.split(',').map(ip => ip.trim())
+    };
 
-        function saveUser() {
-            const ip = document.getElementById('modal-ip').value;
-            const status = document.getElementById('modal-status').value;
-
-            if (!ip) {
-                alert('Please enter an IP address');
-                return;
-            }
-
-            // Simulate API call
-            console.log('Saving user:', { ip, status });
-            alert('User saved successfully!');
-            closeModal();
-            loadUsers();
-        }
-
-        function blockUser(ip) {
-            if (confirm(`Block user ${ip}?`)) {
-                console.log('Blocking user:', ip);
-                alert('User blocked successfully!');
-                loadUsers();
-            }
-        }
-
-        function unblockUser(ip) {
-            if (confirm(`Unblock user ${ip}?`)) {
-                console.log('Unblocking user:', ip);
-                alert('User unblocked successfully!');
-                loadUsers();
-            }
-        }
-
-        function saveSettings() {
-            const settings = {
-                dailyBudget: document.getElementById('daily-budget').value,
-                hourlyLimit: document.getElementById('hourly-limit').value,
-                premiumIps: document.getElementById('premium-ips').value
-            };
-
-            console.log('Saving settings:', settings);
-            alert('Settings saved successfully!');
-        }
-
-        // Time filter functionality
-        document.querySelectorAll('.time-filter').forEach(filter => {
-            filter.addEventListener('click', () => {
-                document.querySelectorAll('.time-filter').forEach(f => f.classList.remove('active'));
-                filter.classList.add('active');
-
-                const period = filter.dataset.period;
-                console.log('Loading data for period:', period);
-                // Implement chart update logic here
-            });
+    try {
+        await apiCall('/settings', {
+            method: 'POST',
+            body: JSON.stringify(settings)
         });
+        alert('Settings saved successfully!');
+    } catch (error) {
+        alert('Error saving settings: ' + error.message);
+    }
+}
 
-        // Search functionality
-        document.getElementById('user-search')?.addEventListener('input', (e) => {
-            const search = e.target.value.toLowerCase();
-            const rows = document.querySelectorAll('#users-table tr');
+// Time filter functionality
+document.querySelectorAll('.time-filter').forEach(filter => {
+    filter.addEventListener('click', () => {
+        document.querySelectorAll('.time-filter').forEach(f => f.classList.remove('active'));
+        filter.classList.add('active');
 
-            rows.forEach(row => {
-                const ip = row.cells[0]?.textContent.toLowerCase();
-                row.style.display = ip?.includes(search) ? '' : 'none';
-            });
-        });
+        const period = filter.dataset.period;
+        console.log('Loading data for period:', period);
+        // Reload current page data with new period
+        const activePage = document.querySelector('.nav-item.active').dataset.page;
+        showPage(activePage);
+    });
+});
 
-        // Initialize dashboard
-        loadOverviewStats();
+// Search functionality
+document.getElementById('user-search')?.addEventListener('input', (e) => {
+    const search = e.target.value.toLowerCase();
+    const rows = document.querySelectorAll('#users-table tr');
 
-        // Auto refresh every 30 seconds
-        setInterval(refreshData, 30000);
+    rows.forEach(row => {
+        const ip = row.cells[0]?.textContent.toLowerCase();
+        if (ip && ip !== 'ip address') { // Skip header row
+            row.style.display = ip.includes(search) ? '' : 'none';
+        }
+    });
+});
 
-        // Close modal when clicking outside
-        window.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
-                closeModal();
-            }
-        });
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', async () => {
+    console.log('🚀 Initializing AI Tools Admin Dashboard');
+
+    try {
+        await loadOverviewData();
+        console.log('✅ Dashboard initialized successfully');
+    } catch (error) {
+        console.error('❌ Error initializing dashboard:', error);
+    }
+});
+
+// Auto refresh every 30 seconds
+setInterval(async () => {
+    try {
+        const activePage = document.querySelector('.nav-item.active')?.dataset.page;
+        if (activePage === 'overview') {
+            await loadOverviewData();
+        }
+    } catch (error) {
+        console.error('Auto-refresh error:', error);
+    }
+}, 30000);
+
+// Close modal when clicking outside
+window.addEventListener('click', (e) => {
+    if (e.target.classList.contains('modal')) {
+        closeModal();
+    }
+});
+
+// Error handling for unhandled promises
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('Unhandled promise rejection:', event.reason);
+});
+
+// Export functions for debugging
+window.dashboardDebug = {
+    dashboardData,
+    loadOverviewData,
+    loadCostStats,
+    loadUserStats,
+    checkDatabaseHealth,
+    apiCall
+};
     </script>
 </body>
 </html>
