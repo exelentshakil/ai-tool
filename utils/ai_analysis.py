@@ -29,6 +29,8 @@ def get_ai_system_prompt():
 
 def build_analysis_prompt(tool_name, category, user_data, base_result):
     """Build AI analysis prompt"""
+    print(f"user_data: {user_data}")
+
     context_items = []
     # Extract country-specific data if available
     location_data = user_data.get('locationData', {})
@@ -1533,5 +1535,3 @@ def generate_charts_html(user_data, base_result, category):
             </script>
         </div>
         """
-
-    # Similar pattern for other categories...
