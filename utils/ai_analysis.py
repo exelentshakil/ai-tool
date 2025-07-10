@@ -7,7 +7,7 @@ client = OpenAI(api_key=API_KEY)
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
-        return create_fallback_response(tool_config, user_data, localization)
+        return create_simple_fallback(tool_config, user_data, localization)
 
     category = tool_config.get("category", "general")
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
@@ -35,7 +35,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
 
     except Exception as e:
         print(f"AI analysis failed: {str(e)}")
-        return create_fallback_response(tool_config, cleaned_data, localization)
+        return create_simple_fallback(tool_config, cleaned_data, localization)
 
 
 def clean_user_data(user_data):
@@ -74,7 +74,7 @@ def build_prompt(tool_name, category, user_data, localization=None):
             if name:
                 context_items.append(f"Location: {name}")
         elif isinstance(value, (int, float)) and value > 0:
-            if key in ['amount', 'budget', 'income', 'price']:
+            if key in ['amount', 'budget', 'income', 'price', 'coverage_amount']:
                 context_items.append(f"{key.title()}: {currency} {value:,.0f}")
             else:
                 context_items.append(f"{key.title()}: {value}")
@@ -272,7 +272,8 @@ def get_text(key, language):
     return texts.get(key, {}).get(language, texts.get(key, {}).get('English', key))
 
 
-def create_fallback_response(tool_config, user_data, localization=None):
+def create_simple_fallback(tool_config, user_data, localization=None):
+    """Simple fallback with just donation message"""
     if not localization:
         localization = {}
 
@@ -281,48 +282,81 @@ def create_fallback_response(tool_config, user_data, localization=None):
 
     return f"""
 <style>
-.fallback-results {{
+.simple-fallback {{
     max-width: 600px;
     margin: 20px auto;
     text-align: center;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 20px;
 }}
 .fallback-header {{
     background: linear-gradient(135deg, #667eea, #764ba2);
     color: white;
-    padding: 40px;
+    padding: 30px;
     border-radius: 12px;
     margin-bottom: 20px;
 }}
 .fallback-title {{
-    font-size: 2rem;
+    font-size: 1.8rem;
     margin-bottom: 10px;
+    font-weight: 700;
 }}
-.upgrade-section {{
+.fallback-subtitle {{
+    opacity: 0.9;
+    font-size: 1rem;
+}}
+.donation-section {{
     background: #f7fafc;
     padding: 30px;
     border-radius: 12px;
+    margin: 20px 0;
 }}
-.upgrade-button {{
+.donation-section h3 {{
+    color: #2d3748;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}}
+.donation-section p {{
+    color: #4a5568;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}}
+.donation-button {{
     display: inline-block;
-    margin-top: 20px;
+    margin: 20px 0;
+}}
+.limit-message {{
+    background: #fff3cd;
+    color: #856404;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border: 1px solid #ffeaa7;
 }}
 </style>
 
-<div class="fallback-results">
+<div class="simple-fallback">
     <div class="fallback-header">
         <div class="fallback-title">⚡ {tool_name}</div>
-        <p>AI analysis temporarily unavailable</p>
+        <div class="fallback-subtitle">AI analysis temporarily unavailable</div>
     </div>
 
-    <div class="upgrade-section">
-        <h3>🚀 Get AI Analysis</h3>
-        <p>Support us to unlock detailed insights and recommendations</p>
-        <div class="upgrade-button">
+    <div class="limit-message">
+        <strong>Daily AI limit reached</strong><br>
+        Free AI analysis resets at midnight UTC
+    </div>
+
+    <div class="donation-section">
+        <h3>🚀 Support Our Platform</h3>
+        <p>Your support helps us provide advanced AI analysis and keep improving our tools for everyone.</p>
+
+        <div class="donation-button">
             <a href="https://www.buymeacoffee.com/shakdiesel" target="_blank">
-                <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Support" style="height: 50px;">
+                <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Support Us" style="height: 50px;">
             </a>
         </div>
+
+        <p><small>Thank you for using our platform! 🙏</small></p>
     </div>
 </div>
 """
