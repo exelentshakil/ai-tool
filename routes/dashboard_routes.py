@@ -224,30 +224,55 @@ def get_users_data():
 def get_tools_data():
     """Get tools usage statistics"""
     try:
-        # This would need to be implemented based on your tools tracking
-        # For now, return sample data
-        tools = [
-            {
-                'name': 'Calculator',
-                'total_uses': 1250,
-                'today': 45,
-                'week': 320,
-                'avg_cost': 0.0034,
-                'status': 'active'
-            },
-            {
-                'name': 'Converter',
-                'total_uses': 890,
-                'today': 23,
-                'week': 180,
-                'avg_cost': 0.0028,
-                'status': 'active'
-            }
-        ]
+        if not supabase:
+            return jsonify({'success': False, 'error': 'Database not connected'}), 500
+
+        # Get real tools data from usage_logs table
+        result = supabase.table('usage_logs').select('*').execute()
+        usage_data = result.data if result.data else []
+
+        if not usage_data:
+            return jsonify({
+                'success': True,
+                'tools': [],
+                'message': 'No tools usage data available yet'
+            })
+
+        # Process real usage data
+        from datetime import datetime, timedelta
+
+        tools_stats = {}
+        today = datetime.now().date()
+        week_ago = today - timedelta(days=7)
+
+        for log in usage_data:
+            tool_name = log.get('tool', 'Unknown')
+            log_date = datetime.fromisoformat(log.get('date', str(today))).date()
+
+            if tool_name not in tools_stats:
+                tools_stats[tool_name] = {
+                    'name': tool_name,
+                    'total_uses': 0,
+                    'today': 0,
+                    'week': 0,
+                    'avg_cost': 0.001,  # Default avg cost
+                    'status': 'active'
+                }
+
+            tools_stats[tool_name]['total_uses'] += 1
+
+            if log_date == today:
+                tools_stats[tool_name]['today'] += 1
+
+            if log_date >= week_ago:
+                tools_stats[tool_name]['week'] += 1
+
+        # Convert to list
+        tools_list = list(tools_stats.values())
 
         return jsonify({
             'success': True,
-            'tools': tools
+            'tools': tools_list
         })
 
     except Exception as e:
