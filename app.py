@@ -337,49 +337,8 @@ def internal_error_handler(e):
     }), 500
 
 
-# ─── STARTUP CHECKS ─────────────────────────────────────────────────────────────
-def run_startup_checks():
-    """Run startup checks and display status"""
-    print("\n" + "=" * 50)
-    print("🚀 AI TOOLS API STARTUP")
-    print("=" * 50)
-
-    # Check environment variables
-    env_vars = {
-        'SUPABASE_URL': os.getenv('SUPABASE_URL'),
-        'SUPABASE_KEY': os.getenv('SUPABASE_KEY'),
-        'OPENAI_API_KEY': os.getenv('OPENAI_API_KEY')
-    }
-
-    print("\n📋 Environment Variables:")
-    for var, value in env_vars.items():
-        status = "✅" if value else "❌"
-        display_value = f"{value[:20]}..." if value and len(value) > 20 else value or "Not set"
-        print(f"  {status} {var}: {display_value}")
-
-    # Check database connection
-    print(f"\n🗄️ Database Status:")
-    health = db_health_check()
-    print(f"  Status: {health['status']}")
-    print(f"  Message: {health['message']}")
-
-    # Check tools
-    print(f"\n🔧 Tools Status:")
-    tools_count = len(tools_config.ALL_TOOLS) if hasattr(tools_config, 'ALL_TOOLS') else 0
-    print(f"  Loaded tools: {tools_count}")
-
-    print("\n" + "=" * 50)
-    if supabase and env_vars['OPENAI_API_KEY']:
-        print("✅ All systems ready!")
-    else:
-        print("❌ Some systems need attention - check errors above")
-    print("=" * 50 + "\n")
-
 
 if __name__ == "__main__":
-    # Run startup checks
-    run_startup_checks()
-
     # Start the Flask app
     app.run(
         host="0.0.0.0",
