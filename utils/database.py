@@ -550,6 +550,20 @@ def get_database_stats():
             'total_users': 0
         }
 
+def get_current_hour_users():
+    """Get current hour users count"""
+    try:
+        if not supabase:
+            return 0
+
+        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
+        result = supabase.table('user_limits').select('ip').eq('hour_key', current_hour).execute()
+        return len(set(row['ip'] for row in result.data)) if result.data else 0
+
+    except Exception as e:
+        print(f"Error getting current hour users: {e}")
+        return 0
+
 
 def clean_old_cache(hours=24):
     """Clean old cache entries - placeholder function"""
