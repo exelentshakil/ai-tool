@@ -88,14 +88,61 @@ def get_costs_data():
 
         costs = result.data if result.data else []
 
-        # Calculate aggregated stats
-        today_cost = sum(c['cost'] for c in costs if c['date'] == datetime.now().date().isoformat())
-        week_cost = sum(
-            c['cost'] for c in costs if datetime.fromisoformat(c['date']) >= datetime.now().date() - timedelta(days=7))
-        month_cost = sum(
-            c['cost'] for c in costs if datetime.fromisoformat(c['date']) >= datetime.now().date() - timedelta(days=30))
+        # If no data found
+        if not costs:
+            return jsonify({
+                'success': True,
+                'costs': [],
+                'aggregated': {
+                    'today': 0,
+                    'week': 0,
+                    'month': 0,
+                    'avg_per_request': 0
+                },
+                'message': 'No cost data found. Use populate button to add sample data.'
+            })
 
-        avg_cost = today_cost / max(1, len([c for c in costs if c['date'] == datetime.now().date().isoformat()]))
+        # Calculate aggregated stats with better error handling
+        today_str = datetime.now().date().isoformat()
+        week_ago = datetime.now().date() - timedelta(days=7)
+        month_ago = datetime.now().date() - timedelta(days=30)
+
+        today_cost = 0
+        week_cost = 0
+        month_cost = 0
+        today_requests = 0
+
+        for cost in costs:
+            try:
+                cost_date_str = cost.get('date', '')
+                cost_amount = float(cost.get('cost', 0))
+
+                # Parse date safely
+                if cost_date_str:
+                    # Handle different date formats
+                    if 'T' in cost_date_str:
+                        cost_date = datetime.fromisoformat(cost_date_str.split('T')[0]).date()
+                    else:
+                        cost_date = datetime.fromisoformat(cost_date_str).date()
+
+                    # Today's costs
+                    if cost_date_str == today_str:
+                        today_cost += cost_amount
+                        today_requests += 1
+
+                    # This week's costs
+                    if cost_date >= week_ago:
+                        week_cost += cost_amount
+
+                    # This month's costs
+                    if cost_date >= month_ago:
+                        month_cost += cost_amount
+
+            except (ValueError, TypeError) as e:
+                print(f"Error processing cost record: {e}")
+                continue
+
+        avg_cost = today_cost / max(1, today_requests)
 
         return jsonify({
             'success': True,
@@ -109,8 +156,15 @@ def get_costs_data():
         })
 
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        print(f"Error in get_costs_data: {str(e)}")
+        import traceback
+        traceback.print_exc()
 
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'debug': 'Check server logs for details'
+        }), 500
 
 @dashboard_bp.route('/api/users')
 def get_users_data():
