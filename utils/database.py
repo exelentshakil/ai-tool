@@ -509,71 +509,71 @@ def cleanup_old_records(days_to_keep: int = 30) -> Dict[str, int]:
         logger.error(f"❌ Error during cleanup: {str(e)}")
         return {}
 
-    def health_check():
-        """Database health check (backward compatible)"""
-        return get_database_health()
+def get_database_health():
+    """Database health check (backward compatible)"""
+    return get_database_health()
 
-    def get_current_hour_users():
-        """Get users active in current hour"""
-        if not supabase:
-            return []
+def get_current_hour_users():
+    """Get users active in current hour"""
+    if not supabase:
+        return []
+
+    try:
+        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
+
+        result = supabase.table('user_limits') \
+            .select('ip') \
+            .eq('hour_key', current_hour) \
+            .execute()
+
+        unique_ips = list(set(record['ip'] for record in result.data)) if result.data else []
+        return unique_ips
+
+    except Exception as e:
+        logger.error(f"❌ Error getting current hour users: {str(e)}")
+        return []
+
+def get_database_stats():
+    """Get database statistics"""
+    if not supabase:
+        return {}
+
+    try:
+        stats = {}
+
+        # Get table counts
+        for table in ['openai_costs', 'user_limits']:
+            try:
+                result = supabase.table(table).select('count(*)', count='exact').execute()
+                stats[f'{table}_count'] = result.count if hasattr(result, 'count') else 0
+            except Exception as e:
+                stats[f'{table}_count'] = 0
+
+        # Get recent activity
+        today = datetime.now().strftime('%Y-%m-%d')
 
         try:
-            current_hour = datetime.now().strftime('%Y-%m-%d-%H')
-
-            result = supabase.table('user_limits') \
-                .select('ip') \
-                .eq('hour_key', current_hour) \
+            # Today's requests
+            requests_result = supabase.table('user_limits') \
+                .select('count') \
+                .gte('hour_key', today) \
                 .execute()
-
-            unique_ips = list(set(record['ip'] for record in result.data)) if result.data else []
-            return unique_ips
-
-        except Exception as e:
-            logger.error(f"❌ Error getting current hour users: {str(e)}")
-            return []
-
-    def get_database_stats():
-        """Get database statistics"""
-        if not supabase:
-            return {}
+            stats['requests_today'] = sum(
+                r.get('count', 0) for r in requests_result.data) if requests_result.data else 0
+        except:
+            stats['requests_today'] = 0
 
         try:
-            stats = {}
+            # Today's cost
+            stats['cost_today'] = get_openai_cost_today()
+        except:
+            stats['cost_today'] = 0
 
-            # Get table counts
-            for table in ['openai_costs', 'user_limits']:
-                try:
-                    result = supabase.table(table).select('count(*)', count='exact').execute()
-                    stats[f'{table}_count'] = result.count if hasattr(result, 'count') else 0
-                except Exception as e:
-                    stats[f'{table}_count'] = 0
+        return stats
 
-            # Get recent activity
-            today = datetime.now().strftime('%Y-%m-%d')
-
-            try:
-                # Today's requests
-                requests_result = supabase.table('user_limits') \
-                    .select('count') \
-                    .gte('hour_key', today) \
-                    .execute()
-                stats['requests_today'] = sum(
-                    r.get('count', 0) for r in requests_result.data) if requests_result.data else 0
-            except:
-                stats['requests_today'] = 0
-
-            try:
-                # Today's cost
-                stats['cost_today'] = get_openai_cost_today()
-            except:
-                stats['cost_today'] = 0
-
-            return stats
-
-        except Exception as e:
-            logger.error(f"❌ Error getting database stats: {str(e)}")
-            return {}
+    except Exception as e:
+        logger.error(f"❌ Error getting database stats: {str(e)}")
+        return {}
 
 # Initialize on import
 if not supabase:

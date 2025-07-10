@@ -12,7 +12,7 @@ load_dotenv()
 from utils.database import (
     initialize_supabase,
     get_openai_cost_today,
-    health_check as db_health_check,
+    get_database_health as db_health_check,
     supabase
 )
 from utils.rate_limiting import get_remote_address, check_user_limit, is_premium_user, increment_user_usage
