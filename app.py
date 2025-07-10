@@ -72,7 +72,7 @@ limiter.init_app(app)
 
 # Initialize Supabase database
 print("🔍 Initializing Supabase database...")
-supabase_client = initialize_supabase()
+supabase_client = init_supabase()
 if supabase_client:
     print("✅ Supabase initialized successfully")
 else:
