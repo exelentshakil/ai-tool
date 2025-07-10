@@ -343,6 +343,204 @@ class UniquePageTransformer:
             }
         ]
 
+        # 1) Base fields by variation suffix
+        self.variation_fields = {
+            "calculator": ["amount", "term", "interest_rate", "payment_frequency"],
+            "quotes": ["coverage_type", "location", "vehicle_year", "driving_record"],
+            "rates": ["loan_amount", "credit_score", "term", "interest_rate"],
+            "estimator": ["value", "down_payment", "location", "mortgage_term"],
+            "planner": ["current_age", "retirement_age", "current_savings", "monthly_contribution"],
+            "analyzer": ["income", "expenses", "debt_amount", "credit_score"],
+            "simulator": ["initial_balance", "monthly_deposit", "rate_of_return", "years"],
+            "optimizer": ["budget", "priority", "timeline", "quality_preference"],
+            "tracker": ["start_date", "end_date", "goal_amount", "current_progress"],
+            "advisor": ["age", "income", "coverage_needs", "risk_tolerance"],
+            "predictor": ["historical_data", "growth_rate", "projection_period", "confidence_level"],
+            "manager": ["asset_value", "management_fee", "service_level", "term"]
+        }
+
+        # 2) Category-specific tweaks by slug keyword
+        self.category_overrides = {
+            # Auto & Car Insurance
+            "car-insurance": ["vehicle_model", "annual_mileage", "driver_age", "coverage_amount"],
+            "auto-insurance": ["vehicle_price", "down_payment", "fuel_type", "vehicle_year"],
+            "vehicle-insurance": ["vehicle_year", "coverage_type", "driver_age", "location"],
+
+            # Home & Property Insurance
+            "homeowners-insurance": ["home_age", "property_value", "location", "deductible"],
+            "property-insurance": ["property_type", "coverage_amount", "location", "replacement_cost"],
+
+            # Life Insurance
+            "life-insurance": ["age", "spouse_income", "children_count", "coverage_amount"],
+
+            # Health Insurance
+            "health-insurance": ["age", "preexisting_conditions", "coverage_type", "location"],
+
+            # Business Insurance
+            "business-insurance": ["revenue", "employees", "industry", "location"],
+
+            # Travel Insurance
+            "travel-insurance": ["trip_length", "destination", "traveler_age", "coverage_level"],
+
+            # Motorcycle / Boat / RV / Pet / Renters / Umbrella / Disability
+            "motorcycle-insurance": ["bike_model", "engine_size", "rider_age", "coverage_amount"],
+            "boat-insurance": ["boat_type", "coverage_amount", "navigation_area", "boat_value"],
+            "rv-insurance": ["rv_type", "annual_mileage", "coverage_amount", "driver_age"],
+            "pet-insurance": ["pet_type", "pet_age", "breed", "coverage_amount"],
+            "renters-insurance": ["rental_value", "location", "tenant_type", "coverage_amount"],
+            "umbrella-insurance": ["coverage_amount", "base_policy_type", "location", "household_size"],
+            "disability-insurance": ["age", "occupation", "income", "waiting_period"],
+
+            # Long-Term Care & Professional Liability
+            "long-term-care": ["age", "current_health_level", "care_duration", "monthly_budget"],
+            "professional-liability": ["profession", "annual_revenue", "claim_history", "coverage_amount"],
+
+            # Cyber & Workers’ Comp & Commercial
+            "cyber-liability": ["company_size", "data_sensitivity", "coverage_amount", "industry"],
+            "workers-compensation": ["employees", "industry", "claim_history", "location"],
+            "commercial-auto": ["fleet_size", "vehicle_types", "driver_count", "coverage_amount"],
+            "commercial-property": ["property_value", "location", "replacement_cost", "tenant_type"],
+
+            # Errors & Omissions, Personal Injury, Accident, Divorce, etc.
+            "errors-omissions": ["profession", "annual_revenue", "claim_history", "coverage_amount"],
+            "personal-injury": ["injury_severity", "medical_costs", "lost_wages", "fault_percentage"],
+            "accident-compensation": ["accident_type", "medical_costs", "lost_wages", "pain_and_suffering"],
+            "divorce-cost": ["marriage_length", "children_count", "assets_value", "debt_amount"],
+            "child-support": ["both_parent_incomes", "custody_percentage", "children_count", "childcare_costs"],
+            "alimony": ["spouse_income", "marriage_length", "support_duration", "assets_value"],
+            "bankruptcy": ["debt_amount", "income", "assets_value", "filing_type"],
+            "small-claims": ["claim_amount", "claim_type", "court_fees", "legal_assistance"],
+            "traffic-ticket": ["violation_type", "fine_amount", "points", "location"],
+            "dui-penalty": ["blood_alcohol", "prior_offenses", "fine_amount", "license_suspension"],
+            "employment-lawyer-cost": ["hours_needed", "complexity", "location", "settlement_amount"],
+            "medical-malpractice": ["injury_severity", "medical_costs", "negligence_factor", "legal_fees"],
+            "wrongful-death": ["relation", "medical_costs", "lost_income", "punitive_damages"],
+            "workers-comp-benefits": ["injury_severity", "lost_wages", "medical_costs", "rehab_needs"],
+            "social-security-disability": ["age", "disability_type", "work_credits", "medical_evidence"],
+
+            # IP & Business Formation & Contract
+            "patent-cost": ["filing_type", "attorney_fees", "search_costs", "maintenance_fees"],
+            "trademark-cost": ["class_count", "filing_basis", "attorney_fees", "renewal_fees"],
+            "copyright-fee": ["work_type", "filing_type", "attorney_fees", "duration"],
+            "business-formation-cost": ["state", "entity_type", "filing_fees", "legal_fees"],
+            "contract-dispute": ["claim_amount", "complexity", "location", "legal_fees"],
+            "property-damage": ["damage_estimate", "repair_costs", "insurance_coverage", "deductible"],
+
+            # Mortgage & Loans & Refinancing
+            "mortgage": ["loan_amount", "down_payment", "term", "interest_rate"],
+            "loan": ["loan_amount", "term", "interest_rate", "credit_score"],
+            "refinance": ["current_balance", "current_rate", "new_rate", "closing_costs"],
+            "home-equity": ["home_value", "mortgage_balance", "loan_amount", "term"],
+            "fha-loan": ["loan_amount", "down_payment", "credit_score", "mortgage_insurance"],
+            "va-loan": ["loan_amount", "entitlement", "down_payment", "interest_rate"],
+
+            # Credit Score & Debt & Savings & Investments & Tax
+            "credit-score": ["current_score", "payment_history", "credit_utilization", "length_of_history"],
+            "debt-consolidation": ["total_debt", "interest_rates", "term", "monthly_payment"],
+            "savings": ["goal_amount", "current_balance", "monthly_contribution", "time_horizon"],
+            "cd": ["deposit_amount", "term", "interest_rate", "compounding_frequency"],
+            "bond": ["principal", "term", "coupon_rate", "yield"],
+            "stock": ["ticker", "quantity", "purchase_price", "target_price"],
+            "dividend": ["stock_ticker", "dividend_yield", "frequency", "payment_date"],
+            "tax-calculator": ["income", "deductions", "filing_status", "state"],
+            "capital-gains": ["purchase_price", "sale_price", "holding_period", "tax_rate"],
+            "estate-planning": ["net_worth", "beneficiaries", "trust_type", "estate_tax_rate"],
+
+            # Retirement & 401K & IRA
+            "retirement": ["current_age", "target_age", "current_savings", "monthly_contribution"],
+            "401k": ["current_balance", "contribution_rate", "employer_match", "expected_return"],
+            "ira": ["current_balance", "contribution_amount", "yearly_contribution", "expected_return"],
+            "roth-ira": ["current_balance", "contribution_amount", "tax_rate", "expected_return"],
+
+            # College & Business Finance & Operations
+            "college-savings": ["current_balance", "college_cost", "time_horizon", "expected_return"],
+            "business-loan": ["business_plan_score", "funding_needed", "collateral", "personal_credit"],
+            "equipment-financing": ["equipment_cost", "term", "interest_rate", "down_payment"],
+            "invoice-factoring": ["invoice_amount", "factoring_rate", "advance_rate", "term"],
+            "cash-flow": ["revenue", "expenses", "working_capital", "cash_reserve"],
+
+            # P&L Metrics & Pricing
+            "break-even": ["fixed_costs", "variable_costs", "price_per_unit", "units_sold"],
+            "roi": ["gain_from_investment", "investment_cost", "holding_period", "annualized"],
+            "pricing": ["cost", "markup_percentage", "sales_volume", "competition_rate"],
+            "markup": ["cost", "markup_percentage", "selling_price", "profit_margin"],
+            "discount": ["original_price", "discount_rate", "start_date", "end_date"],
+            "tax-deduction": ["income", "deduction_type", "deduction_amount", "tax_bracket"],
+            "depreciation": ["asset_cost", "useful_life", "salvage_value", "method"],
+            "lease-vs-buy": ["purchase_price", "lease_payment", "lease_term", "interest_rate"],
+
+            # Franchises & Valuation & Partnerships
+            "franchise": ["franchise_fee", "royalty_rate", "term", "initial_investment"],
+            "business-valuation": ["revenue", "profit_margin", "growth_rate", "discount_rate"],
+            "partnership": ["capital_contribution", "profit_sharing", "liability_structure", "term"],
+
+            # Health & Fitness & Nutrition Tools
+            "bmi": ["height", "weight", "age", "gender"],
+            "calorie": ["current_weight", "goal_weight", "activity_level", "time_frame"],
+            "protein": ["body_weight", "protein_ratio", "activity_level", "diet_type"],
+            "water-intake": ["body_weight", "activity_level", "climate", "time_frame"],
+            "body-fat": ["weight", "waist_circumference", "neck_circumference", "hip_circumference"],
+            "ideal-weight": ["height", "age", "gender", "frame_size"],
+            "pregnancy": ["last_menstrual_period", "cycle_length", "age", "risk_factors"],
+            "ovulation": ["cycle_length", "period_length", "last_period_date", "age"],
+            "heart-rate": ["age", "resting_rate", "activity_level", "target_zone"],
+            "blood-pressure": ["age", "systolic", "diastolic", "measurement_time"],
+            "cholesterol": ["ldl", "hdl", "total_cholesterol", "triglycerides"],
+            "diabetes-risk": ["age", "bmi", "family_history", "activity_level"],
+            "sleep": ["sleep_duration", "bedtime", "wake_time", "sleep_quality"],
+            "medication-dosage": ["weight", "age", "renal_function", "medication_strength"],
+            "supplement": ["goal", "age", "dietary_preferences", "baseline_levels"],
+            "fitness": ["current_fitness_level", "goal", "available_time", "equipment"],
+            "recovery-time": ["injury_type", "severity", "age", "activity_level"],
+            "nutrition": ["calorie_target", "macros_ratio", "diet_type", "activity_level"],
+            "vitamin": ["age", "dietary_intake", "deficiency_markers", "goal"]
+        }
+
+    def make_fields_for_slug(self, slug: str) -> list:
+        """
+        Return 4–6 form fields tailored to this slug.
+        1. Find variation (calculator, quotes, rates, etc.)
+        2. Find category override by longest matching key in slug
+        3. Merge base + extra, dedupe, cap at 6
+        4. If <4 fields, add fallbacks
+        """
+        slug_lower = slug.lower()
+
+        # 1) detect variation
+        variation = "calculator"
+        for var in self.variation_fields:
+            if var in slug_lower:
+                variation = var
+                break
+        base_fields = self.variation_fields.get(variation, [])
+
+        # 2) detect category override
+        override_key = None
+        # longest keys first so we match e.g. "homeowners-insurance" before "insurance"
+        for key in sorted(self.category_overrides, key=len, reverse=True):
+            if key in slug_lower:
+                override_key = key
+                break
+        extra_fields = self.category_overrides.get(override_key, [])
+
+        # 3) merge, dedupe, cap at 6
+        fields = []
+        for f in base_fields + extra_fields:
+            if f not in fields:
+                fields.append(f)
+            if len(fields) == 6:
+                break
+
+        # 4) ensure minimum 4
+        fallback = ["location", "amount", "preferences", "goals"]
+        for f in fallback:
+            if len(fields) >= 4:
+                break
+            if f not in fields:
+                fields.append(f)
+
+        return fields
+
     def get_country_for_tool(self, tool_index):
         """Rotate through high RPM countries for maximum global coverage"""
         # Use modulo to cycle through all countries
@@ -744,11 +942,16 @@ class UniquePageTransformer:
 
             # 🔧 FIX: Use the robust form generator instead of global_form
             category = self.get_category_from_specialty(intention['specialty'])
+
+            # ── NEW: pull fields by slug, not intention
+            fields_for_slug = self.make_fields_for_slug(original_slug)
+            print(f"🔧 Fields for slug '{original_slug}': {fields_for_slug}")
+
             robust_form = self.generate_form_fields_html(
-                form_fields=intention.get('form_fields', []),
+                form_fields=fields_for_slug,
                 specialty=intention['specialty'],
                 icon=intention['icon'],
-                category=category
+                category=self.get_category_from_specialty(intention['specialty'])
             )
 
             # Add country-specific customizations to the robust form
@@ -801,7 +1004,7 @@ class UniquePageTransformer:
               "rpm": {country_data['rpm']},
               "target_country": "{country_data['code']}",
               "country_data": {json.dumps(country_data)},
-              "form_fields": {json.dumps(intention.get('form_fields', []))},
+              "form_fields": {json.dumps(fields_for_slug)},
               "seo_data": {{
                 "title": "{rankmath_data['rank_math_title']}",
                 "description": "{rankmath_data['rank_math_description']}",
@@ -1355,44 +1558,65 @@ class UniquePageTransformer:
         self.tool_specializations.update(business_specializations)
         self.tool_specializations.update(health_specializations)
 
-    def detect_tool_intention(self, title):
-        """Detect the specific intention based on title"""
+    def detect_tool_intention(self, title: str) -> Dict[str, Any]:
+        """
+        Determine specialty, target, unique_focus, icon from title.
+        We drop form_fields here entirely—field selection now comes from make_fields_for_slug().
+        """
         title_lower = title.lower()
 
-        # Extract tool type and variation
-        for key in self.tool_specializations.keys():
+        # 1) Exact match against our specializations
+        for key, spec in self.tool_specializations.items():
             if key in title_lower:
-                return self.tool_specializations[key]
+                # copy to avoid mutating the original config
+                return {
+                    "specialty": spec["specialty"],
+                    "target": spec["target"],
+                    "unique_focus": spec["unique_focus"],
+                    "icon": spec["icon"]
+                }
 
-        # Fallback logic for unmatched tools
+        # 2) Fallback
+        # pick a variation keyword
         if "calculator" in title_lower:
             variation = "calculator"
         elif "estimator" in title_lower:
             variation = "estimator"
         elif "analyzer" in title_lower:
             variation = "analyzer"
+        elif "planner" in title_lower:
+            variation = "planner"
+        elif "advisor" in title_lower:
+            variation = "advisor"
+        elif "simulator" in title_lower:
+            variation = "simulator"
+        elif "predictor" in title_lower:
+            variation = "predictor"
+        elif "optimizer" in title_lower:
+            variation = "optimizer"
+        elif "tracker" in title_lower:
+            variation = "tracker"
         else:
             variation = "calculator"
 
-        # Determine category
-        if any(word in title_lower for word in ["insurance", "coverage", "policy"]):
+        # simple category from title
+        if any(w in title_lower for w in ["insurance", "coverage", "policy"]):
             category = "insurance"
-        elif any(word in title_lower for word in ["legal", "lawyer", "court", "injury", "divorce"]):
-            category = "legal"
-        elif any(word in title_lower for word in ["loan", "mortgage", "finance", "investment", "retirement"]):
+        elif any(w in title_lower for w in ["loan", "mortgage", "finance", "investment", "retirement"]):
             category = "finance"
-        elif any(word in title_lower for word in ["business", "payroll", "employee", "profit"]):
+        elif any(w in title_lower for w in ["legal", "injury", "divorce", "court"]):
+            category = "legal"
+        elif any(w in title_lower for w in ["business", "payroll", "employee", "profit"]):
             category = "business"
-        elif any(word in title_lower for word in ["bmi", "calorie", "health", "fitness", "weight"]):
+        elif any(w in title_lower for w in ["bmi", "calorie", "health", "fitness", "weight"]):
             category = "health"
         else:
             category = "general"
 
-        # Return default specialization
+        # Build a generic fallback
         return {
             "specialty": f"{category.title()} {variation.title()}",
             "target": f"{category} planning needs",
-            "form_fields": ["amount", "duration", "preferences", "goals"],
             "unique_focus": f"{category} optimization and planning",
             "icon": "🧮"
         }

@@ -212,7 +212,15 @@ def generate_html_response(ai_analysis, user_data, tool_config, localization=Non
     font-weight: 600;
 }}
 @media (max-width: 768px) {{
-    .ai-results {{ padding: 16px; }}
+.ai-analysis {{
+    background: linear-gradient(135deg, var(--neutral-50), var(--primary-50));
+    border: 1px solid var(--primary-200);
+    border-radius: 12px;
+    padding: 0px;
+    margin: 1.5rem 0;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}}
+    .ai-results {{ padding: 10px; }}
     .result-header, .content-section {{ padding: 20px; }}
     .result-title {{ font-size: 1.5rem; }}
 }}
