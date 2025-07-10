@@ -96,7 +96,8 @@ def increment_user_usage(ip: str, tools_slug: str = None) -> bool:
         if tools_slug:
             data['tools_slug'] = tools_slug
 
-        result = supabase.table('user_limits').upsert(data, on_conflict='ip,hour_key').execute()
+        # Use the specific constraint name instead of column names
+        result = supabase.table('user_limits').upsert(data).execute()
 
         if result.data:
             logger.info(f"✅ User usage incremented for {ip}" + (f" (tool: {tools_slug})" if tools_slug else ""))
