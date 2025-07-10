@@ -1,8 +1,8 @@
 from openai import OpenAI
 from utils.database import get_openai_cost_today, get_openai_cost_month, log_openai_cost
-from config.settings import API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
+from config.settings import OPENAI_API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
 
-client = OpenAI(api_key=API_KEY)
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
@@ -29,7 +29,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         ai_analysis = response.choices[0].message.content
         pt, ct = response.usage.prompt_tokens, response.usage.completion_tokens
         cost = (pt * 0.00015 + ct * 0.0006) / 1000
-        log_openai_cost(tool_config['slug'], pt, ct, cost)
+        log_openai_cost(cost, pt + ct)
 
         return generate_html_response(ai_analysis, cleaned_data, tool_config, localization)
 
