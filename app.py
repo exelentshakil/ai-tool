@@ -117,7 +117,6 @@ def process_tool():
 
         return jsonify({
             "output": {
-                "base_result": base_result,
                 "ai_analysis": ai_analysis,
                 "rate_limited": is_rate_limited,
                 "localization": localization
