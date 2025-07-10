@@ -115,6 +115,7 @@ def process_tool():
                 ai_analysis += rate_message
 
         is_rate_limited = limit_check.get("blocked", False)
+
         return jsonify({
             "output": {
                 "base_result": base_result,
@@ -133,6 +134,12 @@ def process_tool():
             "input_data": validated_data
         }), 200
 
+    except Exception as e:
+        app.logger.error(f"Process tool error: {str(e)}")
+        return jsonify({
+            "error": "Processing failed",
+            "message": "Please check your inputs and try again"
+        }), 500
 
 # Import and register all blueprints including face analysis
 from routes.tools_routes import tools_bp
