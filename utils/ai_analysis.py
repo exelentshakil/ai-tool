@@ -8,42 +8,6 @@ from config.settings import API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
 client = OpenAI(api_key=API_KEY)
 
 
-def generate_ai_analysis(tool_config, user_data, ip, localization=None):
-    """Generate pure AI analysis without base result"""
-    if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
-        return create_fallback_response(tool_config, user_data, localization)
-
-    category = tool_config.get("category", "general")
-    tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
-
-    # Build AI prompt without base_result
-    prompt = build_analysis_prompt(tool_name, category, user_data, localization)
-
-    try:
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[
-                {"role": "system", "content": get_ai_system_prompt(localization)},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=2000,
-            temperature=0.7
-        )
-
-        ai_analysis = response.choices[0].message.content
-        pt, ct = response.usage.prompt_tokens, response.usage.completion_tokens
-        cost = (pt * 0.00015 + ct * 0.0006) / 1000
-        log_openai_cost(tool_config['slug'], pt, ct, cost)
-
-        # Generate rich HTML response
-        rich_response = generate_rich_html_response(ai_analysis, user_data, tool_config, localization)
-        return rich_response
-
-    except Exception as e:
-        print(f"AI analysis failed: {str(e)}")
-        return create_fallback_response(tool_config, user_data, localization)
-
-
 def build_analysis_prompt(tool_name, category, user_data, localization=None):
     """Build AI analysis prompt without base result"""
     if not localization:
@@ -227,6 +191,7 @@ def create_fallback_response(tool_config, user_data, localization=None):
     category = tool_config.get("category", "general")
 
     return f"""
+    {get_modern_css()}
     <div class="ai-analysis-container">
         <div class="fallback-section">
             <div class="fallback-header">
@@ -252,26 +217,6 @@ def create_fallback_response(tool_config, user_data, localization=None):
         </div>
     </div>
     """
-
-def get_ai_system_prompt(localization=None):
-    """Get AI system prompt with localization support"""
-    if not localization:
-        localization = {}
-
-    language = localization.get('language', 'English')
-    currency = localization.get('currency', 'USD')
-    country_name = localization.get('country_name', '')
-
-    base_prompt = f"""You are an expert financial and business analyst. Provide strategic insights that are actionable, data-driven, and tailored to specific contexts.
-
-Use {currency} currency for all calculations. Adapt recommendations to {country_name} market context when relevant. 
-
-Structure your response with clear sections and include specific numbers, percentages, and actionable steps. Make everything highly practical and implementable."""
-
-    if language != 'English':
-        base_prompt += f"\n\nRespond entirely in {language}."
-
-    return base_prompt
 
 
 def generate_rich_html_response(ai_analysis, user_data, tool_config, localization=None):
@@ -315,7 +260,6 @@ def generate_rich_html_response(ai_analysis, user_data, tool_config, localizatio
 </div>
 """
 
-
 def parse_ai_analysis(ai_text):
     """Parse AI analysis into structured components"""
     sections = {
@@ -352,7 +296,6 @@ def parse_ai_analysis(ai_text):
 
     return sections
 
-
 def generate_header(tool_config, currency, language):
     """Generate modern header section"""
     tool_name = tool_config.get('seo_data', {}).get('title', 'Analysis Tool')
@@ -372,7 +315,6 @@ def generate_header(tool_config, currency, language):
         </div>
     </div>
     """
-
 
 def generate_metrics_from_ai(metrics_data, currency, language):
     """Generate metrics cards from AI data"""
@@ -420,7 +362,6 @@ def generate_metrics_from_ai(metrics_data, currency, language):
     </div>
     """
 
-
 def generate_insights_from_ai(insights_data, language):
     """Generate insights section from AI data"""
     if not insights_data:
@@ -451,7 +392,6 @@ def generate_insights_from_ai(insights_data, language):
         </div>
     </div>
     """
-
 
 def generate_value_ladder_from_ai(ladder_data, currency, language):
     """Generate value ladder from AI data"""
@@ -498,7 +438,6 @@ def generate_value_ladder_from_ai(ladder_data, currency, language):
     </div>
     """
 
-
 def generate_comparison_from_ai(comparison_data, language):
     """Generate comparison table from AI data"""
     if not comparison_data:
@@ -542,7 +481,6 @@ def generate_comparison_from_ai(comparison_data, language):
         </div>
     </div>
     """
-
 
 def generate_actions_from_ai(actions_data, language):
     """Generate action items from AI data"""
@@ -593,7 +531,6 @@ def generate_actions_from_ai(actions_data, language):
     </div>
     """
 
-
 def format_analysis_content(ai_analysis):
     """Format the full AI analysis content"""
     # Convert markdown-style formatting to HTML
@@ -628,7 +565,6 @@ def format_analysis_content(ai_analysis):
         formatted_lines.append('</ul>')
 
     return '\n'.join(formatted_lines)
-
 
 def get_localized_text(key, language):
     """Get localized text for UI elements"""
