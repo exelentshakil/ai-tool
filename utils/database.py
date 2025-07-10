@@ -1,6 +1,6 @@
 """
 Enhanced Database Operations Module
-Handles all Supabase database interactions with comprehensive error handling,
+Maintains backward compatibility while adding comprehensive error handling,
 logging, and debugging capabilities.
 """
 
@@ -16,7 +16,6 @@ logger = logging.getLogger(__name__)
 
 # Initialize Supabase client
 supabase: Optional[Client] = None
-
 
 def init_supabase() -> bool:
     """Initialize Supabase client with error handling"""
@@ -35,7 +34,6 @@ def init_supabase() -> bool:
         logger.error(f"❌ Failed to initialize Supabase: {str(e)}")
         return False
 
-
 def check_connection() -> bool:
     """Test database connection"""
     if not supabase:
@@ -45,22 +43,199 @@ def check_connection() -> bool:
     try:
         # Simple query to test connection
         result = supabase.table('user_limits').select('count(*)').limit(1).execute()
-        logger.info("✅ Database connection verified")
+        logger.debug("✅ Database connection verified")
         return True
 
     except Exception as e:
         logger.error(f"❌ Database connection failed: {str(e)}")
         return False
 
-
 # =============================================================================
-# OPENAI COST TRACKING
+# BACKWARD COMPATIBLE OPENAI COST TRACKING
 # =============================================================================
 
-def log_openai_cost(cost: float, tokens: int, model: str = "gpt-4o-mini",
-                    ip: str = None, tools_slug: str = None) -> bool:
+def log_openai_cost(cost: float, tokens: int, model: str = "gpt-4o-mini") -> bool:
     """
-    Log OpenAI API cost and token usage
+    Log OpenAI API cost and token usage (backward compatible)
+
+    Args:
+        cost: API cost in USD
+        tokens: Total tokens used (prompt + completion)
+        model: OpenAI model name
+
+    Returns:
+        bool: Success status
+    """
+    if not supabase:
+        logger.error("❌ Supabase not initialized, cannot log cost")
+        return False
+
+    try:
+        data = {
+            'cost': round(float(cost), 8),  # Round to prevent precision issues
+            'tokens': int(tokens),
+            'model': str(model),
+            'created_at': datetime.now().isoformat()
+        }
+
+        result = supabase.table('openai_costs').insert(data).execute()
+
+        if result.data:
+            logger.info(f"✅ OpenAI cost logged: ${cost:.6f} ({tokens} tokens, {model})")
+            return True
+        else:
+            logger.warning("⚠️ OpenAI cost insert returned no data")
+            return False
+
+    except Exception as e:
+        logger.error(f"❌ Error logging OpenAI cost: {str(e)}")
+        return False
+
+def get_openai_cost_today() -> float:
+    """Get total OpenAI cost for today (backward compatible)"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, cannot get cost")
+        return 0.0
+
+    try:
+        today = datetime.now().date().isoformat()
+
+        result = supabase.table('openai_costs')\
+            .select('cost')\
+            .gte('created_at', f'{today}T00:00:00')\
+            .lte('created_at', f'{today}T23:59:59')\
+            .execute()
+
+        if result.data:
+            total_cost = sum(float(record.get('cost', 0)) for record in result.data)
+            logger.debug(f"📊 Today's OpenAI cost: ${total_cost:.6f}")
+            return total_cost
+
+        logger.debug("📊 No OpenAI costs found for today")
+        return 0.0
+
+    except Exception as e:
+        logger.error(f"❌ Error getting today's OpenAI cost: {str(e)}")
+        return 0.0
+
+def get_openai_cost_month() -> float:
+    """Get total OpenAI cost for current month (backward compatible)"""
+    if not supabase:
+        logger.error("❌ Supabase not initialized, cannot get cost")
+        return 0.0
+
+    try:
+        now = datetime.now()
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        result = supabase.table('openai_costs')\
+            .select('cost')\
+            .gte('created_at', month_start.isoformat())\
+            .execute()
+
+        if result.data:
+            total_cost = sum(float(record.get('cost', 0)) for record in result.data)
+            logger.debug(f"📊 This month's OpenAI cost: ${total_cost:.6f}")
+            return total_cost
+
+        logger.debug("📊 No OpenAI costs found for this month")
+        return 0.0
+
+    except Exception as e:
+        logger.error(f"❌ Error getting month's OpenAI cost: {str(e)}")
+        return 0.0
+
+# =============================================================================
+# BACKWARD COMPATIBLE USER LIMITS & RATE LIMITING
+# =============================================================================
+
+def get_user_usage_current_hour(ip: str) -> int:
+    """
+    Get user usage for current hour (backward compatible)
+
+    Args:
+        ip: User IP address
+
+    Returns:
+        int: Usage count for current hour
+    """
+    if not supabase:
+        logger.error("❌ Supabase not initialized, cannot get usage")
+        return 0
+
+    try:
+        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
+
+        result = supabase.table('user_limits')\
+            .select('count')\
+            .eq('ip', ip)\
+            .eq('hour_key', current_hour)\
+            .execute()
+
+        if result.data:
+            total_usage = sum(int(record.get('count', 0)) for record in result.data)
+            logger.debug(f"📊 Current hour usage for {ip}: {total_usage}")
+            return total_usage
+
+        logger.debug(f"📊 No usage found for {ip} in current hour")
+        return 0
+
+    except Exception as e:
+        logger.error(f"❌ Error getting user usage: {str(e)}")
+        return 0
+
+def increment_user_usage(ip: str, tools_slug: str = None) -> bool:
+    """
+    Increment user usage for current hour (backward compatible with optional tools_slug)
+
+    Args:
+        ip: User IP address
+        tools_slug: Optional tool identifier
+
+    Returns:
+        bool: Success status
+    """
+    if not supabase:
+        logger.error("❌ Supabase not initialized, cannot increment usage")
+        return False
+
+    try:
+        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
+        current_usage = get_user_usage_current_hour(ip)
+
+        data = {
+            'ip': str(ip),
+            'hour_key': current_hour,
+            'count': current_usage + 1,
+            'updated_at': datetime.now().isoformat()
+        }
+
+        # Add tools_slug if provided
+        if tools_slug:
+            data['tools_slug'] = str(tools_slug)
+
+        result = supabase.table('user_limits').upsert(data).execute()
+
+        if result.data:
+            tool_info = f" (tool: {tools_slug})" if tools_slug else ""
+            logger.info(f"✅ Usage incremented for {ip}: +1{tool_info}")
+            return True
+        else:
+            logger.warning(f"⚠️ Usage increment returned no data for {ip}")
+            return False
+
+    except Exception as e:
+        logger.error(f"❌ Error incrementing user usage for {ip}: {str(e)}")
+        return False
+
+# =============================================================================
+# ENHANCED FUNCTIONS FOR DASHBOARD
+# =============================================================================
+
+def log_openai_cost_enhanced(cost: float, tokens: int, model: str = "gpt-4o-mini",
+                           ip: str = None, tools_slug: str = None) -> bool:
+    """
+    Enhanced OpenAI cost logging with additional context
 
     Args:
         cost: API cost in USD
@@ -78,7 +253,7 @@ def log_openai_cost(cost: float, tokens: int, model: str = "gpt-4o-mini",
 
     try:
         data = {
-            'cost': round(float(cost), 8),  # Round to prevent precision issues
+            'cost': round(float(cost), 8),
             'tokens': int(tokens),
             'model': str(model),
             'created_at': datetime.now().isoformat()
@@ -93,87 +268,17 @@ def log_openai_cost(cost: float, tokens: int, model: str = "gpt-4o-mini",
         result = supabase.table('openai_costs').insert(data).execute()
 
         if result.data:
-            logger.info(f"✅ OpenAI cost logged: ${cost:.6f} ({tokens} tokens, {model})")
+            logger.info(f"✅ Enhanced OpenAI cost logged: ${cost:.6f} ({tokens} tokens, {model})")
             return True
         else:
-            logger.warning("⚠️ OpenAI cost insert returned no data")
+            logger.warning("⚠️ Enhanced OpenAI cost insert returned no data")
             return False
 
     except Exception as e:
-        logger.error(f"❌ Error logging OpenAI cost: {str(e)}")
+        logger.error(f"❌ Error logging enhanced OpenAI cost: {str(e)}")
         return False
 
-
-def get_openai_cost_today() -> float:
-    """Get total OpenAI cost for today"""
-    if not supabase:
-        logger.error("❌ Supabase not initialized, cannot get cost")
-        return 0.0
-
-    try:
-        today = datetime.now().date().isoformat()
-
-        result = supabase.table('openai_costs') \
-            .select('cost') \
-            .gte('created_at', f'{today}T00:00:00') \
-            .lte('created_at', f'{today}T23:59:59') \
-            .execute()
-
-        if result.data:
-            total_cost = sum(float(record.get('cost', 0)) for record in result.data)
-            logger.debug(f"📊 Today's OpenAI cost: ${total_cost:.6f}")
-            return total_cost
-
-        logger.debug("📊 No OpenAI costs found for today")
-        return 0.0
-
-    except Exception as e:
-        logger.error(f"❌ Error getting today's OpenAI cost: {str(e)}")
-        return 0.0
-
-
-def get_openai_cost_month() -> float:
-    """Get total OpenAI cost for current month"""
-    if not supabase:
-        logger.error("❌ Supabase not initialized, cannot get cost")
-        return 0.0
-
-    try:
-        now = datetime.now()
-        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-
-        result = supabase.table('openai_costs') \
-            .select('cost') \
-            .gte('created_at', month_start.isoformat()) \
-            .execute()
-
-        if result.data:
-            total_cost = sum(float(record.get('cost', 0)) for record in result.data)
-            logger.debug(f"📊 This month's OpenAI cost: ${total_cost:.6f}")
-            return total_cost
-
-        logger.debug("📊 No OpenAI costs found for this month")
-        return 0.0
-
-    except Exception as e:
-        logger.error(f"❌ Error getting month's OpenAI cost: {str(e)}")
-        return 0.0
-
-
-def get_openai_cost_stats() -> Dict[str, Any]:
-    """Get comprehensive OpenAI cost statistics"""
-    return {
-        'today': get_openai_cost_today(),
-        'month': get_openai_cost_month(),
-        'connection_status': check_connection()
-    }
-
-
-# =============================================================================
-# USER LIMITS & RATE LIMITING
-# =============================================================================
-
-def get_user_usage_current_hour(ip: str, tools_slug: str = None) -> int:
+def get_user_usage_current_hour_by_tool(ip: str, tools_slug: str = None) -> int:
     """
     Get user usage for current hour, optionally filtered by tool
 
@@ -191,9 +296,9 @@ def get_user_usage_current_hour(ip: str, tools_slug: str = None) -> int:
     try:
         current_hour = datetime.now().strftime('%Y-%m-%d-%H')
 
-        query = supabase.table('user_limits') \
-            .select('count') \
-            .eq('ip', ip) \
+        query = supabase.table('user_limits')\
+            .select('count')\
+            .eq('ip', ip)\
             .eq('hour_key', current_hour)
 
         # Add tool filter if specified
@@ -214,52 +319,13 @@ def get_user_usage_current_hour(ip: str, tools_slug: str = None) -> int:
         logger.error(f"❌ Error getting user usage: {str(e)}")
         return 0
 
-
-def increment_user_usage(ip: str, tools_slug: str = None, increment_by: int = 1) -> bool:
-    """
-    Increment user usage for current hour
-
-    Args:
-        ip: User IP address
-        tools_slug: Optional tool identifier
-        increment_by: Amount to increment (default: 1)
-
-    Returns:
-        bool: Success status
-    """
-    if not supabase:
-        logger.error("❌ Supabase not initialized, cannot increment usage")
-        return False
-
-    try:
-        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
-        current_usage = get_user_usage_current_hour(ip, tools_slug)
-
-        data = {
-            'ip': str(ip),
-            'hour_key': current_hour,
-            'count': current_usage + increment_by,
-            'updated_at': datetime.now().isoformat()
-        }
-
-        # Add tools_slug if provided
-        if tools_slug:
-            data['tools_slug'] = str(tools_slug)
-
-        result = supabase.table('user_limits').upsert(data).execute()
-
-        if result.data:
-            tool_info = f" (tool: {tools_slug})" if tools_slug else ""
-            logger.info(f"✅ Usage incremented for {ip}: +{increment_by}{tool_info}")
-            return True
-        else:
-            logger.warning(f"⚠️ Usage increment returned no data for {ip}")
-            return False
-
-    except Exception as e:
-        logger.error(f"❌ Error incrementing user usage for {ip}: {str(e)}")
-        return False
-
+def get_openai_cost_stats() -> Dict[str, Any]:
+    """Get comprehensive OpenAI cost statistics"""
+    return {
+        'today': get_openai_cost_today(),
+        'month': get_openai_cost_month(),
+        'connection_status': check_connection()
+    }
 
 def get_user_usage_stats(ip: str, hours_back: int = 24) -> Dict[str, Any]:
     """
@@ -280,10 +346,10 @@ def get_user_usage_stats(ip: str, hours_back: int = 24) -> Dict[str, Any]:
         start_time = datetime.now() - timedelta(hours=hours_back)
         start_hour = start_time.strftime('%Y-%m-%d-%H')
 
-        result = supabase.table('user_limits') \
-            .select('*') \
-            .eq('ip', ip) \
-            .gte('hour_key', start_hour) \
+        result = supabase.table('user_limits')\
+            .select('*')\
+            .eq('ip', ip)\
+            .gte('hour_key', start_hour)\
             .execute()
 
         if not result.data:
@@ -328,7 +394,6 @@ def get_user_usage_stats(ip: str, hours_back: int = 24) -> Dict[str, Any]:
         logger.error(f"❌ Error getting usage stats for {ip}: {str(e)}")
         return {}
 
-
 def check_rate_limit(ip: str, limit: int = 50, tools_slug: str = None) -> Dict[str, Any]:
     """
     Check if user has exceeded rate limit
@@ -341,7 +406,7 @@ def check_rate_limit(ip: str, limit: int = 50, tools_slug: str = None) -> Dict[s
     Returns:
         Dict with rate limit status
     """
-    current_usage = get_user_usage_current_hour(ip, tools_slug)
+    current_usage = get_user_usage_current_hour_by_tool(ip, tools_slug) if tools_slug else get_user_usage_current_hour(ip)
     remaining = max(0, limit - current_usage)
     is_limited = current_usage >= limit
 
@@ -360,65 +425,7 @@ def check_rate_limit(ip: str, limit: int = 50, tools_slug: str = None) -> Dict[s
         'percentage_used': (current_usage / limit) * 100 if limit > 0 else 0
     }
 
-
-# =============================================================================
-# UTILITY FUNCTIONS
-# =============================================================================
-
-def cleanup_old_records(days_to_keep: int = 30) -> Dict[str, int]:
-    """
-    Clean up old records from database tables
-
-    Args:
-        days_to_keep: Number of days to retain
-
-    Returns:
-        Dict with cleanup results
-    """
-    if not supabase:
-        logger.error("❌ Supabase not initialized, cannot cleanup")
-        return {}
-
-    try:
-        cutoff_date = (datetime.now() - timedelta(days=days_to_keep)).isoformat()
-        results = {}
-
-        # Cleanup openai_costs
-        try:
-            result = supabase.table('openai_costs') \
-                .delete() \
-                .lt('created_at', cutoff_date) \
-                .execute()
-            results['openai_costs_deleted'] = len(result.data) if result.data else 0
-        except Exception as e:
-            logger.error(f"❌ Error cleaning openai_costs: {str(e)}")
-            results['openai_costs_deleted'] = 0
-
-        # Cleanup user_limits (convert hour_key to date for comparison)
-        try:
-            # This is more complex since hour_key is a string format
-            # We'll need to be more careful here
-            cutoff_hour = (datetime.now() - timedelta(days=days_to_keep)).strftime('%Y-%m-%d-%H')
-            result = supabase.table('user_limits') \
-                .delete() \
-                .lt('hour_key', cutoff_hour) \
-                .execute()
-            results['user_limits_deleted'] = len(result.data) if result.data else 0
-        except Exception as e:
-            logger.error(f"❌ Error cleaning user_limits: {str(e)}")
-            results['user_limits_deleted'] = 0
-
-        total_deleted = sum(results.values())
-        logger.info(f"✅ Cleanup completed: {total_deleted} records deleted")
-
-        return results
-
-    except Exception as e:
-        logger.error(f"❌ Error during cleanup: {str(e)}")
-        return {}
-
-
-def health_check() -> Dict[str, Any]:
+def get_database_health() -> Dict[str, Any]:
     """Get comprehensive database health information"""
     health = {
         'connection': check_connection(),
@@ -452,24 +459,55 @@ def health_check() -> Dict[str, Any]:
 
     return health
 
+def cleanup_old_records(days_to_keep: int = 30) -> Dict[str, int]:
+    """
+    Clean up old records from database tables
 
-def log_database_operation(operation: str, table: str, data: Dict = None,
-                           success: bool = True, error: str = None):
-    """Log database operations for debugging"""
-    log_level = logging.INFO if success else logging.ERROR
-    status = "✅" if success else "❌"
+    Args:
+        days_to_keep: Number of days to retain
 
-    message = f"{status} DB Operation: {operation} on {table}"
+    Returns:
+        Dict with cleanup results
+    """
+    if not supabase:
+        logger.error("❌ Supabase not initialized, cannot cleanup")
+        return {}
 
-    if data:
-        # Log first few fields for debugging without exposing sensitive data
-        safe_data = {k: v for k, v in list(data.items())[:3]}
-        message += f" with data: {safe_data}"
+    try:
+        cutoff_date = (datetime.now() - timedelta(days=days_to_keep)).isoformat()
+        results = {}
 
-    if error:
-        message += f" - Error: {error}"
+        # Cleanup openai_costs
+        try:
+            result = supabase.table('openai_costs')\
+                .delete()\
+                .lt('created_at', cutoff_date)\
+                .execute()
+            results['openai_costs_deleted'] = len(result.data) if result.data else 0
+        except Exception as e:
+            logger.error(f"❌ Error cleaning openai_costs: {str(e)}")
+            results['openai_costs_deleted'] = 0
 
-    logger.log(log_level, message)
+        # Cleanup user_limits
+        try:
+            cutoff_hour = (datetime.now() - timedelta(days=days_to_keep)).strftime('%Y-%m-%d-%H')
+            result = supabase.table('user_limits')\
+                .delete()\
+                .lt('hour_key', cutoff_hour)\
+                .execute()
+            results['user_limits_deleted'] = len(result.data) if result.data else 0
+        except Exception as e:
+            logger.error(f"❌ Error cleaning user_limits: {str(e)}")
+            results['user_limits_deleted'] = 0
+
+        total_deleted = sum(results.values())
+        logger.info(f"✅ Cleanup completed: {total_deleted} records deleted")
+
+        return results
+
+    except Exception as e:
+        logger.error(f"❌ Error during cleanup: {str(e)}")
+        return {}
 
 # Initialize on import
 if not supabase:

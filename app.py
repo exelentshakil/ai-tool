@@ -3,17 +3,23 @@ from flask_cors import CORS
 from flask_limiter import Limiter
 from dotenv import load_dotenv
 import os
+import sys
 from datetime import datetime, timedelta
 
 # Load environment variables first
 load_dotenv()
 
-# Import our modules
+# Import our enhanced modules
 from utils.database import (
     init_supabase,
     get_openai_cost_today,
-    health_check as db_health_check,
-    supabase
+    get_openai_cost_month,
+    get_database_health,
+    get_openai_cost_stats,
+    get_user_usage_stats,
+    check_rate_limit,
+    supabase,
+    check_connection
 )
 from utils.rate_limiting import get_remote_address, check_user_limit, is_premium_user, increment_user_usage
 from utils.validation import validate_tool_inputs
@@ -72,8 +78,7 @@ limiter.init_app(app)
 
 # Initialize Supabase database
 print("🔍 Initializing Supabase database...")
-supabase_client = init_supabase()
-if supabase_client:
+if init_supabase():
     print("✅ Supabase initialized successfully")
 else:
     print("❌ Failed to initialize Supabase - check your .env file")
@@ -82,6 +87,303 @@ else:
 print("🚀 Starting application...")
 load_result = load_all_tools()
 print(f"🔍 Tools loaded successfully: {load_result}")
+
+
+# ─── DASHBOARD API ENDPOINTS ────────────────────────────────────────────────────
+@app.route('/api/health', methods=['GET'])
+def api_health():
+    """Get database health status for dashboard"""
+    try:
+        health = get_database_health()
+        return jsonify(health)
+    except Exception as e:
+        return jsonify({
+            'connection': False,
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }), 500
+
+
+@app.route('/api/costs/stats', methods=['GET'])
+def api_cost_stats():
+    """Get cost statistics for dashboard"""
+    try:
+        today_cost = get_openai_cost_today()
+        month_cost = get_openai_cost_month()
+
+        # Calculate week cost (last 7 days)
+        week_start = datetime.now() - timedelta(days=7)
+        if supabase:
+            week_result = supabase.table('openai_costs') \
+                .select('cost') \
+                .gte('created_at', week_start.isoformat()) \
+                .execute()
+            week_cost = sum(float(record.get('cost', 0)) for record in week_result.data) if week_result.data else 0
+        else:
+            week_cost = 0
+
+        # Calculate average cost per request (today)
+        if supabase:
+            today = datetime.now().strftime('%Y-%m-%d')
+            today_result = supabase.table('user_limits') \
+                .select('count') \
+                .gte('hour_key', today) \
+                .execute()
+            total_requests = sum(record.get('count', 0) for record in today_result.data) if today_result.data else 0
+            average_cost = today_cost / max(1, total_requests)
+        else:
+            average_cost = 0
+
+        return jsonify({
+            'today': today_cost,
+            'week': week_cost,
+            'month': month_cost,
+            'average': average_cost
+        })
+    except Exception as e:
+        app.logger.error(f"Error getting cost stats: {str(e)}")
+        return jsonify({
+            'today': 0,
+            'week': 0,
+            'month': 0,
+            'average': 0
+        }), 500
+
+
+@app.route('/api/costs/recent', methods=['GET'])
+def api_recent_costs():
+    """Get recent cost records for dashboard"""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+
+        if not supabase:
+            return jsonify([])
+
+        result = supabase.table('openai_costs') \
+            .select('*') \
+            .order('created_at', desc=True) \
+            .limit(limit) \
+            .execute()
+
+        return jsonify(result.data if result.data else [])
+    except Exception as e:
+        app.logger.error(f"Error getting recent costs: {str(e)}")
+        return jsonify([]), 500
+
+
+@app.route('/api/users/stats', methods=['GET'])
+def api_user_stats():
+    """Get user statistics for dashboard"""
+    try:
+        if not supabase:
+            return jsonify({
+                'active_24h': 0,
+                'total_requests_today': 0,
+                'blocked_count': 0
+            })
+
+        # Get active users count (users who made requests in last 24h)
+        yesterday = (datetime.now() - timedelta(days=1)).strftime('%Y-%m-%d-%H')
+
+        result = supabase.table('user_limits') \
+            .select('ip') \
+            .gte('hour_key', yesterday) \
+            .execute()
+
+        unique_ips = set(record['ip'] for record in result.data) if result.data else set()
+
+        # Get total requests today
+        today = datetime.now().strftime('%Y-%m-%d')
+        today_result = supabase.table('user_limits') \
+            .select('count') \
+            .gte('hour_key', today) \
+            .execute()
+
+        total_requests = sum(record.get('count', 0) for record in today_result.data) if today_result.data else 0
+
+        return jsonify({
+            'active_24h': len(unique_ips),
+            'total_requests_today': total_requests,
+            'blocked_count': 0  # TODO: Implement if you have blocked users tracking
+        })
+    except Exception as e:
+        app.logger.error(f"Error getting user stats: {str(e)}")
+        return jsonify({
+            'active_24h': 0,
+            'total_requests_today': 0,
+            'blocked_count': 0
+        }), 500
+
+
+@app.route('/api/users', methods=['GET'])
+def api_users():
+    """Get user list for dashboard"""
+    try:
+        limit = request.args.get('limit', 100, type=int)
+
+        if not supabase:
+            return jsonify([])
+
+        # Get recent user activity
+        yesterday = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d-%H')
+
+        result = supabase.table('user_limits') \
+            .select('ip, count, hour_key, tools_slug, updated_at') \
+            .gte('hour_key', yesterday) \
+            .order('updated_at', desc=True) \
+            .limit(limit) \
+            .execute()
+
+        if not result.data:
+            return jsonify([])
+
+        # Process user data
+        users_dict = {}
+        for record in result.data:
+            ip = record['ip']
+            if ip not in users_dict:
+                users_dict[ip] = {
+                    'ip': ip,
+                    'status': 'premium' if is_premium_user(ip) else 'guest',
+                    'requests_today': 0,
+                    'last_seen': record.get('updated_at'),
+                    'tools_used': set()
+                }
+
+            # Add to today's count if it's today
+            today = datetime.now().strftime('%Y-%m-%d')
+            if record['hour_key'].startswith(today):
+                users_dict[ip]['requests_today'] += record.get('count', 0)
+
+            # Track tools used
+            if record.get('tools_slug'):
+                users_dict[ip]['tools_used'].add(record['tools_slug'])
+
+            # Update last seen to most recent
+            if record.get('updated_at') and record['updated_at'] > users_dict[ip]['last_seen']:
+                users_dict[ip]['last_seen'] = record['updated_at']
+
+        # Convert to list and clean up
+        users_list = []
+        for user in users_dict.values():
+            user['tools_used'] = list(user['tools_used'])  # Convert set to list
+            users_list.append(user)
+
+        return jsonify(users_list)
+    except Exception as e:
+        app.logger.error(f"Error getting users: {str(e)}")
+        return jsonify([]), 500
+
+
+@app.route('/api/users/status', methods=['POST'])
+def api_update_user_status():
+    """Update user status (for blocking/unblocking)"""
+    try:
+        data = request.json
+        ip = data.get('ip')
+        status = data.get('status')
+
+        if not ip or not status:
+            return jsonify({'error': 'IP and status required'}), 400
+
+        # TODO: Implement user status update in your database
+        # For now, just return success
+        return jsonify({'success': True, 'message': f'User {ip} status updated to {status}'})
+
+    except Exception as e:
+        app.logger.error(f"Error updating user status: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/tools/stats', methods=['GET'])
+def api_tools_stats():
+    """Get tools usage statistics for dashboard"""
+    try:
+        if not supabase:
+            return jsonify([])
+
+        # Get tools usage from last 30 days
+        month_ago = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d-%H')
+
+        result = supabase.table('user_limits') \
+            .select('tools_slug, count, hour_key') \
+            .gte('hour_key', month_ago) \
+            .execute()
+
+        if not result.data:
+            return jsonify([])
+
+        # Process tools data
+        tools_stats = {}
+        today = datetime.now().strftime('%Y-%m-%d')
+        week_ago = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+
+        for record in result.data:
+            tool = record.get('tools_slug', 'unknown')
+            count = record.get('count', 0)
+            hour_key = record.get('hour_key', '')
+
+            if tool not in tools_stats:
+                tools_stats[tool] = {
+                    'name': tool.title().replace('-', ' '),
+                    'tools_slug': tool,
+                    'total_uses': 0,
+                    'today': 0,
+                    'week': 0,
+                    'avg_cost': 0
+                }
+
+            tools_stats[tool]['total_uses'] += count
+
+            if hour_key.startswith(today):
+                tools_stats[tool]['today'] += count
+            elif hour_key >= week_ago:
+                tools_stats[tool]['week'] += count
+
+        # Get cost data for average calculation
+        cost_result = supabase.table('openai_costs') \
+            .select('tools_slug, cost') \
+            .gte('created_at', f'{month_ago}T00:00:00') \
+            .execute()
+
+        if cost_result.data:
+            cost_by_tool = {}
+            for record in cost_result.data:
+                tool = record.get('tools_slug', 'unknown')
+                cost = record.get('cost', 0)
+                if tool not in cost_by_tool:
+                    cost_by_tool[tool] = []
+                cost_by_tool[tool].append(cost)
+
+            # Calculate average cost per tool
+            for tool, stats in tools_stats.items():
+                if tool in cost_by_tool and cost_by_tool[tool]:
+                    stats['avg_cost'] = sum(cost_by_tool[tool]) / len(cost_by_tool[tool])
+
+        return jsonify(list(tools_stats.values()))
+
+    except Exception as e:
+        app.logger.error(f"Error getting tools stats: {str(e)}")
+        return jsonify([]), 500
+
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+def api_settings():
+    """Get/update system settings"""
+    if request.method == 'POST':
+        try:
+            settings = request.json
+            # TODO: Implement settings storage in database
+            return jsonify({'success': True, 'message': 'Settings saved'})
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+    else:
+        # Return current settings
+        return jsonify({
+            'daily_budget': float(getattr(sys.modules.get('config.settings'), 'DAILY_OPENAI_BUDGET', 10.0)),
+            'hourly_limit': 50,
+            'premium_ips': []
+        })
 
 
 # ─── RATE LIMITING ENDPOINTS ───────────────────────────────────────────────────
@@ -248,10 +550,10 @@ def health_check():
     """Health check endpoint"""
     try:
         daily_cost = get_openai_cost_today()
-        db_health = db_health_check()
+        db_health = get_database_health()
 
         # Get daily budget from settings, with fallback
-        daily_budget = getattr(sys.modules.get('config.settings'), 'DAILY_OPENAI_BUDGET', 10.0)
+        daily_budget = float(getattr(sys.modules.get('config.settings'), 'DAILY_OPENAI_BUDGET', 10.0))
 
         return jsonify({
             "status": "healthy",
@@ -275,7 +577,7 @@ def health_check():
 def database_status():
     """Get detailed database status"""
     try:
-        health = db_health_check()
+        health = get_database_health()
 
         return jsonify({
             'success': True,
@@ -359,18 +661,34 @@ def run_startup_checks():
 
     # Check database connection
     print(f"\n🗄️ Database Status:")
-    health = db_health_check()
-    print(f"  Status: {health['status']}")
-    print(f"  Message: {health['message']}")
+    health = get_database_health()
+    print(f"  Status: {'Connected' if health.get('connection') else 'Disconnected'}")
+    print(f"  Supabase: {'✅' if supabase else '❌'}")
+    if health.get('tables'):
+        print(f"  Tables: {list(health['tables'].keys())}")
 
     # Check tools
     print(f"\n🔧 Tools Status:")
     tools_count = len(tools_config.ALL_TOOLS) if hasattr(tools_config, 'ALL_TOOLS') else 0
     print(f"  Loaded tools: {tools_count}")
 
+    # Check costs
+    print(f"\n💰 Cost Status:")
+    try:
+        daily_cost = get_openai_cost_today()
+        monthly_cost = get_openai_cost_month()
+        daily_budget = float(getattr(sys.modules.get('config.settings'), 'DAILY_OPENAI_BUDGET', 10.0))
+        print(f"  Today's cost: ${daily_cost:.4f}")
+        print(f"  Monthly cost: ${monthly_cost:.4f}")
+        print(f"  Daily budget: ${daily_budget:.2f}")
+        print(f"  Budget remaining: ${daily_budget - daily_cost:.4f}")
+    except Exception as e:
+        print(f"  ❌ Error getting costs: {e}")
+
     print("\n" + "=" * 50)
     if supabase and env_vars['OPENAI_API_KEY']:
         print("✅ All systems ready!")
+        print("🌐 Dashboard available at: http://localhost:5000/api/health")
     else:
         print("❌ Some systems need attention - check errors above")
     print("=" * 50 + "\n")
