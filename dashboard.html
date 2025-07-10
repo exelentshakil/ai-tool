@@ -5,196 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Tools Dashboard</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #f5f7fa;
-            color: #333;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            text-align: center;
-        }
-
-        .header h1 {
-            font-size: 2rem;
-            margin-bottom: 10px;
-        }
-
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: #667eea;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            color: #666;
-            font-size: 0.9rem;
-        }
-
-        .table-container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-            margin-bottom: 30px;
-        }
-
-        .table-header {
-            padding: 20px;
-            background: #f8f9fa;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .table-header h3 {
-            margin: 0;
-            color: #333;
-        }
-
-        .refresh-btn {
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-        }
-
-        .refresh-btn:hover {
-            background: #5a6fd8;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #eee;
-        }
-
-        th {
-            background: #f8f9fa;
-            font-weight: 600;
-            color: #333;
-        }
-
-        tbody tr:hover {
-            background: #f8f9fa;
-        }
-
-        .cost-high {
-            color: #e74c3c;
-            font-weight: bold;
-        }
-
-        .cost-medium {
-            color: #f39c12;
-            font-weight: bold;
-        }
-
-        .cost-low {
-            color: #27ae60;
-        }
-
-        .usage-high {
-            background: #ffebee;
-            color: #c62828;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-weight: bold;
-        }
-
-        .usage-medium {
-            background: #fff3e0;
-            color: #ef6c00;
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
-
-        .usage-low {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 4px 8px;
-            border-radius: 4px;
-        }
-
-        .block-btn {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .block-btn:hover {
-            background: #c0392b;
-        }
-
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-
-            table {
-                font-size: 14px;
-            }
-
-            th, td {
-                padding: 8px 10px;
-            }
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; text-align: center; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); text-align: center; }
+        .stat-value { font-size: 2rem; font-weight: bold; color: #667eea; margin-bottom: 5px; }
+        .stat-label { color: #666; font-size: 0.9rem; }
+        .table-container { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; margin-bottom: 30px; }
+        .table-header { padding: 20px; background: #f8f9fa; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+        .refresh-btn { background: #667eea; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background: #f8f9fa; font-weight: 600; }
+        .cost-high { color: #e74c3c; font-weight: bold; }
+        .cost-medium { color: #f39c12; font-weight: bold; }
+        .cost-low { color: #27ae60; }
+        .usage-high { background: #ffebee; color: #c62828; padding: 4px 8px; border-radius: 4px; font-weight: bold; }
+        .usage-medium { background: #fff3e0; color: #ef6c00; padding: 4px 8px; border-radius: 4px; }
+        .usage-low { background: #e8f5e8; color: #2e7d32; padding: 4px 8px; border-radius: 4px; }
+        .block-btn { background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .unblock-btn { background: #27ae60; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
+        .loading { text-align: center; padding: 40px; color: #666; }
+        .error { color: #e74c3c; }
+        .success { color: #27ae60; }
+        .status-blocked { background: #ffebee; color: #c62828; padding: 2px 6px; border-radius: 3px; }
+        .status-premium { background: #fff3e0; color: #ef6c00; padding: 2px 6px; border-radius: 3px; }
+        .status-guest { background: #e8f5e8; color: #2e7d32; padding: 2px 6px; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -205,6 +43,7 @@
             <p><small>Last updated: <span id="last-updated">Loading...</span></small></p>
         </div>
 
+        <!-- Stats Overview -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-value" id="today-cost">$0.00</div>
@@ -216,17 +55,26 @@
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="total-requests">0</div>
-                <div class="stat-label">Total Requests Today</div>
+                <div class="stat-label">Total Requests</div>
             </div>
             <div class="stat-card">
                 <div class="stat-value" id="active-users">0</div>
                 <div class="stat-label">Active Users</div>
             </div>
+            <div class="stat-card">
+                <div class="stat-value" id="blocked-ips">0</div>
+                <div class="stat-label">Blocked IPs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="total-users">0</div>
+                <div class="stat-label">Total Users</div>
+            </div>
         </div>
 
+        <!-- Recent OpenAI Costs -->
         <div class="table-container">
             <div class="table-header">
-                <h3>💰 Recent OpenAI Costs</h3>
+                <h3>💰 Recent OpenAI Costs (Last 50)</h3>
                 <button class="refresh-btn" onclick="loadCosts()">Refresh</button>
             </div>
             <table>
@@ -238,58 +86,86 @@
                         <th>Tokens</th>
                         <th>Cost</th>
                         <th>User IP</th>
+                        <th>Response Time</th>
                     </tr>
                 </thead>
                 <tbody id="costs-table">
-                    <tr><td colspan="6" class="loading">Loading costs...</td></tr>
+                    <tr><td colspan="7" class="loading">Loading costs...</td></tr>
                 </tbody>
             </table>
         </div>
 
+        <!-- User Management -->
         <div class="table-container">
             <div class="table-header">
-                <h3>📊 Top Users by Usage</h3>
+                <h3>👥 User Management (Top 100)</h3>
                 <button class="refresh-btn" onclick="loadUsers()">Refresh</button>
             </div>
             <table>
                 <thead>
                     <tr>
                         <th>IP Address</th>
+                        <th>Status</th>
                         <th>Requests Today</th>
-                        <th>Total Cost</th>
+                        <th>Total Requests</th>
                         <th>Last Seen</th>
-                        <th>Action</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="users-table">
-                    <tr><td colspan="5" class="loading">Loading users...</td></tr>
+                    <tr><td colspan="6" class="loading">Loading users...</td></tr>
                 </tbody>
             </table>
         </div>
 
+        <!-- Tools Usage -->
         <div class="table-container">
             <div class="table-header">
-                <h3>🔧 Tools Usage</h3>
+                <h3>🔧 Tools Usage Statistics</h3>
                 <button class="refresh-btn" onclick="loadTools()">Refresh</button>
             </div>
             <table>
                 <thead>
                     <tr>
                         <th>Tool Name</th>
-                        <th>Uses Today</th>
-                        <th>Total Cost</th>
+                        <th>Total Uses</th>
+                        <th>Today</th>
+                        <th>This Week</th>
                         <th>Avg Cost</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody id="tools-table">
-                    <tr><td colspan="4" class="loading">Loading tools...</td></tr>
+                    <tr><td colspan="6" class="loading">Loading tools...</td></tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- System Health -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3>🔍 System Health</h3>
+                <button class="refresh-btn" onclick="loadHealth()">Refresh</button>
+            </div>
+            <div id="health-status" style="padding: 20px;">
+                <p class="loading">Loading health status...</p>
+            </div>
+        </div>
+
+        <!-- Settings -->
+        <div class="table-container">
+            <div class="table-header">
+                <h3>⚙️ Current Settings</h3>
+                <button class="refresh-btn" onclick="loadSettings()">Refresh</button>
+            </div>
+            <div id="settings-info" style="padding: 20px;">
+                <p class="loading">Loading settings...</p>
+            </div>
         </div>
     </div>
 
     <script>
-        // Load data on page load
+        // Load all data on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadAllData();
             // Auto refresh every 30 seconds
@@ -301,7 +177,9 @@
                 loadStats(),
                 loadCosts(),
                 loadUsers(),
-                loadTools()
+                loadTools(),
+                loadHealth(),
+                loadSettings()
             ]);
             updateLastUpdated();
         }
@@ -311,13 +189,13 @@
                 const response = await fetch('/dashboard/api/stats');
                 const data = await response.json();
 
-                if (data.costs) {
-                    document.getElementById('today-cost').textContent = `${data.costs.daily_cost}`;
-                    document.getElementById('month-cost').textContent = `${data.costs.monthly_cost}`;
-                }
-                if (data.current_hour) {
-                    document.getElementById('total-requests').textContent = data.current_hour.total_requests;
-                    document.getElementById('active-users').textContent = data.current_hour.total_users;
+                if (data.success && data.stats) {
+                    document.getElementById('today-cost').textContent = `$${data.stats.today_cost}`;
+                    document.getElementById('month-cost').textContent = `$${data.stats.month_cost}`;
+                    document.getElementById('total-requests').textContent = data.stats.total_requests;
+                    document.getElementById('active-users').textContent = data.stats.active_users;
+                    document.getElementById('blocked-ips').textContent = data.stats.blocked_ips;
+                    document.getElementById('total-users').textContent = data.stats.total_users;
                 }
             } catch (error) {
                 console.error('Error loading stats:', error);
@@ -326,111 +204,244 @@
 
         async function loadCosts() {
             try {
-                // Get recent OpenAI costs from database directly or use existing endpoint
+                const response = await fetch('/dashboard/api/costs?period=7d');
+                const data = await response.json();
+
                 const tbody = document.getElementById('costs-table');
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">Cost tracking available in admin panel</td></tr>';
+                tbody.innerHTML = '';
+
+                if (data.success && data.costs && data.costs.length > 0) {
+                    data.costs.forEach(cost => {
+                        const row = document.createElement('tr');
+                        const time = new Date(cost.timestamp).toLocaleString();
+                        const costClass = cost.cost > 0.01 ? 'cost-high' : cost.cost > 0.005 ? 'cost-medium' : 'cost-low';
+
+                        row.innerHTML = `
+                            <td>${time}</td>
+                            <td>${cost.tool || 'Unknown'}</td>
+                            <td>${cost.model || 'N/A'}</td>
+                            <td>${cost.tokens || 'N/A'}</td>
+                            <td class="${costClass}">$${cost.cost}</td>
+                            <td><code>${cost.user_ip || 'N/A'}</code></td>
+                            <td>${cost.response_time_ms || 'N/A'}ms</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+
+                    // Show aggregated stats if available
+                    if (data.aggregated) {
+                        const aggRow = document.createElement('tr');
+                        aggRow.style.fontWeight = 'bold';
+                        aggRow.style.backgroundColor = '#f8f9fa';
+                        aggRow.innerHTML = `
+                            <td colspan="4">TOTALS</td>
+                            <td class="cost-high">Today: $${data.aggregated.today} | Week: $${data.aggregated.week} | Month: $${data.aggregated.month}</td>
+                            <td colspan="2">Avg/Request: $${data.aggregated.avg_per_request}</td>
+                        `;
+                        tbody.appendChild(aggRow);
+                    }
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: #666;">No cost data available</td></tr>';
+                }
             } catch (error) {
                 console.error('Error loading costs:', error);
-                document.getElementById('costs-table').innerHTML = '<tr><td colspan="6" style="text-align: center; color: #e74c3c;">Error loading costs</td></tr>';
+                document.getElementById('costs-table').innerHTML = '<tr><td colspan="7" class="error">Error loading costs</td></tr>';
             }
         }
 
         async function loadUsers() {
             try {
-                                const response = await fetch('/dashboard/api/users');
-
+                const response = await fetch('/dashboard/api/users');
                 const data = await response.json();
 
                 const tbody = document.getElementById('users-table');
                 tbody.innerHTML = '';
 
-                if (data.recent_users && data.recent_users.length > 0) {
-                    data.recent_users.slice(0, 20).forEach(user => {
+                if (data.success && data.users && data.users.length > 0) {
+                    data.users.forEach(user => {
                         const row = document.createElement('tr');
-                        const usageClass = user.total_requests > 100 ? 'usage-high' :
-                                         user.total_requests > 50 ? 'usage-medium' : 'usage-low';
-                        const lastSeen = user.last_used ? new Date(user.last_used).toLocaleString() : 'Never';
+                        const usageClass = user.requests_today > 100 ? 'usage-high' :
+                                         user.requests_today > 50 ? 'usage-medium' : 'usage-low';
+                        const lastSeen = user.last_seen ? new Date(user.last_seen).toLocaleString() : 'Never';
+                        const statusClass = `status-${user.status}`;
 
                         row.innerHTML = `
                             <td><code>${user.ip}</code></td>
-                            <td><span class="${usageClass}">${user.total_requests}</span></td>
-                            <td>$0.00</td>
+                            <td><span class="${statusClass}">${user.status}</span></td>
+                            <td><span class="${usageClass}">${user.requests_today}</span></td>
+                            <td>${user.total_requests}</td>
                             <td>${lastSeen}</td>
                             <td>
-                                <button class="block-btn" onclick="blockUser('${user.ip}')">Block</button>
+                                ${user.status === 'blocked' ?
+                                    `<button class="unblock-btn" onclick="unblockUser('${user.ip}')">Unblock</button>` :
+                                    `<button class="block-btn" onclick="blockUser('${user.ip}')">Block</button>`
+                                }
                             </td>
                         `;
                         tbody.appendChild(row);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">No user data available</td></tr>';
-                }
-
-                // Show top users
-                if (data.top_users && data.top_users.length > 0) {
-                    data.top_users.forEach(user => {
-                        const row = document.createElement('tr');
-                        const usageClass = user.requests > 100 ? 'usage-high' :
-                                         user.requests > 50 ? 'usage-medium' : 'usage-low';
-
-                        row.innerHTML = `
-                            <td><code>${user.ip}</code></td>
-                            <td><span class="${usageClass}">${user.requests}</span></td>
-                            <td>$0.00</td>
-                            <td>Recent</td>
-                            <td>
-                                <button class="block-btn" onclick="blockUser('${user.ip}')">Block</button>
-                            </td>
-                        `;
-                        tbody.appendChild(row);
-                    });
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">No user data available</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading users:', error);
-                document.getElementById('users-table').innerHTML = '<tr><td colspan="5" style="text-align: center; color: #e74c3c;">Error loading users</td></tr>';
+                document.getElementById('users-table').innerHTML = '<tr><td colspan="6" class="error">Error loading users</td></tr>';
             }
         }
 
         async function loadTools() {
             try {
-                                const response = await fetch('/dashboard/api/tools');
-
+                const response = await fetch('/dashboard/api/tools');
                 const data = await response.json();
 
                 const tbody = document.getElementById('tools-table');
                 tbody.innerHTML = '';
 
-                if (data.tools_list && data.tools_list.length > 0) {
-                    data.tools_list.forEach(tool => {
+                if (data.success && data.tools && data.tools.length > 0) {
+                    data.tools.forEach(tool => {
                         const row = document.createElement('tr');
 
                         row.innerHTML = `
                             <td><strong>${tool.name}</strong></td>
-                            <td>${tool.usage_count}</td>
-                            <td>$0.00</td>
-                            <td>$0.001</td>
+                            <td>${tool.total_uses}</td>
+                            <td>${tool.today}</td>
+                            <td>${tool.week}</td>
+                            <td>$${tool.avg_cost}</td>
+                            <td><span class="status-${tool.status}">${tool.status}</span></td>
                         `;
                         tbody.appendChild(row);
                     });
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #666;">No tools data available</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">No tools data available</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading tools:', error);
-                document.getElementById('tools-table').innerHTML = '<tr><td colspan="4" style="text-align: center; color: #e74c3c;">Error loading tools</td></tr>';
+                document.getElementById('tools-table').innerHTML = '<tr><td colspan="6" class="error">Error loading tools</td></tr>';
+            }
+        }
+
+        async function loadHealth() {
+            try {
+                const response = await fetch('/dashboard/api/health');
+                const data = await response.json();
+
+                const container = document.getElementById('health-status');
+
+                if (data.success && data.health) {
+                    const health = data.health;
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div>
+                                <h4>Database</h4>
+                                <p class="${health.database.supabase ? 'success' : 'error'}">
+                                    ${health.database.supabase ? '✅ Connected' : '❌ Disconnected'}
+                                </p>
+                                <small>Status: ${health.database.status}</small>
+                            </div>
+                            <div>
+                                <h4>OpenAI API</h4>
+                                <p class="${health.apis.openai ? 'success' : 'error'}">
+                                    ${health.apis.openai ? '✅ Configured' : '❌ Not Configured'}
+                                </p>
+                            </div>
+                            <div>
+                                <h4>System</h4>
+                                <p class="success">✅ ${health.system.uptime}</p>
+                                <small>Last check: ${new Date(health.system.last_check).toLocaleString()}</small>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<p class="error">Error loading health data</p>';
+                }
+            } catch (error) {
+                console.error('Error loading health:', error);
+                document.getElementById('health-status').innerHTML = '<p class="error">Error loading health status</p>';
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/dashboard/api/settings');
+                const data = await response.json();
+
+                const container = document.getElementById('settings-info');
+
+                if (data.success && data.settings) {
+                    const settings = data.settings;
+                    container.innerHTML = `
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                            <div>
+                                <h4>Budget Settings</h4>
+                                <p>Daily Budget: <strong>$${settings.daily_budget}</strong></p>
+                                <p>Hourly Limit: <strong>${settings.hourly_limit} requests</strong></p>
+                            </div>
+                            <div>
+                                <h4>Premium IPs</h4>
+                                <p>Count: <strong>${settings.premium_ips.length}</strong></p>
+                                <small>IPs: ${settings.premium_ips.join(', ') || 'None'}</small>
+                            </div>
+                            <div>
+                                <h4>System Status</h4>
+                                <p>Supabase: <span class="${settings.supabase_connected ? 'success' : 'error'}">${settings.supabase_connected ? 'Connected' : 'Disconnected'}</span></p>
+                                <p>OpenAI: <span class="${settings.openai_key_configured ? 'success' : 'error'}">${settings.openai_key_configured ? 'Configured' : 'Not Configured'}</span></p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML = '<p class="error">Error loading settings data</p>';
+                }
+            } catch (error) {
+                console.error('Error loading settings:', error);
+                document.getElementById('settings-info').innerHTML = '<p class="error">Error loading settings</p>';
             }
         }
 
         async function blockUser(ip) {
-            if (!confirm(`Block IP ${ip}? Add to .env BLOCKED_IPS?`)) return;
+            if (!confirm(`Block IP ${ip}?`)) return;
 
             try {
-                alert(`To block IP ${ip}:\n\n1. Add to .env file:\nBLOCKED_IPS=${ip}\n\n2. Or add to your PREMIUM_IPS exclusion list\n\n3. Restart the application`);
+                const response = await fetch('/dashboard/api/users/block', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip, reason: 'Manual block from dashboard' })
+                });
 
-                // You could also call a backend endpoint to add to blocked list
-                console.log(`IP ${ip} should be blocked`);
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`IP ${ip} blocked successfully`);
+                    loadUsers();
+                    loadStats(); // Refresh stats to update blocked count
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
             } catch (error) {
-                alert(`Error: ${error.message}`);
+                alert(`Error blocking IP: ${error.message}`);
+            }
+        }
+
+        async function unblockUser(ip) {
+            if (!confirm(`Unblock IP ${ip}?`)) return;
+
+            try {
+                const response = await fetch('/dashboard/api/users/unblock', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`IP ${ip} unblocked successfully`);
+                    loadUsers();
+                    loadStats(); // Refresh stats to update blocked count
+                } else {
+                    alert(`Error: ${result.error}`);
+                }
+            } catch (error) {
+                alert(`Error unblocking IP: ${error.message}`);
             }
         }
 
