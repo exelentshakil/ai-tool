@@ -38,7 +38,7 @@ def initialize_supabase():
                 logger.error("SUPABASE_KEY=your_supabase_anon_key")
                 return None
 
-            # Create Supabase client
+            # Create Supabase client (without proxy argument)
             supabase = create_client(supabase_url, supabase_key)
             logger.info("✅ Supabase client initialized successfully")
 
