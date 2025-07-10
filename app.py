@@ -94,14 +94,13 @@ def process_tool():
         # Validate inputs
         category = tool_config.get("category", "general")
         validated_data = validate_tool_inputs(user_data, category)
-        base_result = generate_base_result(validated_data, category)
 
         # Generate AI analysis if not rate limited
         if limit_check.get("can_ai", False) and request_ai_analysis:
-            ai_analysis = generate_ai_analysis(tool_config, validated_data, base_result, ip, localization)
+            ai_analysis = generate_ai_analysis(tool_config, validated_data, ip, localization)
             increment_user_usage(ip, tool_slug)
         else:
-            ai_analysis = create_fallback_response(tool_config, validated_data, base_result, localization)
+            ai_analysis = create_fallback_response(tool_config, validated_data, localization)
             if limit_check.get("blocked", False):
                 # Add rate limit message in appropriate language
                 rate_limit_messages = {
@@ -152,73 +151,6 @@ app.register_blueprint(admin_bp)
 app.register_blueprint(legacy_bp)
 app.register_blueprint(face_bp)  # Register face analysis blueprint
 
-
-# ─── FACE ANALYSIS SPECIFIC ENDPOINTS ──────────────────────────────────────────
-@app.route('/analyze-face-simple', methods=['POST', 'OPTIONS'])
-@limiter.limit("20 per hour")
-def analyze_face_simple():
-    """Simplified face analysis endpoint for WordPress integration"""
-    if request.method == 'OPTIONS':
-        return jsonify({}), 200
-
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-
-        ip = get_remote_address()
-        is_premium = is_premium_user(ip)
-        limit_check = check_user_limit(ip, is_premium)
-
-        # Check if user can perform analysis
-        if limit_check.get("blocked", False):
-            return jsonify({
-                'error': 'Rate limit exceeded',
-                'message': limit_check.get("message", "Daily limit reached"),
-                'upgrade_available': not is_premium,
-                'reset_time': (datetime.now() + timedelta(hours=1)).isoformat()
-            }), 429
-
-        # Extract personality traits from client
-        traits = data.get('personality_traits', {})
-        user_profile = data.get('user_profile', {})
-
-        if not traits:
-            return jsonify({'error': 'Personality traits required'}), 400
-
-        # Generate basic analysis for WordPress plugin
-        from routes.face_analysis_routes import EnhancedPersonalityAnalyzer
-        analyzer = EnhancedPersonalityAnalyzer()
-
-        # Create simplified analysis
-        analysis = {
-            'personality_insights': analyzer.generate_comprehensive_insights(traits, {}, user_profile)[:2],
-            'career_match': analyzer.get_career_recommendations(traits, {})[:1],
-            'success_predictions': analyzer.generate_life_predictions(traits, {}),
-            'confidence_score': 0.85,
-            'analysis_timestamp': datetime.now().isoformat()
-        }
-
-        # Increment usage
-        increment_user_usage(ip, 'face_analysis_simple')
-
-        return jsonify({
-            'success': True,
-            'analysis': analysis,
-            'user_info': {
-                'remaining_analyses': limit_check.get("remaining", 0) - 1,
-                'is_premium': is_premium
-            }
-        })
-
-    except Exception as e:
-        app.logger.error(f"Simple face analysis error: {str(e)}")
-        return jsonify({
-            'error': 'Analysis failed',
-            'message': str(e)
-        }), 500
-
-
 # ─── HEALTH CHECK ───────────────────────────────────────────────────────────────
 @app.route('/health', methods=['GET'])
 def health_check():
@@ -232,7 +164,6 @@ def health_check():
         "face_analysis_enabled": True,
         "timestamp": datetime.now().isoformat()
     })
-
 
 # ─── FACE ANALYSIS UTILITY ENDPOINTS ───────────────────────────────────────────
 @app.route('/face-analysis/limits', methods=['GET'])
@@ -249,50 +180,6 @@ def get_face_analysis_limits():
         'is_premium': is_premium,
         'can_analyze': not limit_check.get("blocked", False)
     })
-
-
-@app.route('/face-analysis/demo', methods=['POST'])
-@limiter.limit("5 per hour")
-def face_analysis_demo():
-    """Demo endpoint with sample personality analysis"""
-    try:
-        # Sample traits for demo
-        demo_traits = {
-            'openness': 0.75,
-            'conscientiousness': 0.68,
-            'extraversion': 0.82,
-            'agreeableness': 0.71,
-            'neuroticism': 0.34
-        }
-
-        demo_profile = {
-            'name': 'Demo User',
-            'age_range': '25-34'
-        }
-
-        from routes.face_analysis_routes import EnhancedPersonalityAnalyzer
-        analyzer = EnhancedPersonalityAnalyzer()
-
-        demo_analysis = {
-            'personality_insights': [
-                "You demonstrate exceptional leadership potential with high extraversion and strong organizational skills.",
-                "Your openness to new experiences combined with conscientiousness makes you ideal for innovative leadership roles."
-            ],
-            'career_recommendations': analyzer.get_career_recommendations(demo_traits, {})[:1],
-            'success_predictions': analyzer.generate_life_predictions(demo_traits, {}),
-            'is_demo': True,
-            'demo_message': 'This is a sample analysis. Upload your photo for personalized results!'
-        }
-
-        return jsonify({
-            'success': True,
-            'analysis': demo_analysis,
-            'demo': True
-        })
-
-    except Exception as e:
-        return jsonify({'error': 'Demo failed', 'message': str(e)}), 500
-
 
 if __name__ == "__main__":
     app.run(

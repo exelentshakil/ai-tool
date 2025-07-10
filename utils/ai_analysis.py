@@ -8,7 +8,7 @@ from config.settings import API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
 client = OpenAI(api_key=API_KEY)
 
 
-def build_analysis_prompt(tool_name, category, user_data, base_result, localization=None):
+def build_analysis_prompt(tool_name, category, user_data, localization=None):
     """Build comprehensive AI analysis prompt with localization support"""
     if not localization:
         localization = {}
@@ -41,7 +41,6 @@ def build_analysis_prompt(tool_name, category, user_data, base_result, localizat
     prompt = f"""
 You are an expert analyst providing comprehensive strategic insights. Generate a complete analysis including:
 
-CALCULATION RESULT: {base_result}
 USER CONTEXT: {user_context}
 CATEGORY: {category}
 LANGUAGE: {language}
@@ -64,14 +63,14 @@ Format as structured sections. Include specific numbers, percentages, and action
     return prompt
 
 
-def generate_ai_analysis(tool_config, user_data, base_result, ip, localization=None):
+def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     """Generate comprehensive AI analysis with all components"""
     if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
-        return create_fallback_response(tool_config, user_data, base_result, localization)
+        return create_fallback_response(tool_config, user_data, localization)
 
     category = tool_config.get("category", "general")
     tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
-    prompt = build_analysis_prompt(tool_name, category, user_data, base_result, localization)
+    prompt = build_analysis_prompt(tool_name, category, user_data, localization)
 
     try:
         response = client.chat.completions.create(
@@ -90,12 +89,12 @@ def generate_ai_analysis(tool_config, user_data, base_result, ip, localization=N
         log_openai_cost(tool_config['slug'], pt, ct, cost)
 
         # Generate rich HTML response
-        rich_response = generate_rich_html_response(ai_analysis, user_data, base_result, tool_config, localization)
+        rich_response = generate_rich_html_response(ai_analysis, user_data, tool_config, localization)
         return rich_response
 
     except Exception as e:
         print(f"AI analysis failed: {str(e)}")
-        return create_fallback_response(tool_config, user_data, base_result, localization)
+        return create_fallback_response(tool_config, user_data, localization)
 
 
 def get_ai_system_prompt(localization=None):
@@ -119,7 +118,7 @@ Structure your response with clear sections and include specific numbers, percen
     return base_prompt
 
 
-def generate_rich_html_response(ai_analysis, user_data, base_result, tool_config, localization=None):
+def generate_rich_html_response(ai_analysis, user_data, tool_config, localization=None):
     """Generate modern material design HTML response"""
     if not localization:
         localization = {}
@@ -132,7 +131,7 @@ def generate_rich_html_response(ai_analysis, user_data, base_result, tool_config
     parsed_analysis = parse_ai_analysis(ai_analysis)
 
     # Generate components
-    header_html = generate_header(tool_config, base_result, currency, language)
+    header_html = generate_header(tool_config, currency, language)
     metrics_html = generate_metrics_from_ai(parsed_analysis.get('metrics', []), currency, language)
     insights_html = generate_insights_from_ai(parsed_analysis.get('insights', []), language)
     ladder_html = generate_value_ladder_from_ai(parsed_analysis.get('ladder', []), currency, language)
@@ -199,7 +198,7 @@ def parse_ai_analysis(ai_text):
     return sections
 
 
-def generate_header(tool_config, base_result, currency, language):
+def generate_header(tool_config, currency, language):
     """Generate modern header section"""
     tool_name = tool_config.get('seo_data', {}).get('title', 'Analysis Tool')
 
@@ -209,7 +208,6 @@ def generate_header(tool_config, base_result, currency, language):
             <div class="result-display">
                 <div class="result-icon">🎯</div>
                 <div class="result-info">
-                    <h1 class="result-value">{base_result}</h1>
                     <p class="result-subtitle">{tool_name} {get_localized_text('analysis_complete', language)}</p>
                 </div>
             </div>
@@ -548,7 +546,7 @@ def get_localized_text(key, language):
     return texts.get(key, {}).get(language, texts.get(key, {}).get('English', key))
 
 
-def create_fallback_response(tool_config, user_data, base_result, localization=None):
+def create_fallback_response(tool_config, user_data, localization=None):
     """Create fallback response when AI analysis is unavailable"""
     if not localization:
         localization = {}
@@ -562,17 +560,6 @@ def create_fallback_response(tool_config, user_data, base_result, localization=N
     {get_modern_css()}
     <div class="ai-analysis-container">
         <div class="fallback-section">
-            <div class="fallback-header">
-                <div class="fallback-icon">⚡</div>
-                <h2>{get_localized_text('analysis_complete', language)}</h2>
-                <p class="fallback-subtitle">{tool_name} - Basic Result</p>
-            </div>
-
-            <div class="result-card">
-                <div class="result-value">{base_result}</div>
-                <p class="result-note">AI analysis temporarily unavailable - upgrade for full insights</p>
-            </div>
-
             <div class="upgrade-section">
                 <h3>🚀 Get Complete AI Analysis</h3>
                 <p>Unlock strategic insights, recommendations, and action plans</p>
