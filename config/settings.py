@@ -16,6 +16,9 @@ DAILY_FREE_LIMIT = int(os.getenv("DAILY_FREE_LIMIT", "10"))
 HOURLY_BASIC_LIMIT = int(os.getenv("HOURLY_BASIC_LIMIT", "20"))
 RESET_MINUTE = int(os.getenv("RESET_MINUTE", "0"))
 
+SUPABASE_URL= os.getenv('SUPABASE_URL', 'your-secret-admin-key')
+SUPABASE_KEY=os.getenv('SUPABASE_KEY', 'your-secret-admin-key')
+
 # ─── ADMIN CONFIGURATION ────────────────────────────────────────────────────────
 ADMIN_KEY = os.getenv('ADMIN_KEY', 'your-secret-admin-key')
 
