@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI Tools Dashboard</title>
     <style>
+        .refresh-btn.loading .material-icons {
+    animation: spin 1s linear infinite;
+}
+.refresh-btn.loading {
+    opacity: 0.7;
+}
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; color: #333; line-height: 1.6; }
         .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
@@ -174,18 +180,14 @@
 
         async function refreshAllData() {
     const refreshBtn = document.querySelector('button[onclick="refreshAllData()"]');
-    const originalText = refreshBtn.innerHTML;
 
     // Show loading state
-    refreshBtn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite; vertical-align: middle; margin-right: 5px;">refresh</span>Refreshing...';
+    refreshBtn.classList.add('loading');
     refreshBtn.disabled = true;
-    refreshBtn.style.opacity = '0.7';
 
     try {
-        // Show loading message
         showRefreshStatus('🔄 Refreshing all data...');
 
-        // Load all data with progress
         await Promise.all([
             loadStats(),
             loadCosts(),
@@ -202,11 +204,9 @@
         console.error('Error refreshing data:', error);
         showRefreshStatus('❌ Error refreshing some data', 'error');
     } finally {
-        // Restore button
         setTimeout(() => {
-            refreshBtn.innerHTML = originalText;
+            refreshBtn.classList.remove('loading');
             refreshBtn.disabled = false;
-            refreshBtn.style.opacity = '1';
         }, 1000);
     }
 }
