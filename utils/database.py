@@ -564,7 +564,40 @@ def get_current_hour_users():
         print(f"Error getting current hour users: {e}")
         return 0
 
+def is_ip_blocked(ip):
+    """Check if IP is blocked in database"""
+    if not supabase:
+        return False
 
+    try:
+        result = supabase.table('blocked_ips').select('*').eq('ip', ip).execute()
+        is_blocked = len(result.data) > 0 if result.data else False
+
+        if is_blocked:
+            print(f"🚫 Blocked IP detected: {ip}")
+
+        return is_blocked
+    except Exception as e:
+        print(f"Error checking blocked IP: {e}")
+        return False
+
+def log_tool_usage(tool_name, ip, user_data):
+    """Log tool usage for analytics"""
+    if not supabase:
+        return
+
+    try:
+        usage_data = {
+            'tool': tool_name,
+            'ip_address': ip,
+            'input_length': len(str(user_data)),
+            'date': datetime.now().date().isoformat(),
+            'timestamp': datetime.now().isoformat()
+        }
+
+        supabase.table('usage_logs').insert(usage_data).execute()
+    except Exception as e:
+        print(f"Error logging tool usage: {e}")
 def clean_old_cache(hours=24):
     """Clean old cache entries - placeholder function"""
     try:

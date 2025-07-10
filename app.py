@@ -15,6 +15,7 @@ from utils.database import (
     get_database_health as db_health_check,
     supabase
 )
+from utils.database import is_ip_blocked, log_tool_usage
 from utils.rate_limiting import get_remote_address, check_user_limit, is_premium_user, increment_user_usage
 from utils.validation import validate_tool_inputs
 from utils.ai_analysis import generate_ai_analysis, create_simple_fallback
@@ -133,6 +134,18 @@ def process_tool():
         if not tool_slug:
             return jsonify({"error": "Tool parameter required"}), 400
 
+        # Get user IP first
+        ip = get_remote_address()
+
+        # Check if IP is blocked in database
+        if is_ip_blocked(ip):
+            return jsonify({
+                "error": "Access denied",
+                "message": "Your IP address has been blocked for policy violations",
+                "blocked": True,
+                "contact": "Contact support if you believe this is an error"
+            }), 403
+
         # Find tool configuration
         tool_config = tools_config.ALL_TOOLS.get(tool_slug)
         if not tool_config:
@@ -151,11 +164,11 @@ def process_tool():
         if tool_config_data:
             tool_config.update(tool_config_data)
 
-        ip = get_remote_address()
         limit_check = check_user_limit(ip, is_premium_user(ip))
 
         # Enhanced logging
         print(f"Processing tool: {tool_slug}")
+        print(f"User IP: {ip}")
         print(f"User data keys: {list(user_data.keys())}")
         print(f"Localization: {localization}")
         print(f"AI Analysis requested: {request_ai_analysis}")
@@ -164,6 +177,9 @@ def process_tool():
         # Validate inputs
         category = tool_config.get("category", "general")
         validated_data = validate_tool_inputs(user_data, category)
+
+        # Log usage to database for tracking
+        log_tool_usage(tool_slug, ip, validated_data)
 
         # Generate pure AI analysis if not rate limited
         if limit_check.get("can_ai", False) and request_ai_analysis:
@@ -198,7 +214,8 @@ def process_tool():
                 "remaining_free": limit_check.get("remaining", 0),
                 "is_rate_limited": is_rate_limited,
                 "upgrade_available": not is_premium_user(ip),
-                "rate_limit_message": limit_check.get("message") if is_rate_limited else None
+                "rate_limit_message": limit_check.get("message") if is_rate_limited else None,
+                "ip_address": ip  # For debugging
             },
             "input_data": validated_data
         }), 200
