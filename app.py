@@ -135,7 +135,8 @@ def process_tool():
     except Exception as e:
         return jsonify({
             "error": "Processing failed",
-            "message": "Please check your inputs and try again"
+            "message": "Please check your inputs and try again",
+            "exception": e
         }), 500
 
 # Import and register all blueprints including face analysis
