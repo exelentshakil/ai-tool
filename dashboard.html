@@ -38,10 +38,16 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖 AI Tools Dashboard</h1>
-            <p>Monitor OpenAI costs, usage, and manage IPs</p>
-            <p><small>Last updated: <span id="last-updated">Loading...</span></small></p>
-        </div>
+    <h1>🤖 AI Tools Dashboard</h1>
+    <p>Monitor OpenAI costs, usage, and manage IPs</p>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 15px;">
+        <p><small>Last updated: <span id="last-updated">Loading...</span></small></p>
+        <button class="refresh-btn" onclick="refreshAllData()" style="background: #27ae60; padding: 10px 20px; font-size: 16px;">
+            <span class="material-icons" style="vertical-align: middle; margin-right: 5px;">refresh</span>
+            Refresh All Data
+        </button>
+    </div>
+</div>
 
         <!-- Stats Overview -->
         <div class="stats-grid">
@@ -165,6 +171,104 @@
     </div>
 
     <script>
+
+        async function refreshAllData() {
+    const refreshBtn = document.querySelector('button[onclick="refreshAllData()"]');
+    const originalText = refreshBtn.innerHTML;
+
+    // Show loading state
+    refreshBtn.innerHTML = '<span class="material-icons" style="animation: spin 1s linear infinite; vertical-align: middle; margin-right: 5px;">refresh</span>Refreshing...';
+    refreshBtn.disabled = true;
+    refreshBtn.style.opacity = '0.7';
+
+    try {
+        // Show loading message
+        showRefreshStatus('🔄 Refreshing all data...');
+
+        // Load all data with progress
+        await Promise.all([
+            loadStats(),
+            loadCosts(),
+            loadUsers(),
+            loadTools(),
+            loadHealth(),
+            loadSettings()
+        ]);
+
+        updateLastUpdated();
+        showRefreshStatus('✅ All data refreshed successfully!', 'success');
+
+    } catch (error) {
+        console.error('Error refreshing data:', error);
+        showRefreshStatus('❌ Error refreshing some data', 'error');
+    } finally {
+        // Restore button
+        setTimeout(() => {
+            refreshBtn.innerHTML = originalText;
+            refreshBtn.disabled = false;
+            refreshBtn.style.opacity = '1';
+        }, 1000);
+    }
+}
+
+function showRefreshStatus(message, type = 'info') {
+    // Create or update status message
+    let statusEl = document.getElementById('refresh-status');
+    if (!statusEl) {
+        statusEl = document.createElement('div');
+        statusEl.id = 'refresh-status';
+        statusEl.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 20px;
+            border-radius: 6px;
+            color: white;
+            font-weight: 500;
+            z-index: 1000;
+            transition: all 0.3s ease;
+        `;
+        document.body.appendChild(statusEl);
+    }
+
+    // Set color based on type
+    const colors = {
+        info: '#3498db',
+        success: '#27ae60',
+        error: '#e74c3c'
+    };
+
+    statusEl.style.backgroundColor = colors[type] || colors.info;
+    statusEl.textContent = message;
+    statusEl.style.transform = 'translateX(0)';
+    statusEl.style.opacity = '1';
+
+    // Auto hide after 3 seconds
+    setTimeout(() => {
+        if (statusEl) {
+            statusEl.style.transform = 'translateX(100%)';
+            statusEl.style.opacity = '0';
+        }
+    }, 3000);
+}
+
+// Add spinning animation CSS
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .refresh-btn:hover {
+        background: #229954 !important;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    .refresh-btn {
+        transition: all 0.3s ease;
+    }
+`;
+document.head.appendChild(style);
         // Load all data on page load
         document.addEventListener('DOMContentLoaded', function() {
             loadAllData();
