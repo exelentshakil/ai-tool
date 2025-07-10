@@ -6,7 +6,16 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
-    if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
+    # Convert string budget values to float for comparison
+    try:
+        daily_budget = float(DAILY_OPENAI_BUDGET)
+        monthly_budget = float(MONTHLY_OPENAI_BUDGET)
+    except (ValueError, TypeError):
+        # If conversion fails, use default values
+        daily_budget = 0.0
+        monthly_budget = 0.0
+
+    if get_openai_cost_today() >= daily_budget or get_openai_cost_month() >= monthly_budget:
         return create_simple_fallback(tool_config, user_data, localization)
 
     category = tool_config.get("category", "general")
