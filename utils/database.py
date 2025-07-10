@@ -511,4 +511,4 @@ def cleanup_old_records(days_to_keep: int = 30) -> Dict[str, int]:
 
 # Initialize on import
 if not supabase:
-    init_supabase()
+    initialize_supabase()
