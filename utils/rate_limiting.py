@@ -1,11 +1,7 @@
 from flask import request
 from datetime import datetime, timedelta
-from tinydb import Query
-from utils.database import user_limits_db, user_limits_lock, safe_db_operation
+from utils.database import supabase, get_user_usage_current_hour, increment_user_usage
 from config.settings import HOURLY_FREE_LIMIT, RESET_MINUTE, PREMIUM_IPS
-
-Q = Query()
-
 
 def get_remote_address():
     """Get the real client IP address, handling proxies"""
@@ -24,70 +20,8 @@ def get_remote_address():
 
     return request.environ.get('REMOTE_ADDR', '127.0.0.1')
 
-
-def get_user_limit_key(ip):
-    """Generate hourly limit key based on current hour"""
-    now = datetime.now()
-    hour_key = now.strftime("%Y-%m-%d:%H")
-    return f"{ip}:{hour_key}"
-
-
-def get_user_usage_current_hour(ip):
-    """Get user usage for current hour with safety checks"""
-    if user_limits_db is None:
-        print("❌ user_limits_db is None, returning 0 usage")
-        return 0
-
-    current_hour = datetime.now().strftime('%Y-%m-%d-%H')
-    key = f"{ip}_{current_hour}"
-
-    try:
-        rec = safe_db_operation(
-            user_limits_db,
-            user_limits_lock,
-            lambda db: db.get(Q.key == key)
-        )
-        return rec['count'] if rec else 0
-    except Exception as e:
-        print(f"❌ Error getting user usage: {e}")
-        return 0
-
-
-def increment_user_usage(ip, tool_slug):
-    """Increment user usage for current hour with safety checks"""
-    if user_limits_db is None:
-        print("❌ user_limits_db is None, cannot increment usage")
-        return False
-
-    try:
-        key = get_user_limit_key(ip)
-        current = get_user_usage_current_hour(ip)
-
-        data = {
-            "key": key,
-            "ip": ip,
-            "count": current + 1,
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "hour": datetime.now().strftime("%H"),
-            "last_used": datetime.now().isoformat(),
-            "last_tool": tool_slug
-        }
-
-        result = safe_db_operation(user_limits_db, user_limits_lock, user_limits_db.upsert, data, Q.key == key)
-        if result is None:
-            print("❌ Failed to increment user usage")
-            return False
-
-        print(f"✅ Incremented usage for {ip}: {current + 1}")
-        return True
-
-    except Exception as e:
-        print(f"❌ Error incrementing user usage: {e}")
-        return False
-
-
 def check_user_limit(ip, is_premium=False):
-    """Check hourly user limit with safety checks"""
+    """Check hourly user limit with Supabase"""
     try:
         usage = get_user_usage_current_hour(ip)
         limit = HOURLY_FREE_LIMIT
@@ -129,35 +63,15 @@ def check_user_limit(ip, is_premium=False):
             "error": str(e)
         }
 
-
 def is_premium_user(ip):
     """Check if user is premium"""
     return ip in PREMIUM_IPS and ip != ""
-
 
 def get_reset_time():
     """Get the next reset time"""
     now = datetime.now()
     reset = now.replace(minute=RESET_MINUTE, second=0, microsecond=0) + timedelta(hours=1)
     return reset
-
-
-def get_user_response_mode(ip, current_usage):
-    """Get user response mode based on hourly usage"""
-    from config.settings import ResponseMode, HOURLY_BASIC_LIMIT
-
-    if is_premium_user(ip):
-        return ResponseMode.FULL_AI
-
-    hourly_usage = get_user_usage_current_hour(ip)
-
-    if hourly_usage < HOURLY_FREE_LIMIT:
-        return ResponseMode.SMART_AI
-    elif hourly_usage < HOURLY_BASIC_LIMIT:
-        return ResponseMode.BASIC_AI
-    else:
-        return ResponseMode.SMART_AI
-
 
 def get_hourly_usage_stats(ip):
     """Get detailed hourly usage statistics"""

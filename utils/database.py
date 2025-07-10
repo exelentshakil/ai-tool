@@ -1,192 +1,198 @@
+import os
 import json
-import os  # ← ADD THIS LINE
-
-import shutil
+from datetime import datetime, timedelta
+from supabase import create_client, Client
 import threading
-from datetime import datetime, timedelta  # ← ADD timedelta here too
-from tinydb import TinyDB, Query
-from tinydb.middlewares import CachingMiddleware
-from tinydb.storages import JSONStorage
-from config.settings import DB_FILES
+from config.settings import SUPABASE_URL, SUPABASE_KEY
 
-# ─── THREAD LOCKS ───────────────────────────────────────────────────────────────
-cache_lock = threading.Lock()
-analytics_lock = threading.Lock()
-usage_lock = threading.Lock()
-cost_lock = threading.Lock()
-user_limits_lock = threading.Lock()
-
-# ─── DATABASE INSTANCES ─────────────────────────────────────────────────────────
-cache_db = None
-analytics_db = None
-usage_db = None
-cost_db = None
-user_limits_db = None
-
-# Initialize Q - but make it more robust
-try:
-    Q = Query()
-except Exception as e:
-    print(f"Warning: Could not initialize Query object: {e}")
-    Q = None
-
-
-def repair_corrupted_json(file_path):
-    """Attempt to repair corrupted JSON file"""
-    try:
-        backup_path = f"{file_path}.corrupted_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-        if os.path.exists(file_path):
-            shutil.copy2(file_path, backup_path)
-            print(f"Backed up corrupted file to: {backup_path}")
-
-        empty_db = {"_default": {}}
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(empty_db, f, indent=2)
-        print(f"Reset {file_path} to empty database")
-        return True
-
-    except Exception as e:
-        print(f"Failed to repair {file_path}: {e}")
-        return False
-
-
-def safe_init_db(file_path):
-    """Safely initialize TinyDB with error handling"""
-    try:
-        print(f"🔍 Attempting to initialize database: {file_path}")
-        print(f"🔍 File exists: {os.path.exists(file_path)}")
-        print(f"🔍 File absolute path: {os.path.abspath(file_path)}")
-
-        db = TinyDB(file_path, storage=CachingMiddleware(JSONStorage))
-        print(f"✅ Successfully initialized: {file_path}")
-        return db
-
-    except Exception as e:
-        print(f"❌ Database error for {file_path}: {e}")
-        if "Extra data" in str(e):
-            print("🔧 Attempting to repair corrupted JSON...")
-            if repair_corrupted_json(file_path):
-                print("🔧 Retrying database initialization...")
-                return TinyDB(file_path, storage=CachingMiddleware(JSONStorage))
-        print(f"❌ Failed to initialize {file_path}")
-        return None  # Return None instead of raising
+# ─── SUPABASE CLIENT ────────────────────────────────────────────────────────────
+supabase: Client = None
+db_lock = threading.Lock()
 
 
 def init_databases():
-    """Initialize all databases"""
-    global cache_db, analytics_db, usage_db, cost_db, user_limits_db
+    """Initialize Supabase client"""
+    global supabase
 
-    print("🔍 Starting database initialization...")
-    print(f"🔍 DB_FILES: {DB_FILES}")
-    ensure_db_files_exist()
     try:
-        print("🔍 Initializing cache_db...")
-        cache_db = safe_init_db(DB_FILES['cache'])
-        print(f"✅ cache_db initialized: {cache_db is not None}")
+        # Get credentials from environment
+        url = os.getenv('SUPABASE_URL', SUPABASE_URL)
+        key = os.getenv('SUPABASE_KEY', SUPABASE_KEY)
 
-        print("🔍 Initializing analytics_db...")
-        analytics_db = safe_init_db(DB_FILES['analytics'])
-        print(f"✅ analytics_db initialized: {analytics_db is not None}")
+        if not url or not key:
+            print("❌ Missing Supabase credentials in .env")
+            print("Add SUPABASE_URL and SUPABASE_KEY to your .env file")
+            return False
 
-        print("🔍 Initializing usage_db...")
-        usage_db = safe_init_db(DB_FILES['usage'])
-        print(f"✅ usage_db initialized: {usage_db is not None}")
+        supabase = create_client(url, key)
+        print("✅ Supabase client initialized successfully")
 
-        print("🔍 Initializing cost_db...")
-        cost_db = safe_init_db(DB_FILES['cost'])
-        print(f"✅ cost_db initialized: {cost_db is not None}")
-
-        print("🔍 Initializing user_limits_db...")
-        user_limits_db = safe_init_db(DB_FILES['user_limits'])
-        print(f"✅ user_limits_db initialized: {user_limits_db is not None}")
-
-        print("✅ All databases initialized successfully")
-
-        # Verify all databases are not None
-        failed_dbs = []
-        if cache_db is None: failed_dbs.append('cache_db')
-        if analytics_db is None: failed_dbs.append('analytics_db')
-        if usage_db is None: failed_dbs.append('usage_db')
-        if cost_db is None: failed_dbs.append('cost_db')
-        if user_limits_db is None: failed_dbs.append('user_limits_db')
-
-        if failed_dbs:
-            print(f"❌ Failed to initialize: {failed_dbs}")
-        else:
-            print("✅ All databases verified as not None")
+        # Test connection
+        test_connection()
+        return True
 
     except Exception as e:
-        print(f"❌ Database initialization error: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"❌ Failed to initialize Supabase: {e}")
+        return False
 
 
-def safe_db_operation(db, lock, operation, *args, **kwargs):
+def test_connection():
+    """Test Supabase connection"""
+    try:
+        # Try to read from a table (this will fail gracefully if table doesn't exist)
+        result = supabase.table('user_limits').select('*').limit(1).execute()
+        print("✅ Supabase connection test successful")
+        return True
+    except Exception as e:
+        print(f"⚠️ Supabase connection test: {e}")
+        # This is OK - tables might not exist yet
+        return True
+
+
+def safe_db_operation(operation_func, table_name, *args, **kwargs):
     """Perform thread-safe database operation"""
-    if db is None:
-        print(f"❌ Database is None in safe_db_operation")
+    if supabase is None:
+        print(f"❌ Supabase client is None")
         return None
 
-    with lock:
+    with db_lock:
         try:
-            return operation(*args, **kwargs)
+            return operation_func(*args, **kwargs)
         except Exception as e:
-            print(f"Database operation failed: {e}")
+            print(f"❌ Database operation failed on {table_name}: {e}")
             return None
 
 
 # ─── COST TRACKING FUNCTIONS ────────────────────────────────────────────────────
 def get_openai_cost_today():
     """Get today's OpenAI costs"""
-    today = datetime.now().strftime("%Y-%m-%d")
-    costs = safe_db_operation(cost_db, cost_lock, cost_db.search, Q.date == today) or []
-    return sum(c.get("cost", 0) for c in costs)
+    try:
+        today = datetime.now().strftime("%Y-%m-%d")
+        result = supabase.table('openai_costs').select('cost').eq('date', today).execute()
+
+        if result.data:
+            return sum(row['cost'] for row in result.data)
+        return 0.0
+    except Exception as e:
+        print(f"❌ Error getting today's costs: {e}")
+        return 0.0
 
 
 def get_openai_cost_month():
     """Get this month's OpenAI costs"""
-    this_month = datetime.now().strftime("%Y-%m")
-    costs = safe_db_operation(cost_db, cost_lock, cost_db.search, Q.date.matches(f"^{this_month}")) or []
-    return sum(c.get("cost", 0) for c in costs)
+    try:
+        this_month = datetime.now().strftime("%Y-%m")
+        result = supabase.table('openai_costs').select('cost').like('date', f'{this_month}%').execute()
+
+        if result.data:
+            return sum(row['cost'] for row in result.data)
+        return 0.0
+    except Exception as e:
+        print(f"❌ Error getting month's costs: {e}")
+        return 0.0
 
 
 def log_openai_cost(tool_slug, prompt_tokens, completion_tokens, cost):
     """Log OpenAI API costs"""
-    data = {
-        "tool": tool_slug,
-        "prompt_tokens": prompt_tokens,
-        "completion_tokens": completion_tokens,
-        "cost": cost,
-        "date": datetime.now().strftime("%Y-%m-%d"),
-        "timestamp": datetime.now().isoformat()
-    }
-    safe_db_operation(cost_db, cost_lock, cost_db.insert, data)
+    try:
+        data = {
+            "tool": tool_slug,
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "cost": cost,
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "timestamp": datetime.now().isoformat()
+        }
+
+        result = supabase.table('openai_costs').insert(data).execute()
+        if result.data:
+            print(f"✅ Logged OpenAI cost: ${cost:.4f}")
+        return True
+    except Exception as e:
+        print(f"❌ Error logging OpenAI cost: {e}")
+        return False
+
+
+# ─── USAGE TRACKING FUNCTIONS ───────────────────────────────────────────────────
+def get_user_usage_current_hour(ip):
+    """Get user usage for current hour"""
+    try:
+        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
+
+        result = supabase.table('user_limits').select('count').eq('ip', ip).eq('hour_key', current_hour).execute()
+
+        if result.data:
+            return result.data[0]['count']
+        return 0
+    except Exception as e:
+        print(f"❌ Error getting user usage: {e}")
+        return 0
+
+
+def increment_user_usage(ip, tool_slug):
+    """Increment user usage for current hour"""
+    try:
+        current_hour = datetime.now().strftime('%Y-%m-%d-%H')
+        current_count = get_user_usage_current_hour(ip)
+
+        data = {
+            "ip": ip,
+            "hour_key": current_hour,
+            "count": current_count + 1,
+            "date": datetime.now().strftime("%Y-%m-%d"),
+            "hour": datetime.now().strftime("%H"),
+            "last_used": datetime.now().isoformat(),
+            "last_tool": tool_slug
+        }
+
+        # Use upsert to update if exists, insert if not
+        result = supabase.table('user_limits').upsert(data, on_conflict='ip,hour_key').execute()
+
+        if result.data:
+            print(f"✅ Incremented usage for {ip}: {current_count + 1}")
+            return True
+        return False
+    except Exception as e:
+        print(f"❌ Error incrementing user usage: {e}")
+        return False
 
 
 # ─── USAGE LOGGING FUNCTIONS ────────────────────────────────────────────────────
 def log_usage(tool, input_length, cached=False, ip_address=None):
     """Log tool usage"""
-    data = {
-        "tool": tool,
-        "input_length": input_length,
-        "cached": cached,
-        "ip_address": ip_address,
-        "timestamp": datetime.now().isoformat(),
-        "date": datetime.now().strftime("%Y-%m-%d")
-    }
-    safe_db_operation(usage_db, usage_lock, usage_db.insert, data)
+    try:
+        data = {
+            "tool": tool,
+            "input_length": input_length,
+            "cached": cached,
+            "ip_address": ip_address,
+            "timestamp": datetime.now().isoformat(),
+            "date": datetime.now().strftime("%Y-%m-%d")
+        }
+
+        result = supabase.table('usage_logs').insert(data).execute()
+        return bool(result.data)
+    except Exception as e:
+        print(f"❌ Error logging usage: {e}")
+        return False
 
 
 # ─── ANALYTICS FUNCTIONS ────────────────────────────────────────────────────────
 def log_analytics(event, data=None):
     """Log analytics event"""
-    entry = {
-        "event": event,
-        "data": data or {},
-        "timestamp": datetime.now().isoformat(),
-        "date": datetime.now().strftime("%Y-%m-%d")
-    }
-    safe_db_operation(analytics_db, analytics_lock, analytics_db.insert, entry)
+    try:
+        entry = {
+            "event": event,
+            "data": data or {},
+            "timestamp": datetime.now().isoformat(),
+            "date": datetime.now().strftime("%Y-%m-%d")
+        }
+
+        result = supabase.table('analytics').insert(entry).execute()
+        return bool(result.data)
+    except Exception as e:
+        print(f"❌ Error logging analytics: {e}")
+        return False
 
 
 # ─── DATABASE MAINTENANCE ───────────────────────────────────────────────────────
@@ -194,36 +200,64 @@ def clean_old_cache(hours=24):
     """Clean old cache entries"""
     try:
         cutoff = datetime.now() - timedelta(hours=hours)
-        old_entries = safe_db_operation(cache_db, cache_lock, cache_db.search, Q.created_at < cutoff.isoformat()) or []
-        for entry in old_entries:
-            safe_db_operation(cache_db, cache_lock, cache_db.remove, Q.key == entry['key'])
-        print(f"Cleaned {len(old_entries)} old cache entries")
-        return len(old_entries)
+
+        result = supabase.table('cache').delete().lt('created_at', cutoff.isoformat()).execute()
+        count = len(result.data) if result.data else 0
+
+        print(f"Cleaned {count} old cache entries")
+        return count
     except Exception as e:
-        print(f"Cache cleanup error: {e}")
+        print(f"❌ Cache cleanup error: {e}")
         return 0
 
 
 def get_database_stats():
     """Get database statistics"""
-    return {
-        "cache_entries": len(safe_db_operation(cache_db, cache_lock, cache_db.all) or []),
-        "usage_entries": len(safe_db_operation(usage_db, usage_lock, usage_db.all) or []),
-        "cost_entries": len(safe_db_operation(cost_db, cost_lock, cost_db.all) or []),
-        "user_limit_entries": len(safe_db_operation(user_limits_db, user_limits_lock, user_limits_db.all) or []),
-        "analytics_entries": len(safe_db_operation(analytics_db, analytics_lock, analytics_db.all) or [])
-    }
+    try:
+        stats = {}
 
-def ensure_db_files_exist():
-    """Ensure all database files exist"""
-    for db_name, file_path in DB_FILES.items():
-        if not os.path.exists(file_path):
-            print(f"🔧 Creating missing database file: {file_path}")
+        # Get count for each table
+        tables = ['user_limits', 'usage_logs', 'openai_costs', 'analytics', 'cache']
+
+        for table in tables:
             try:
-                # Create empty JSON database structure
-                empty_db = {"_default": {}}
-                with open(file_path, 'w', encoding='utf-8') as f:
-                    json.dump(empty_db, f, indent=2)
-                print(f"✅ Created {file_path}")
-            except Exception as e:
-                print(f"❌ Failed to create {file_path}: {e}")
+                result = supabase.table(table).select('id', count='exact').execute()
+                stats[f"{table}_entries"] = result.count if hasattr(result, 'count') else 0
+            except:
+                stats[f"{table}_entries"] = 0
+
+        return stats
+    except Exception as e:
+        print(f"❌ Error getting database stats: {e}")
+        return {}
+
+
+# ─── CACHE FUNCTIONS ────────────────────────────────────────────────────────────
+def check_cache(tool_slug, cache_key):
+    """Check if result is cached"""
+    try:
+        result = supabase.table('cache').select('result').eq('tool', tool_slug).eq('cache_key', cache_key).execute()
+
+        if result.data:
+            return result.data[0]['result']
+        return None
+    except Exception as e:
+        print(f"❌ Error checking cache: {e}")
+        return None
+
+
+def store_cache(tool_slug, cache_key, result):
+    """Store result in cache"""
+    try:
+        data = {
+            "tool": tool_slug,
+            "cache_key": cache_key,
+            "result": result,
+            "created_at": datetime.now().isoformat()
+        }
+
+        result = supabase.table('cache').insert(data).execute()
+        return bool(result.data)
+    except Exception as e:
+        print(f"❌ Error storing cache: {e}")
+        return False
