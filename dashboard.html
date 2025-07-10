@@ -580,10 +580,10 @@
     </div>
 
     <script>
-        // Enhanced Dashboard JavaScript with Real Supabase Integration
+        // Updated Dashboard JavaScript for dashboard_routes endpoints
 
-// Configuration - Replace with your actual API endpoints
-const API_BASE_URL = '/api';  // Your Flask/FastAPI backend URL
+// Configuration - Use dashboard blueprint endpoints
+const API_BASE_URL = '/dashboard/api';
 
 // Dashboard state management
 let dashboardData = {
@@ -601,14 +601,15 @@ function formatCurrency(amount) {
         currency: 'USD',
         minimumFractionDigits: 2,
         maximumFractionDigits: 6
-    }).format(amount);
+    }).format(amount || 0);
 }
 
 function formatNumber(num) {
-    return new Intl.NumberFormat('en-US').format(num);
+    return new Intl.NumberFormat('en-US').format(num || 0);
 }
 
 function formatDate(dateString) {
+    if (!dateString || dateString === 'Unknown') return 'Never';
     return new Date(dateString).toLocaleString();
 }
 
@@ -639,95 +640,148 @@ async function apiCall(endpoint, options = {}) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
 
-        return await response.json();
+        const data = await response.json();
+
+        // Handle the response format from dashboard_routes
+        if (data.success === false) {
+            throw new Error(data.error || 'API request failed');
+        }
+
+        return data;
     } catch (error) {
         console.error(`API Error for ${endpoint}:`, error);
         throw error;
     }
 }
 
-// Database health check
-async function checkDatabaseHealth() {
+// Dashboard-specific API functions
+async function loadDashboardStats() {
     try {
-        const health = await apiCall('/health');
-        return health;
+        const response = await apiCall('/stats');
+        return response.stats || {};
     } catch (error) {
-        return { connection: false, error: error.message };
+        console.error('Error loading dashboard stats:', error);
+        return {
+            today_cost: 0,
+            month_cost: 0,
+            active_users: 0,
+            total_requests: 0,
+            blocked_ips: 0
+        };
     }
 }
 
-// Cost tracking functions
-async function loadCostStats() {
+async function loadCostsData(period = '7d') {
     try {
-        const stats = await apiCall('/costs/stats');
+        const response = await apiCall(`/costs?period=${period}`);
         return {
-            today: stats.today || 0,
-            week: stats.week || 0,
-            month: stats.month || 0,
-            average: stats.average || 0
+            costs: response.costs || [],
+            aggregated: response.aggregated || {
+                today: 0,
+                week: 0,
+                month: 0,
+                avg_per_request: 0
+            }
         };
     } catch (error) {
-        console.error('Error loading cost stats:', error);
-        return { today: 0, week: 0, month: 0, average: 0 };
+        console.error('Error loading costs data:', error);
+        return {
+            costs: [],
+            aggregated: { today: 0, week: 0, month: 0, avg_per_request: 0 }
+        };
     }
 }
 
-async function loadRecentCosts(limit = 50) {
+async function loadUsersData() {
     try {
-        const costs = await apiCall(`/costs/recent?limit=${limit}`);
-        return costs || [];
+        const response = await apiCall('/users');
+        return response.users || [];
     } catch (error) {
-        console.error('Error loading recent costs:', error);
+        console.error('Error loading users data:', error);
         return [];
+    }
+}
+
+async function loadToolsData() {
+    try {
+        const response = await apiCall('/tools');
+        return response.tools || [];
+    } catch (error) {
+        console.error('Error loading tools data:', error);
+        return [];
+    }
+}
+
+async function loadHealthData() {
+    try {
+        const response = await apiCall('/health');
+        return response.health || {};
+    } catch (error) {
+        console.error('Error loading health data:', error);
+        return { database: { status: 'disconnected' } };
+    }
+}
+
+async function loadSettingsData() {
+    try {
+        const response = await apiCall('/settings');
+        return response.settings || {};
+    } catch (error) {
+        console.error('Error loading settings data:', error);
+        return {};
     }
 }
 
 // User management functions
-async function loadUserStats() {
+async function blockUser(ip) {
     try {
-        const stats = await apiCall('/users/stats');
-        return {
-            activeUsers: stats.active_24h || 0,
-            totalRequests: stats.total_requests_today || 0,
-            blockedIps: stats.blocked_count || 0
-        };
-    } catch (error) {
-        console.error('Error loading user stats:', error);
-        return { activeUsers: 0, totalRequests: 0, blockedIps: 0 };
-    }
-}
-
-async function loadUsers(limit = 100) {
-    try {
-        const users = await apiCall(`/users?limit=${limit}`);
-        return users || [];
-    } catch (error) {
-        console.error('Error loading users:', error);
-        return [];
-    }
-}
-
-async function updateUserStatus(ip, status) {
-    try {
-        await apiCall('/users/status', {
+        await apiCall('/users/block', {
             method: 'POST',
-            body: JSON.stringify({ ip, status })
+            body: JSON.stringify({ ip, reason: 'Manual block via dashboard' })
         });
         return true;
     } catch (error) {
-        console.error('Error updating user status:', error);
+        console.error('Error blocking user:', error);
         throw error;
     }
 }
 
-// Tools usage functions
-async function loadToolsStats() {
+async function unblockUser(ip) {
     try {
-        const tools = await apiCall('/tools/stats');
-        return tools || [];
+        await apiCall('/users/unblock', {
+            method: 'POST',
+            body: JSON.stringify({ ip })
+        });
+        return true;
     } catch (error) {
-        console.error('Error loading tools stats:', error);
-        return [];
+        console.error('Error unblocking user:', error);
+        throw error;
+    }
+}
+
+async function setPremiumUser(ip, action) {
+    try {
+        await apiCall('/users/premium', {
+            method: 'POST',
+            body: JSON.stringify({ ip, action })
+        });
+        return true;
+    } catch (error) {
+        console.error('Error setting premium user:', error);
+        throw error;
+    }
+}
+
+async function saveSettings(settings) {
+    try {
+        await apiCall('/settings', {
+            method: 'POST',
+            body: JSON.stringify(settings)
+        });
+        return true;
+    } catch (error) {
+        console.error('Error saving settings:', error);
+        throw error;
     }
 }
 
@@ -792,19 +846,15 @@ async function refreshData() {
 
 async function loadOverviewData() {
     try {
-        // Load all overview stats in parallel
-        const [costStats, userStats] = await Promise.all([
-            loadCostStats(),
-            loadUserStats()
-        ]);
+        const stats = await loadDashboardStats();
 
-        // Update overview stats
-        document.getElementById('today-cost').textContent = formatCurrency(costStats.today);
-        document.getElementById('active-users').textContent = formatNumber(userStats.activeUsers);
-        document.getElementById('total-requests').textContent = formatNumber(userStats.totalRequests);
-        document.getElementById('blocked-ips').textContent = formatNumber(userStats.blockedIps);
+        // Update overview stats using the correct field names from dashboard_routes
+        document.getElementById('today-cost').textContent = formatCurrency(stats.today_cost);
+        document.getElementById('active-users').textContent = formatNumber(stats.active_users);
+        document.getElementById('total-requests').textContent = formatNumber(stats.total_requests);
+        document.getElementById('blocked-ips').textContent = formatNumber(stats.blocked_ips);
 
-        dashboardData.stats = { ...costStats, ...userStats };
+        dashboardData.stats = stats;
     } catch (error) {
         console.error('Error loading overview data:', error);
         // Show error state
@@ -817,34 +867,32 @@ async function loadOverviewData() {
 
 async function loadCostsPage() {
     try {
-        const [costStats, recentCosts] = await Promise.all([
-            loadCostStats(),
-            loadRecentCosts()
-        ]);
+        const period = document.querySelector('.time-filter.active')?.dataset.period || '7d';
+        const costsData = await loadCostsData(period);
 
         // Update cost stats
-        document.getElementById('cost-today').textContent = formatCurrency(costStats.today);
-        document.getElementById('cost-week').textContent = formatCurrency(costStats.week);
-        document.getElementById('cost-month').textContent = formatCurrency(costStats.month);
-        document.getElementById('avg-cost').textContent = formatCurrency(costStats.average);
+        document.getElementById('cost-today').textContent = formatCurrency(costsData.aggregated.today);
+        document.getElementById('cost-week').textContent = formatCurrency(costsData.aggregated.week);
+        document.getElementById('cost-month').textContent = formatCurrency(costsData.aggregated.month);
+        document.getElementById('avg-cost').textContent = formatCurrency(costsData.aggregated.avg_per_request);
 
         // Update costs table
         const tbody = document.getElementById('costs-table');
-        if (recentCosts.length === 0) {
+        if (costsData.costs.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">📊 No cost data available</td></tr>';
         } else {
-            tbody.innerHTML = recentCosts.map(cost => `
+            tbody.innerHTML = costsData.costs.map(cost => `
                 <tr>
-                    <td>${formatDate(cost.created_at)}</td>
+                    <td>${formatDate(cost.timestamp || cost.created_at)}</td>
                     <td>${cost.model || 'gpt-4o-mini'}</td>
                     <td>${formatNumber(cost.tokens || 0)}</td>
                     <td>${formatCurrency(cost.cost || 0)}</td>
-                    <td>${cost.tools_slug || 'unknown'}</td>
+                    <td>${cost.tool || cost.tools_slug || 'unknown'}</td>
                 </tr>
             `).join('');
         }
 
-        dashboardData.costs = recentCosts;
+        dashboardData.costs = costsData.costs;
     } catch (error) {
         console.error('Error loading costs page:', error);
         showError(document.getElementById('costs-table'), 'Failed to load cost data');
@@ -856,7 +904,7 @@ async function loadUsersPage() {
     showLoading(tbody);
 
     try {
-        const users = await loadUsers();
+        const users = await loadUsersData();
 
         if (users.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #666;">👥 No user data available</td></tr>';
@@ -866,12 +914,12 @@ async function loadUsersPage() {
                     <td>${user.ip}</td>
                     <td><span class="status-badge status-${user.status || 'guest'}">${(user.status || 'guest').toUpperCase()}</span></td>
                     <td>${formatNumber(user.requests_today || 0)}</td>
-                    <td>${user.last_seen ? formatDate(user.last_seen) : 'Never'}</td>
+                    <td>${formatDate(user.last_seen)}</td>
                     <td>
                         <button class="btn btn-primary" onclick="editUser('${user.ip}')">Edit</button>
                         ${user.status === 'blocked' ?
-                            `<button class="btn btn-success" onclick="unblockUser('${user.ip}')">Unblock</button>` :
-                            `<button class="btn btn-danger" onclick="blockUser('${user.ip}')">Block</button>`
+                            `<button class="btn btn-success" onclick="handleUnblockUser('${user.ip}')">Unblock</button>` :
+                            `<button class="btn btn-danger" onclick="handleBlockUser('${user.ip}')">Block</button>`
                         }
                     </td>
                 </tr>
@@ -890,19 +938,19 @@ async function loadToolsPage() {
     showLoading(tbody);
 
     try {
-        const tools = await loadToolsStats();
+        const tools = await loadToolsData();
 
         if (tools.length === 0) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #666;">🛠️ No tools data available</td></tr>';
         } else {
             tbody.innerHTML = tools.map(tool => `
                 <tr>
-                    <td>${tool.name || tool.tools_slug}</td>
-                    <td>${formatNumber(tool.total_uses || 0)}</td>
-                    <td>${formatNumber(tool.today || 0)}</td>
-                    <td>${formatNumber(tool.week || 0)}</td>
-                    <td>${formatCurrency(tool.avg_cost || 0)}</td>
-                    <td><span class="status-badge status-premium">ACTIVE</span></td>
+                    <td>${tool.name}</td>
+                    <td>${formatNumber(tool.total_uses)}</td>
+                    <td>${formatNumber(tool.today)}</td>
+                    <td>${formatNumber(tool.week)}</td>
+                    <td>${formatCurrency(tool.avg_cost)}</td>
+                    <td><span class="status-badge status-premium">${tool.status.toUpperCase()}</span></td>
                 </tr>
             `).join('');
         }
@@ -916,26 +964,41 @@ async function loadToolsPage() {
 
 async function loadSettingsPage() {
     try {
-        const health = await checkDatabaseHealth();
+        const [health, settings] = await Promise.all([
+            loadHealthData(),
+            loadSettingsData()
+        ]);
 
+        // Update settings form
+        if (settings.daily_budget !== undefined) {
+            document.getElementById('daily-budget').value = settings.daily_budget;
+        }
+        if (settings.hourly_limit !== undefined) {
+            document.getElementById('hourly-limit').value = settings.hourly_limit;
+        }
+        if (settings.premium_ips) {
+            document.getElementById('premium-ips').value = settings.premium_ips.join(', ');
+        }
+
+        // Update database status
         const statusElement = document.getElementById('db-status');
-        if (health.connection) {
+        if (health.database && health.database.status === 'connected') {
             statusElement.innerHTML = `
-                <div style="color: green; margin: 10px 0;">✅ Database: Connected</div>
-                <div style="color: green; margin: 10px 0;">✅ Supabase: Connected</div>
-                <div style="color: blue; margin: 10px 0;">📊 Tables: ${health.tables ? Object.keys(health.tables).length : 'Unknown'}</div>
-                <div style="color: gray; margin: 10px 0;">🕒 Last Check: ${formatDate(health.timestamp)}</div>
+                <div style="color: green; margin: 10px 0;">✅ Database: ${health.database.status}</div>
+                <div style="color: green; margin: 10px 0;">✅ Supabase: ${settings.supabase_connected ? 'Connected' : 'Disconnected'}</div>
+                <div style="color: blue; margin: 10px 0;">🔑 OpenAI: ${settings.openai_key_configured ? 'Configured' : 'Not configured'}</div>
+                <div style="color: gray; margin: 10px 0;">🕒 Last Check: ${formatDate(health.system?.last_check)}</div>
             `;
         } else {
             statusElement.innerHTML = `
-                <div style="color: red; margin: 10px 0;">❌ Database: Disconnected</div>
-                <div style="color: red; margin: 10px 0;">⚠️ Error: ${health.error || 'Connection failed'}</div>
+                <div style="color: red; margin: 10px 0;">❌ Database: ${health.database?.status || 'disconnected'}</div>
+                <div style="color: red; margin: 10px 0;">⚠️ Supabase: ${settings.supabase_connected ? 'Connected' : 'Disconnected'}</div>
             `;
         }
     } catch (error) {
-        console.error('Error loading settings:', error);
+        console.error('Error loading settings page:', error);
         document.getElementById('db-status').innerHTML = `
-            <div style="color: red;">❌ Error checking database status</div>
+            <div style="color: red;">❌ Error loading system status</div>
         `;
     }
 }
@@ -970,7 +1033,14 @@ async function saveUser() {
     }
 
     try {
-        await updateUserStatus(ip, status);
+        if (status === 'blocked') {
+            await blockUser(ip);
+        } else if (status === 'premium') {
+            await setPremiumUser(ip, 'add');
+        } else {
+            await unblockUser(ip); // Unblock if setting to guest
+        }
+
         alert('User saved successfully!');
         closeModal();
         loadUsersPage();
@@ -979,10 +1049,10 @@ async function saveUser() {
     }
 }
 
-async function blockUser(ip) {
+async function handleBlockUser(ip) {
     if (confirm(`Block user ${ip}?`)) {
         try {
-            await updateUserStatus(ip, 'blocked');
+            await blockUser(ip);
             alert('User blocked successfully!');
             loadUsersPage();
         } catch (error) {
@@ -991,10 +1061,10 @@ async function blockUser(ip) {
     }
 }
 
-async function unblockUser(ip) {
+async function handleUnblockUser(ip) {
     if (confirm(`Unblock user ${ip}?`)) {
         try {
-            await updateUserStatus(ip, 'guest');
+            await unblockUser(ip);
             alert('User unblocked successfully!');
             loadUsersPage();
         } catch (error) {
@@ -1003,23 +1073,23 @@ async function unblockUser(ip) {
     }
 }
 
-async function saveSettings() {
+async function handleSaveSettings() {
     const settings = {
-        dailyBudget: parseFloat(document.getElementById('daily-budget').value),
-        hourlyLimit: parseInt(document.getElementById('hourly-limit').value),
-        premiumIps: document.getElementById('premium-ips').value.split(',').map(ip => ip.trim())
+        daily_budget: parseFloat(document.getElementById('daily-budget').value),
+        hourly_limit: parseInt(document.getElementById('hourly-limit').value),
+        premium_ips: document.getElementById('premium-ips').value.split(',').map(ip => ip.trim()).filter(ip => ip)
     };
 
     try {
-        await apiCall('/settings', {
-            method: 'POST',
-            body: JSON.stringify(settings)
-        });
+        await saveSettings(settings);
         alert('Settings saved successfully!');
     } catch (error) {
         alert('Error saving settings: ' + error.message);
     }
 }
+
+// Update the saveSettings function call in the HTML
+window.saveSettings = handleSaveSettings;
 
 // Time filter functionality
 document.querySelectorAll('.time-filter').forEach(filter => {
@@ -1029,9 +1099,12 @@ document.querySelectorAll('.time-filter').forEach(filter => {
 
         const period = filter.dataset.period;
         console.log('Loading data for period:', period);
-        // Reload current page data with new period
+
+        // Reload costs page with new period
         const activePage = document.querySelector('.nav-item.active').dataset.page;
-        showPage(activePage);
+        if (activePage === 'costs') {
+            loadCostsPage();
+        }
     });
 });
 
@@ -1057,6 +1130,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.log('✅ Dashboard initialized successfully');
     } catch (error) {
         console.error('❌ Error initializing dashboard:', error);
+        // Show error message to user
+        document.getElementById('today-cost').textContent = 'Connection Error';
+        document.getElementById('active-users').textContent = 'Check Console';
+        document.getElementById('total-requests').textContent = 'for Details';
+        document.getElementById('blocked-ips').textContent = '🔧';
     }
 });
 
@@ -1088,10 +1166,11 @@ window.addEventListener('unhandledrejection', (event) => {
 window.dashboardDebug = {
     dashboardData,
     loadOverviewData,
-    loadCostStats,
-    loadUserStats,
-    checkDatabaseHealth,
-    apiCall
+    loadDashboardStats,
+    loadCostsData,
+    loadUsersData,
+    apiCall,
+    API_BASE_URL
 };
     </script>
 </body>
