@@ -48,7 +48,7 @@ print(f"🔍 Tools loaded successfully: {load_result}")
 @app.route('/process-tool', methods=['POST', 'OPTIONS'])
 @limiter.limit("50 per minute")
 def process_tool():
-    """Main tool processing endpoint"""
+    """Main tool processing endpoint with AI analysis integration"""
     if request.method == 'OPTIONS':
         return jsonify({}), 200
 
@@ -56,6 +56,9 @@ def process_tool():
         data = request.json or {}
         tool_slug = data.get("tool", "").strip()
         user_data = data.get("data", {})
+        localization = data.get("localization", {})
+        request_ai_analysis = data.get("request_ai_analysis", True)
+        tool_config_data = data.get("tool_config", {})
 
         if not tool_slug:
             return jsonify({"error": "Tool parameter required"}), 400
@@ -74,8 +77,19 @@ def process_tool():
                 "available_tools": list(tools_config.ALL_TOOLS.keys())[:10]
             }), 404
 
+        # Merge tool config with request data
+        if tool_config_data:
+            tool_config.update(tool_config_data)
+
         ip = get_remote_address()
         limit_check = check_user_limit(ip, is_premium_user(ip))
+
+        # Enhanced logging
+        print(f"Processing tool: {tool_slug}")
+        print(f"User data keys: {list(user_data.keys())}")
+        print(f"Localization: {localization}")
+        print(f"AI Analysis requested: {request_ai_analysis}")
+        print(f"Rate limit check: {limit_check}")
 
         # Validate inputs
         category = tool_config.get("category", "general")
@@ -83,36 +97,41 @@ def process_tool():
         base_result = generate_base_result(validated_data, category)
 
         # Generate AI analysis if not rate limited
-        if limit_check.get("can_ai", False):
-            ai_analysis = generate_ai_analysis(tool_config, validated_data, base_result, ip)
+        if limit_check.get("can_ai", False) and request_ai_analysis:
+            ai_analysis = generate_ai_analysis(tool_config, validated_data, base_result, ip, localization)
             increment_user_usage(ip, tool_slug)
         else:
-            ai_analysis = create_fallback_response(tool_config, validated_data, base_result)
-            ai_analysis += f"\n\n**Rate Limit:** {limit_check.get('message', 'Hourly limit reached')}"
+            ai_analysis = create_fallback_response(tool_config, validated_data, base_result, localization)
+            if limit_check.get("blocked", False):
+                # Add rate limit message in appropriate language
+                rate_limit_messages = {
+                    'Spanish': f"\n\n**Límite de Tarifa:** {limit_check.get('message', 'Límite por hora alcanzado')}",
+                    'French': f"\n\n**Limite de Taux:** {limit_check.get('message', 'Limite horaire atteinte')}",
+                    'German': f"\n\n**Rate Limit:** {limit_check.get('message', 'Stündliches Limit erreicht')}",
+                    'Italian': f"\n\n**Limite di Velocità:** {limit_check.get('message', 'Limite orario raggiunto')}"
+                }
+                language = localization.get('language', 'English')
+                rate_message = rate_limit_messages.get(language, f"\n\n**Rate Limit:** {limit_check.get('message', 'Hourly limit reached')}")
+                ai_analysis += rate_message
 
         is_rate_limited = limit_check.get("blocked", False)
         return jsonify({
             "output": {
                 "base_result": base_result,
                 "ai_analysis": ai_analysis,
-                "rate_limited": limit_check.get("blocked", False)
+                "rate_limited": is_rate_limited,
+                "localization": localization
             },
             "tool_info": tool_config,
             "user_info": {
                 "current_usage": limit_check.get("usage_count", 0),
                 "remaining_free": limit_check.get("remaining", 0),
-                "is_rate_limited": limit_check.get("blocked", False),
+                "is_rate_limited": is_rate_limited,
                 "upgrade_available": not is_premium_user(ip),
                 "rate_limit_message": limit_check.get("message") if is_rate_limited else None
-            }
+            },
+            "input_data": validated_data
         }), 200
-
-    except Exception as e:
-        app.logger.error(f"Process tool error: {str(e)}")
-        return jsonify({
-            "error": "Processing failed",
-            "message": "Please check your inputs and try again"
-        }), 500
 
 
 # Import and register all blueprints including face analysis

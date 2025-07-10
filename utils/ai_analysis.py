@@ -8,39 +8,23 @@ from config.settings import API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
 client = OpenAI(api_key=API_KEY)
 
 
-def get_ai_system_prompt():
-    """Get AI system prompt for analysis"""
-    return """You are an expert financial advisor, business strategist, and industry consultant with 20+ years of experience. You provide actionable insights that help users make informed decisions and optimize their financial outcomes.
-    
-    Your expertise spans:
-    - Financial Planning: Investments, loans, insurance, and wealth building
-    - Business Strategy: Operations, growth, market positioning, and competitive analysis  
-    - Market Intelligence: Current trends, timing analysis, and risk assessment
-    - Technology Integration: AI adoption, automation opportunities, and digital transformation
-    
-    You transform basic calculations into strategic intelligence by:
-    - Identifying hidden opportunities and optimization strategies
-    - Providing personalized recommendations based on user context
-    - Explaining market timing and competitive advantages
-    - Offering specific action plans with clear next steps
-    
-    Always provide practical, actionable advice that delivers measurable value."""
+def build_analysis_prompt(tool_name, category, user_data, base_result, localization=None):
+    """Build comprehensive AI analysis prompt with localization support"""
+    if not localization:
+        localization = {}
 
-
-def build_analysis_prompt(tool_name, category, user_data, base_result):
-    """Build AI analysis prompt"""
-    print(f"user_data: {user_data}")
+    language = localization.get('language', 'English')
+    country_name = localization.get('country_name', '')
+    currency = localization.get('currency', 'USD')
 
     context_items = []
-    # Extract country-specific data if available
     location_data = user_data.get('locationData', {})
     city = location_data.get('city', '')
     region = location_data.get('region', '')
-    country = location_data.get('name', location_data.get('country', ''))
-    currency = location_data.get('currency', 'USD')
-    local_term = location_data.get('local_term', 'ZIP code')
+    country = location_data.get('name', location_data.get('country', country_name))
+    local_currency = location_data.get('currency', currency)
 
-    # Build user context with localization
+    # Build user context
     for key, value in user_data.items():
         if key == 'locationData':
             if city and region:
@@ -48,73 +32,55 @@ def build_analysis_prompt(tool_name, category, user_data, base_result):
             elif country:
                 context_items.append(f"Country: {country}")
         elif isinstance(value, (int, float)) and value > 1000:
-            context_items.append(f"{key.replace('_', ' ').title()}: {currency}{value:,.0f}")
+            context_items.append(f"{key.replace('_', ' ').title()}: {local_currency}{value:,.0f}")
         else:
             context_items.append(f"{key.replace('_', ' ').title()}: {value}")
 
     user_context = " | ".join(context_items[:6])
 
-    return f"""
-Analyze this {tool_name} calculation and provide strategic insights:
+    prompt = f"""
+You are an expert analyst providing comprehensive strategic insights. Generate a complete analysis including:
 
-CALCULATION RESULT: [RESULT]
+CALCULATION RESULT: {base_result}
 USER CONTEXT: {user_context}
 CATEGORY: {category}
+LANGUAGE: {language}
+CURRENCY: {local_currency}
 
-Provide a comprehensive analysis with:
+Please respond entirely in {language} and provide:
 
-**🎯 KEY INSIGHTS** (3-4 strategic observations)
-- Most important implications of the result
-- Hidden opportunities or risks to consider
-- Market context and timing factors
+1. KEY INSIGHTS (3-4 strategic observations)
+2. STRATEGIC RECOMMENDATIONS (4-5 specific actions)
+3. VALUE LADDER (4-step progression with specific values and timelines)
+4. KEY METRICS (4 important numbers with labels)
+5. COMPARISON TABLE (relevant options with ratings)
+6. ACTION ITEMS (4 prioritized tasks with timelines and effort levels)
+7. OPTIMIZATION OPPORTUNITIES (3-4 immediate improvements)
+8. MARKET INTELLIGENCE (future outlook and timing)
 
-**💡 STRATEGIC RECOMMENDATIONS** (4-5 specific actions)
-- Prioritized steps with clear implementation guidance
-- Resource requirements and expected outcomes
-- Risk mitigation strategies
-
-**⚡ OPTIMIZATION OPPORTUNITIES** (3-4 immediate improvements)
-- Cost reduction or revenue enhancement tactics
-- Efficiency improvements with measurable impact
-- Competitive advantages to leverage
-
-**🔮 MARKET INTELLIGENCE** (Future outlook and timing)
-- Optimal timing for key decisions
-- Industry trends and their implications
-- Risk factors to monitor
-
-**📋 ACTION PLAN** (Next steps with timeline)
-- Immediate actions (0-30 days)
-- Short-term goals (1-6 months)
-- Long-term strategy considerations
-
-Make recommendations specific, actionable, and valuable for their situation.
+Format as structured sections. Include specific numbers, percentages, and actionable steps. Make everything highly specific to their situation and market context.
 """
 
+    return prompt
 
-def generate_ai_analysis(tool_config, user_data, base_result, ip):
-    """Generate AI-powered analysis with rich HTML output"""
+
+def generate_ai_analysis(tool_config, user_data, base_result, ip, localization=None):
+    """Generate comprehensive AI analysis with all components"""
     if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
-        return create_fallback_response(tool_config, user_data, base_result)
-
-    # cache_key = hashlib.sha256(f"{tool_config['slug']}:{str(user_data)}".encode()).hexdigest()
-    # cached = check_cache("ai_" + tool_config['slug'], cache_key)
-    #
-    # if cached:
-    #     return cached.replace("[RESULT]", str(base_result))
+        return create_fallback_response(tool_config, user_data, base_result, localization)
 
     category = tool_config.get("category", "general")
     tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
-    prompt = build_analysis_prompt(tool_name, category, user_data, base_result)
+    prompt = build_analysis_prompt(tool_name, category, user_data, base_result, localization)
 
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": get_ai_system_prompt()},
+                {"role": "system", "content": get_ai_system_prompt(localization)},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=1200,
+            max_tokens=2000,
             temperature=0.7
         )
 
@@ -123,1415 +89,1290 @@ def generate_ai_analysis(tool_config, user_data, base_result, ip):
         cost = (pt * 0.00015 + ct * 0.0006) / 1000
         log_openai_cost(tool_config['slug'], pt, ct, cost)
 
-        # Generate rich HTML response with charts and value ladder
-        rich_response = generate_rich_html_response(ai_analysis, user_data, base_result, tool_config)
-
-        # store_cache("ai_" + tool_config['slug'], cache_key, rich_response)
-        return rich_response.replace("[RESULT]", str(base_result))
+        # Generate rich HTML response
+        rich_response = generate_rich_html_response(ai_analysis, user_data, base_result, tool_config, localization)
+        return rich_response
 
     except Exception as e:
         print(f"AI analysis failed: {str(e)}")
-        return create_fallback_response(tool_config, user_data, base_result)
+        return create_fallback_response(tool_config, user_data, base_result, localization)
 
 
-def generate_rich_html_response(ai_analysis, user_data, base_result, tool_config):
-    """Generate rich HTML response with charts, graphs and value ladder"""
+def get_ai_system_prompt(localization=None):
+    """Get AI system prompt with localization support"""
+    if not localization:
+        localization = {}
+
+    language = localization.get('language', 'English')
+    currency = localization.get('currency', 'USD')
+    country_name = localization.get('country_name', '')
+
+    base_prompt = f"""You are an expert financial and business analyst. Provide strategic insights that are actionable, data-driven, and tailored to specific contexts.
+
+Use {currency} currency for all calculations. Adapt recommendations to {country_name} market context when relevant. 
+
+Structure your response with clear sections and include specific numbers, percentages, and actionable steps. Make everything highly practical and implementable."""
+
+    if language != 'English':
+        base_prompt += f"\n\nRespond entirely in {language}."
+
+    return base_prompt
+
+
+def generate_rich_html_response(ai_analysis, user_data, base_result, tool_config, localization=None):
+    """Generate modern material design HTML response"""
+    if not localization:
+        localization = {}
+
+    language = localization.get('language', 'English')
+    currency = localization.get('currency', 'USD')
     category = tool_config.get("category", "general")
 
-    # Generate charts data based on category
-    # charts_html = generate_charts_html(user_data, base_result, category)
+    # Parse AI analysis into structured components
+    parsed_analysis = parse_ai_analysis(ai_analysis)
 
-    # Generate value ladder
-    value_ladder_html = generate_value_ladder(user_data, base_result, category)
+    # Generate components
+    header_html = generate_header(tool_config, base_result, currency, language)
+    metrics_html = generate_metrics_from_ai(parsed_analysis.get('metrics', []), currency, language)
+    insights_html = generate_insights_from_ai(parsed_analysis.get('insights', []), language)
+    ladder_html = generate_value_ladder_from_ai(parsed_analysis.get('ladder', []), currency, language)
+    comparison_html = generate_comparison_from_ai(parsed_analysis.get('comparison', []), language)
+    actions_html = generate_actions_from_ai(parsed_analysis.get('actions', []), language)
+    analysis_html = format_analysis_content(ai_analysis)
 
-    # Generate key metrics
-    key_metrics_html = generate_key_metrics(user_data, base_result, category)
-
-    # Generate comparison table
-    comparison_html = generate_comparison_table(user_data, base_result, category)
-
-    # Convert markdown AI analysis to HTML
-    formatted_ai_analysis = convert_markdown_to_html(ai_analysis)
-
-    # Generate charts data based on category
-    charts_html = generate_charts_html(user_data, base_result, category)
-
-    # Combine everything into rich HTML
-    rich_html = f"""
+    return f"""
+{get_modern_css()}
 <div class="ai-analysis-container">
-    <div class="analysis-header">
-        <div class="result-highlight">
-            <h2 class="primary-result">🎯 {base_result}</h2>
-            <p class="result-subtitle">Generated by AI Analysis Engine</p>
+    {header_html}
+    {metrics_html}
+    {insights_html}
+    {ladder_html}
+    {comparison_html}
+    {actions_html}
+
+    <div class="analysis-section">
+        <div class="section-header">
+            <h3>🤖 {get_localized_text('ai_analysis', language)}</h3>
         </div>
-    </div>
-
-    {key_metrics_html}
-
-    <div class="analysis-content">
-        <div class="ai-insights">
-            <h3>🤖 AI Strategic Analysis</h3>
-            <div class="insights-content">
-                {formatted_ai_analysis}
-            </div>
-        </div>
-
-        {charts_html}
-
-        {comparison_html}
-
-        {value_ladder_html}
-    </div>
-
-    <div class="action-items">
-        <h3>📋 Immediate Action Items</h3>
-        <div class="action-grid">
-            {generate_action_items(user_data, category)}
+        <div class="analysis-content">
+            {analysis_html}
         </div>
     </div>
 </div>
-
-<style>
-.ai-analysis-container {{
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-}}
-
-.analysis-header {{
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 15px;
-    padding: 30px;
-    color: white;
-    text-align: center;
-    margin-bottom: 30px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-}}
-
-.primary-result {{
-    font-size: 2.5rem;
-    font-weight: bold;
-    margin: 0;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-}}
-
-.result-subtitle {{
-    font-size: 1.1rem;
-    opacity: 0.9;
-    margin: 10px 0 0 0;
-}}
-
-.key-metrics {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    margin-bottom: 30px;
-}}
-
-.metric-card {{
-    background: white;
-    border-radius: 12px;
-    padding: 25px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-    border-left: 4px solid #4CAF50;
-    transition: transform 0.3s ease;
-}}
-
-.metric-card:hover {{
-    transform: translateY(-5px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-}}
-
-.metric-value {{
-    font-size: 2rem;
-    font-weight: bold;
-    color: #2c3e50;
-    margin: 0;
-}}
-
-.metric-label {{
-    color: #7f8c8d;
-    font-size: 0.9rem;
-    margin: 5px 0 0 0;
-}}
-
-.chart-container {{
-    background: white;
-    border-radius: 12px;
-    padding: 25px;
-    margin: 20px 0;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-}}
-
-.value-ladder {{
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-    border-radius: 15px;
-    padding: 30px;
-    margin: 30px 0;
-    color: white;
-}}
-
-.ladder-step {{
-    background: rgba(255,255,255,0.2);
-    border-radius: 10px;
-    padding: 20px;
-    margin: 15px 0;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255,255,255,0.3);
-}}
-
-.action-grid {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-    gap: 20px;
-}}
-
-.action-item {{
-    background: #f8f9fa;
-    border-radius: 10px;
-    padding: 20px;
-    border-left: 4px solid #007bff;
-}}
-
-.comparison-table {{
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
-    margin: 20px 0;
-}}
-
-.comparison-table table {{
-    width: 100%;
-    border-collapse: collapse;
-}}
-
-.comparison-table th,
-.comparison-table td {{
-    padding: 15px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-}}
-
-.comparison-table th {{
-    background: #f8f9fa;
-    font-weight: 600;
-    color: #2c3e50;
-}}
-
-@media (max-width: 768px) {{
-    .key-metrics {{
-        grid-template-columns: 1fr;
-    }}
-
-    .action-grid {{
-        grid-template-columns: 1fr;
-    }}
-
-    .primary-result {{
-        font-size: 2rem;
-    }}
-}}
-
-/* Enhanced Calculator Sections CSS */
-
-/* Section Titles */
-.section-title {{
-    font-size: 1.5rem;
-    font-weight: 700;
-    color: #2c3e50;
-    margin: 0 0 25px 0;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #e9ecef;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}}
-
-/* Action Items Section */
-.action-items-section {{
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 30px;
-    margin: 30px 0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    position: relative;
-    overflow: hidden;
-}}
-
-.action-items-section::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #4CAF50, #2196F3, #FF9800, #9C27B0);
-    border-radius: 16px 16px 0 0;
-}}
-
-.action-items-grid {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}}
-
-.action-item-card {{
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 24px;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-}}
-
-.action-item-card::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    transition: left 0.6s;
-}}
-
-.action-item-card:hover::before {{
-    left: 100%;
-}}
-
-.action-item-card:hover {{
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-    border-color: #007bff;
-}}
-
-.action-item-card[data-priority="high"] {{
-    border-left: 4px solid #dc3545;
-    background: linear-gradient(135deg, #ffffff 0%, #fff5f5 100%);
-}}
-
-.action-item-card[data-priority="medium"] {{
-    border-left: 4px solid #ffc107;
-    background: linear-gradient(135deg, #ffffff 0%, #fffbf0 100%);
-}}
-
-.action-item-card[data-priority="low"] {{
-    border-left: 4px solid #28a745;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fff9 100%);
-}}
-
-.action-header {{
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 15px;
-}}
-
-.action-icon {{
-    font-size: 1.5rem;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 45px;
-    height: 45px;
-    background: rgba(0, 123, 255, 0.1);
-    border-radius: 10px;
-    border: 2px solid rgba(0, 123, 255, 0.2);
-}}
-
-.action-priority {{
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.75rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}}
-
-.action-priority.high {{
-    background: linear-gradient(135deg, #dc3545, #c82333);
-    color: white;
-    box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
-}}
-
-.action-priority.medium {{
-    background: linear-gradient(135deg, #ffc107, #e0a800);
-    color: #212529;
-    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
-}}
-
-.action-priority.low {{
-    background: linear-gradient(135deg, #28a745, #1e7e34);
-    color: white;
-    box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
-}}
-
-.action-title {{
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: #2c3e50;
-    margin: 0 0 10px 0;
-    line-height: 1.3;
-}}
-
-.action-description {{
-    color: #6c757d;
-    margin: 0 0 15px 0;
-    line-height: 1.5;
-    font-size: 0.95rem;
-}}
-
-.action-meta {{
-    display: flex;
-    gap: 15px;
-    flex-wrap: wrap;
-}}
-
-.action-timeline,
-.action-effort {{
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 6px 12px;
-    background: rgba(108, 117, 125, 0.1);
-    border-radius: 20px;
-    font-size: 0.85rem;
-    color: #495057;
-    font-weight: 500;
-}}
-
-/* Metrics Dashboard */
-.metrics-dashboard {{
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 30px;
-    margin: 30px 0;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    position: relative;
-    overflow: hidden;
-}}
-
-.metrics-dashboard::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #667eea, #764ba2);
-    border-radius: 16px 16px 0 0;
-}}
-
-.metrics-grid-enhanced {{
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 20px;
-    margin-top: 20px;
-}}
-
-.metric-card-enhanced {{
-    background: #ffffff;
-    border-radius: 12px;
-    padding: 24px;
-    border: 2px solid #e9ecef;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}}
-
-.metric-card-enhanced::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    transition: left 0.6s;
-}}
-
-.metric-card-enhanced:hover::before {{
-    left: 100%;
-}}
-
-.metric-card-enhanced:hover {{
-    transform: translateY(-8px) scale(1.02);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
-}}
-
-.metric-card-enhanced.primary {{
-    border-color: #007bff;
-    background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
-}}
-
-.metric-card-enhanced.success {{
-    border-color: #28a745;
-    background: linear-gradient(135deg, #ffffff 0%, #f8fff9 100%);
-}}
-
-.metric-card-enhanced.info {{
-    border-color: #17a2b8;
-    background: linear-gradient(135deg, #ffffff 0%, #f0fdff 100%);
-}}
-
-.metric-card-enhanced.warning {{
-    border-color: #ffc107;
-    background: linear-gradient(135deg, #ffffff 0%, #fffbf0 100%);
-}}
-
-.metric-icon {{
-    font-size: 2rem;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 123, 255, 0.1);
-    border-radius: 12px;
-    flex-shrink: 0;
-}}
-
-.metric-content {{
-    flex: 1;
-}}
-
-.metric-value {{
-    font-size: 1.8rem;
-    font-weight: 700;
-    color: #2c3e50;
-    margin: 0 0 5px 0;
-    line-height: 1.2;
-}}
-
-.metric-label {{
-    color: #6c757d;
-    font-size: 0.9rem;
-    margin: 0 0 8px 0;
-    font-weight: 500;
-}}
-
-.metric-change {{
-    display: inline-block;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-}}
-
-.metric-change.positive {{
-    background: rgba(40, 167, 69, 0.1);
-    color: #28a745;
-}}
-
-.metric-change.negative {{
-    background: rgba(220, 53, 69, 0.1);
-    color: #dc3545;
-}}
-
-.metric-change.neutral {{
-    background: rgba(108, 117, 125, 0.1);
-    color: #6c757d;
-}}
-
-/* Value Ladder Enhanced */
-.value-ladder-enhanced {{
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 16px;
-    padding: 30px;
-    margin: 30px 0;
-    color: white;
-    position: relative;
-    overflow: hidden;
-}}
-
-.value-ladder-enhanced::before {{
-    content: '';
-    position: absolute;
-    top: -50%;
-    left: -50%;
-    width: 200%;
-    height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
-    animation: pulse 4s ease-in-out infinite;
-    pointer-events: none;
-}}
-
-@keyframes pulse {{
-    0%, 100% {{ transform: scale(1); opacity: 0.5; }}
-    50% {{ transform: scale(1.05); opacity: 0.8; }}
-}}
-
-.ladder-container {{
-    position: relative;
-    z-index: 1;
-}}
-
-.ladder-step-enhanced {{
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 12px;
-    padding: 24px;
-    margin: 20px 0;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    position: relative;
-    overflow: hidden;
-}}
-
-.ladder-step-enhanced::before {{
-    content: '';
-    position: absolute;
-    top: 0;
-    left: -100%;
-    width: 100%;
-    height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-    transition: left 0.6s;
-}}
-
-.ladder-step-enhanced:hover::before {{
-    left: 100%;
-}}
-
-.ladder-step-enhanced:hover {{
-    background: rgba(255, 255, 255, 0.25);
-    transform: translateX(10px);
-}}
-
-.step-number {{
-    width: 50px;
-    height: 50px;
-    background: rgba(255, 255, 255, 0.2);
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.5rem;
-    font-weight: 700;
-    flex-shrink: 0;
-}}
-
-.step-content {{
-    flex: 1;
-}}
-
-.step-title {{
-    font-size: 1.2rem;
-    font-weight: 600;
-    margin: 0 0 8px 0;
-    color: white;
-}}
-
-.step-description {{
-    color: rgba(255, 255, 255, 0.9);
-    margin: 0 0 10px 0;
-    line-height: 1.4;
-}}
-
-.step-value {{
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: #ffd700;
-    margin: 0 0 5px 0;
-}}
-
-.step-timeline {{
-    font-size: 0.9rem;
-    color: rgba(255, 255, 255, 0.8);
-    font-weight: 500;
-}}
-
-.step-icon {{
-    font-size: 2rem;
-    width: 60px;
-    height: 60px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}}
-
-/* Copy Button */
-.copy-section-btn {{
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: rgba(0, 0, 0, 0.1);
-    border: none;
-    border-radius: 6px;
-    padding: 8px 12px;
-    cursor: pointer;
-    font-size: 12px;
-    transition: all 0.3s ease;
-    opacity: 0.7;
-    color: #6c757d;
-    font-weight: 500;
-}}
-
-.copy-section-btn:hover {{
-    background: rgba(0, 0, 0, 0.2);
-    opacity: 1;
-    transform: translateY(-1px);
-}}
-
-/* Responsive Design */
-@media (max-width: 768px) {{
-    .action-items-grid {{
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }}
-    
-    .metrics-grid-enhanced {{
-        grid-template-columns: 1fr;
-        gap: 15px;
-    }}
-    
-    .action-item-card,
-    .metric-card-enhanced {{
-        padding: 20px;
-    }}
-    
-    .metric-card-enhanced {{
-        flex-direction: column;
-        text-align: center;
-        gap: 15px;
-    }}
-    
-    .ladder-step-enhanced {{
-        flex-direction: column;
-        text-align: center;
-        gap: 15px;
-        padding: 20px;
-    }}
-    
-    .section-title {{
-        font-size: 1.3rem;
-        flex-direction: column;
-        gap: 5px;
-        text-align: center;
-    }}
-}}
-
-@media (max-width: 480px) {{
-    .action-items-section,
-    .metrics-dashboard,
-    .value-ladder-enhanced {{
-        padding: 20px;
-        margin: 20px 0;
-    }}
-    
-    .metric-value {{
-        font-size: 1.5rem;
-    }}
-    
-    .action-title {{
-        font-size: 1rem;
-    }}
-}}
-</style>
 """
 
-    return rich_html
+
+def parse_ai_analysis(ai_text):
+    """Parse AI analysis into structured components"""
+    sections = {
+        'insights': [],
+        'metrics': [],
+        'ladder': [],
+        'comparison': [],
+        'actions': []
+    }
+
+    lines = ai_text.split('\n')
+    current_section = None
+    current_content = []
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Detect sections
+        if any(keyword in line.lower() for keyword in ['insight', 'key point', 'observation']):
+            current_section = 'insights'
+        elif any(keyword in line.lower() for keyword in ['metric', 'number', 'statistic']):
+            current_section = 'metrics'
+        elif any(keyword in line.lower() for keyword in ['ladder', 'step', 'phase', 'level']):
+            current_section = 'ladder'
+        elif any(keyword in line.lower() for keyword in ['comparison', 'table', 'option']):
+            current_section = 'comparison'
+        elif any(keyword in line.lower() for keyword in ['action', 'task', 'todo', 'next step']):
+            current_section = 'actions'
+
+        if current_section and line.startswith(('-', '•', '1.', '2.', '3.', '4.')):
+            sections[current_section].append(line)
+
+    return sections
 
 
-def generate_charts_html(user_data, base_result, category):
-    """Generate interactive charts based on category"""
-    if category in ["finance", "business"]:
-        return f"""
-        <div class="chart-container">
-            <h3>📊 Financial Breakdown</h3>
-            <canvas id="financialChart" width="400" height="200"></canvas>
-            <script>
-                const ctx = document.getElementById('financialChart').getContext('2d');
-                new Chart(ctx, {{
-                    type: 'doughnut',
-                    data: {{
-                        labels: ['Investment', 'Returns', 'Fees', 'Taxes'],
-                        datasets: [{{
-                            data: [{user_data.get('amount', 100000)}, {user_data.get('amount', 100000) * 0.07}, {user_data.get('amount', 100000) * 0.01}, {user_data.get('amount', 100000) * 0.02}],
-                            backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0']
-                        }}]
-                    }},
-                    options: {{
-                        responsive: true,
-                        plugins: {{
-                            legend: {{
-                                position: 'bottom'
-                            }}
-                        }}
-                    }}
-                }});
-            </script>
-        </div>
-        """
-    elif category == "health":
-        return f"""
-        <div class="chart-container">
-            <h3>📈 Health Progress Tracker</h3>
-            <canvas id="healthChart" width="400" height="200"></canvas>
-            <script>
-                const ctx = document.getElementById('healthChart').getContext('2d');
-                new Chart(ctx, {{
-                    type: 'line',
-                    data: {{
-                        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
-                        datasets: [{{
-                            label: 'Progress',
-                            data: [0, 10, 25, 40, 60, 80],
-                            borderColor: '#4CAF50',
-                            backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                            tension: 0.4
-                        }}]
-                    }},
-                    options: {{
-                        responsive: true,
-                        scales: {{
-                            y: {{
-                                beginAtZero: true,
-                                max: 100
-                            }}
-                        }}
-                    }}
-                }});
-            </script>
-        </div>
-        """
-    else:
-        return f"""
-        <div class="chart-container">
-            <h3>📊 Analysis Overview</h3>
-            <div class="chart-placeholder">
-                <p>Interactive chart will be displayed here based on your data</p>
+def generate_header(tool_config, base_result, currency, language):
+    """Generate modern header section"""
+    tool_name = tool_config.get('seo_data', {}).get('title', 'Analysis Tool')
+
+    return f"""
+    <div class="header-section">
+        <div class="header-content">
+            <div class="result-display">
+                <div class="result-icon">🎯</div>
+                <div class="result-info">
+                    <h1 class="result-value">{base_result}</h1>
+                    <p class="result-subtitle">{tool_name} {get_localized_text('analysis_complete', language)}</p>
+                </div>
+            </div>
+            <div class="header-badge">
+                <span class="ai-badge">🤖 AI-Powered</span>
             </div>
         </div>
-        """
+    </div>
+    """
 
 
-def generate_key_metrics(user_data, base_result, category):
-    """Generate key metrics cards"""
-    if category in ["finance", "business"]:
-        amount = user_data.get('amount', 100000)
-        return f"""
-        <div class="key-metrics">
-            <div class="metric-card">
-                <h3 class="metric-value">${amount:,.0f}</h3>
-                <p class="metric-label">Principal Amount</p>
-            </div>
-            <div class="metric-card">
-                <h3 class="metric-value">{amount * 0.07:,.0f}</h3>
-                <p class="metric-label">Expected Annual Return</p>
-            </div>
-            <div class="metric-card">
-                <h3 class="metric-value">7.2%</h3>
-                <p class="metric-label">Projected Growth Rate</p>
-            </div>
-            <div class="metric-card">
-                <h3 class="metric-value">10 years</h3>
-                <p class="metric-label">Recommended Timeline</p>
-            </div>
-        </div>
-        """
-    elif category == "health":
-        return f"""
-        <div class="key-metrics">
-            <div class="metric-card">
-                <h3 class="metric-value">{user_data.get('age', 30)}</h3>
-                <p class="metric-label">Current Age</p>
-            </div>
-            <div class="metric-card">
-                <h3 class="metric-value">{user_data.get('weight', 150)} lbs</h3>
-                <p class="metric-label">Current Weight</p>
-            </div>
-            <div class="metric-card">
-                <h3 class="metric-value">24.2</h3>
-                <p class="metric-label">BMI Score</p>
-            </div>
-            <div class="metric-card">
-                <h3 class="metric-value">Healthy</h3>
-                <p class="metric-label">Status</p>
-            </div>
-        </div>
-        """
-    else:
-        return f"""
-        <div class="key-metrics">
-            <div class="metric-card">
-                <h3 class="metric-value">100%</h3>
-                <p class="metric-label">Analysis Complete</p>
-            </div>
-            <div class="metric-card">
-                <h3 class="metric-value">A+</h3>
-                <p class="metric-label">Recommendation Grade</p>
-            </div>
-            <div class="metric-card">
-                <h3 class="metric-value">5</h3>
-                <p class="metric-label">Action Items</p>
-            </div>
-            <div class="metric-card">
-                <h3 class="metric-value">30 days</h3>
-                <p class="metric-label">Implementation Time</p>
+def generate_metrics_from_ai(metrics_data, currency, language):
+    """Generate metrics cards from AI data"""
+    if not metrics_data:
+        # Generate default metrics based on common patterns
+        metrics_data = [
+            "Analysis Score: 95%",
+            "Confidence Level: High",
+            "Implementation Time: 30 days",
+            "Expected ROI: 15-25%"
+        ]
+
+    metrics_html = ""
+    for i, metric in enumerate(metrics_data[:4]):
+        # Parse metric value and label
+        parts = metric.split(':')
+        if len(parts) >= 2:
+            label = parts[0].strip()
+            value = parts[1].strip()
+        else:
+            label = f"Metric {i + 1}"
+            value = metric.strip()
+
+        icon = ["📊", "🎯", "⏱️", "💡"][i]
+        color = ["primary", "success", "warning", "info"][i]
+
+        metrics_html += f"""
+        <div class="metric-card {color}">
+            <div class="metric-icon">{icon}</div>
+            <div class="metric-content">
+                <div class="metric-value">{value}</div>
+                <div class="metric-label">{label}</div>
             </div>
         </div>
         """
 
+    return f"""
+    <div class="metrics-section">
+        <div class="section-header">
+            <h3>📊 {get_localized_text('key_metrics', language)}</h3>
+        </div>
+        <div class="metrics-grid">
+            {metrics_html}
+        </div>
+    </div>
+    """
 
-def generate_value_ladder(user_data, base_result, category):
-    """Generate value ladder for growth opportunities"""
-    if category in ["finance", "business"]:
-        amount = user_data.get('amount', 100000)
-        return f"""
-        <div class="value-ladder">
-            <h3>🚀 Your Wealth Growth Ladder</h3>
-            <div class="ladder-step">
-                <h4>Step 1: Foundation (Current)</h4>
-                <p><strong>${amount:,.0f}</strong> - Your starting investment</p>
-                <p>✅ Emergency fund established</p>
-            </div>
-            <div class="ladder-step">
-                <h4>Step 2: Growth (Year 1-3)</h4>
-                <p><strong>${amount * 1.25:,.0f}</strong> - 25% portfolio growth</p>
-                <p>🎯 Diversify into index funds and bonds</p>
-            </div>
-            <div class="ladder-step">
-                <h4>Step 3: Acceleration (Year 4-7)</h4>
-                <p><strong>${amount * 1.75:,.0f}</strong> - 75% total growth</p>
-                <p>🚀 Add real estate and dividend stocks</p>
-            </div>
-            <div class="ladder-step">
-                <h4>Step 4: Wealth (Year 8-10)</h4>
-                <p><strong>${amount * 2.5:,.0f}</strong> - 150% total growth</p>
-                <p>💎 Consider alternative investments</p>
-            </div>
-        </div>
-        """
-    elif category == "health":
-        return f"""
-        <div class="value-ladder">
-            <h3>💪 Your Health Transformation Ladder</h3>
-            <div class="ladder-step">
-                <h4>Phase 1: Foundation (Month 1-2)</h4>
-                <p><strong>Build Habits</strong> - Establish daily routines</p>
-                <p>✅ 30 minutes daily exercise</p>
-            </div>
-            <div class="ladder-step">
-                <h4>Phase 2: Progress (Month 3-4)</h4>
-                <p><strong>See Results</strong> - Visible improvements</p>
-                <p>🎯 10% body composition improvement</p>
-            </div>
-            <div class="ladder-step">
-                <h4>Phase 3: Momentum (Month 5-6)</h4>
-                <p><strong>Accelerate</strong> - Advanced techniques</p>
-                <p>🚀 Strength gains and endurance boost</p>
-            </div>
-            <div class="ladder-step">
-                <h4>Phase 4: Mastery (Month 7+)</h4>
-                <p><strong>Optimize</strong> - Peak performance</p>
-                <p>💎 Sustained healthy lifestyle</p>
-            </div>
-        </div>
-        """
-    else:
-        return f"""
-        <div class="value-ladder">
-            <h3>📈 Your Success Ladder</h3>
-            <div class="ladder-step">
-                <h4>Level 1: Start (Week 1-2)</h4>
-                <p><strong>Foundation</strong> - Get basics right</p>
-                <p>✅ Complete initial setup</p>
-            </div>
-            <div class="ladder-step">
-                <h4>Level 2: Build (Week 3-4)</h4>
-                <p><strong>Growth</strong> - Expand capabilities</p>
-                <p>🎯 Implement core strategies</p>
-            </div>
-            <div class="ladder-step">
-                <h4>Level 3: Scale (Month 2-3)</h4>
-                <p><strong>Optimize</strong> - Maximize efficiency</p>
-                <p>🚀 Advanced implementation</p>
-            </div>
-            <div class="ladder-step">
-                <h4>Level 4: Master (Month 4+)</h4>
-                <p><strong>Excellence</strong> - Sustained success</p>
-                <p>💎 Continuous improvement</p>
-            </div>
+
+def generate_insights_from_ai(insights_data, language):
+    """Generate insights section from AI data"""
+    if not insights_data:
+        insights_data = [
+            "Strategic positioning shows strong potential for growth",
+            "Market conditions favor immediate implementation",
+            "Risk factors are manageable with proper planning",
+            "Optimization opportunities identified for 20% improvement"
+        ]
+
+    insights_html = ""
+    for i, insight in enumerate(insights_data[:4]):
+        icon = ["🎯", "💡", "⚠️", "⚡"][i]
+        insights_html += f"""
+        <div class="insight-card">
+            <div class="insight-icon">{icon}</div>
+            <div class="insight-text">{insight.strip('- ')}</div>
         </div>
         """
 
+    return f"""
+    <div class="insights-section">
+        <div class="section-header">
+            <h3>💡 {get_localized_text('key_insights', language)}</h3>
+        </div>
+        <div class="insights-grid">
+            {insights_html}
+        </div>
+    </div>
+    """
 
-def generate_comparison_table(user_data, base_result, category):
-    """Generate comparison table"""
-    if category in ["finance", "business"]:
-        return """
+
+def generate_value_ladder_from_ai(ladder_data, currency, language):
+    """Generate value ladder from AI data"""
+    if not ladder_data:
+        # Generate default ladder steps
+        ladder_data = [
+            "Phase 1: Foundation - Establish baseline (Month 1-2)",
+            "Phase 2: Growth - Build momentum (Month 3-6)",
+            "Phase 3: Scale - Accelerate progress (Month 7-12)",
+            "Phase 4: Optimize - Maximize results (Year 2+)"
+        ]
+
+    ladder_html = ""
+    for i, step in enumerate(ladder_data[:4]):
+        step_number = i + 1
+        # Parse step content
+        parts = step.split('-')
+        if len(parts) >= 2:
+            title = parts[0].strip()
+            description = '-'.join(parts[1:]).strip()
+        else:
+            title = f"Step {step_number}"
+            description = step.strip('- ')
+
+        ladder_html += f"""
+        <div class="ladder-step">
+            <div class="step-number">{step_number}</div>
+            <div class="step-content">
+                <h4 class="step-title">{title}</h4>
+                <p class="step-description">{description}</p>
+            </div>
+            <div class="step-arrow">→</div>
+        </div>
+        """
+
+    return f"""
+    <div class="ladder-section">
+        <div class="section-header">
+            <h3>🚀 {get_localized_text('value_ladder', language)}</h3>
+        </div>
+        <div class="ladder-container">
+            {ladder_html}
+        </div>
+    </div>
+    """
+
+
+def generate_comparison_from_ai(comparison_data, language):
+    """Generate comparison table from AI data"""
+    if not comparison_data:
+        return ""
+
+    rows_html = ""
+    for item in comparison_data[:5]:
+        # Parse comparison data
+        parts = item.split('-')
+        if len(parts) >= 2:
+            option = parts[0].strip()
+            details = parts[1].strip()
+        else:
+            option = item.strip('- ')
+            details = "See analysis for details"
+
+        rows_html += f"""
+        <tr>
+            <td>{option}</td>
+            <td>{details}</td>
+        </tr>
+        """
+
+    return f"""
+    <div class="comparison-section">
+        <div class="section-header">
+            <h3>⚖️ {get_localized_text('comparison', language)}</h3>
+        </div>
         <div class="comparison-table">
-            <h3>💰 Investment Comparison</h3>
             <table>
                 <thead>
                     <tr>
-                        <th>Investment Type</th>
-                        <th>Expected Return</th>
-                        <th>Risk Level</th>
-                        <th>Liquidity</th>
-                        <th>Recommendation</th>
+                        <th>{get_localized_text('option', language)}</th>
+                        <th>{get_localized_text('details', language)}</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>Index Funds</td>
-                        <td>7-10%</td>
-                        <td>Medium</td>
-                        <td>High</td>
-                        <td>⭐⭐⭐⭐⭐</td>
-                    </tr>
-                    <tr>
-                        <td>Individual Stocks</td>
-                        <td>8-15%</td>
-                        <td>High</td>
-                        <td>High</td>
-                        <td>⭐⭐⭐</td>
-                    </tr>
-                    <tr>
-                        <td>Bonds</td>
-                        <td>3-5%</td>
-                        <td>Low</td>
-                        <td>Medium</td>
-                        <td>⭐⭐⭐⭐</td>
-                    </tr>
-                    <tr>
-                        <td>Real Estate</td>
-                        <td>6-12%</td>
-                        <td>Medium</td>
-                        <td>Low</td>
-                        <td>⭐⭐⭐⭐</td>
-                    </tr>
+                    {rows_html}
                 </tbody>
             </table>
         </div>
-        """
-    else:
-        return ""
+    </div>
+    """
 
 
-def generate_action_items(user_data, category):
-    """Generate actionable items"""
-    if category in ["finance", "business"]:
-        return """
-        <div class="action-item">
-            <h4>📊 Diversify Portfolio</h4>
-            <p>Spread investments across 3-4 asset classes to reduce risk</p>
-            <small>Timeline: 2 weeks</small>
-        </div>
-        <div class="action-item">
-            <h4>💰 Automate Investing</h4>
-            <p>Set up automatic monthly contributions to your investment accounts</p>
-            <small>Timeline: 1 week</small>
-        </div>
-        <div class="action-item">
-            <h4>📈 Track Performance</h4>
-            <p>Use investment tracking tools to monitor your portfolio monthly</p>
-            <small>Timeline: Ongoing</small>
-        </div>
-        <div class="action-item">
-            <h4>🎯 Rebalance Quarterly</h4>
-            <p>Review and adjust your asset allocation every 3 months</p>
-            <small>Timeline: Quarterly</small>
-        </div>
-        """
-    elif category == "health":
-        return """
-        <div class="action-item">
-            <h4>🏃‍♂️ Start Daily Walks</h4>
-            <p>Begin with 20-minute walks, gradually increase to 45 minutes</p>
-            <small>Timeline: Start today</small>
-        </div>
-        <div class="action-item">
-            <h4>🥗 Meal Planning</h4>
-            <p>Plan and prep healthy meals for the week every Sunday</p>
-            <small>Timeline: Weekly</small>
-        </div>
-        <div class="action-item">
-            <h4>💧 Hydration Goal</h4>
-            <p>Drink 8 glasses of water daily, track with a water bottle</p>
-            <small>Timeline: Daily</small>
-        </div>
-        <div class="action-item">
-            <h4>😴 Sleep Schedule</h4>
-            <p>Establish consistent 7-8 hour sleep routine</p>
-            <small>Timeline: Start this week</small>
-        </div>
-        """
-    else:
-        return """
-        <div class="action-item">
-            <h4>📋 Create Action Plan</h4>
-            <p>Break down your goals into specific, measurable steps</p>
-            <small>Timeline: This week</small>
-        </div>
-        <div class="action-item">
-            <h4>📊 Track Progress</h4>
-            <p>Set up regular check-ins to monitor your advancement</p>
-            <small>Timeline: Weekly</small>
-        </div>
-        <div class="action-item">
-            <h4>🎯 Set Milestones</h4>
-            <p>Establish clear benchmarks for measuring success</p>
-            <small>Timeline: Monthly</small>
-        </div>
-        <div class="action-item">
-            <h4>🔄 Iterate and Improve</h4>
-            <p>Continuously refine your approach based on results</p>
-            <small>Timeline: Ongoing</small>
+def generate_actions_from_ai(actions_data, language):
+    """Generate action items from AI data"""
+    if not actions_data:
+        actions_data = [
+            "Review and validate current approach (High priority, 1 week)",
+            "Implement recommended changes (Medium priority, 2-3 weeks)",
+            "Monitor progress and adjust strategy (Medium priority, Ongoing)",
+            "Optimize based on results (Low priority, Monthly)"
+        ]
+
+    actions_html = ""
+    priorities = ["high", "medium", "low"]
+    for i, action in enumerate(actions_data[:4]):
+        priority = priorities[i % 3]
+
+        # Parse action content
+        if '(' in action and ')' in action:
+            main_text = action.split('(')[0].strip()
+            meta_text = action.split('(')[1].split(')')[0]
+        else:
+            main_text = action.strip('- ')
+            meta_text = "Standard priority, 1-2 weeks"
+
+        icon = ["🎯", "⚡", "📊", "🔧"][i]
+
+        actions_html += f"""
+        <div class="action-item {priority}">
+            <div class="action-header">
+                <div class="action-icon">{icon}</div>
+                <span class="action-priority">{priority}</span>
+            </div>
+            <div class="action-content">
+                <h4 class="action-title">{main_text}</h4>
+                <p class="action-meta">{meta_text}</p>
+            </div>
         </div>
         """
 
-
-def generate_base_result(user_data, category):
-    """Generate base calculation result with rich formatting"""
-    if category in ["business", "finance"]:
-        amount = user_data.get("amount", user_data.get("revenue", 100000))
-        return f"${amount:,.0f} Investment Analysis Complete"
-    elif category == "insurance":
-        coverage = user_data.get("coverage_amount", 100000)
-        return f"${coverage:,.0f} Coverage Recommendation Ready"
-    elif category == "real_estate":
-        price = user_data.get("home_price", 400000)
-        return f"${price:,.0f} Property Investment Analysis"
-    elif category == "automotive":
-        price = user_data.get("vehicle_price", 35000)
-        return f"${price:,.0f} Vehicle Purchase Strategy"
-    elif category == "health":
-        age = user_data.get("age", 30)
-        return f"Personalized Health Plan for Age {age}"
-    elif category == "education":
-        cost = user_data.get("tuition_cost", 25000)
-        return f"${cost:,.0f} Education Investment Plan"
-    elif category == "legal":
-        case_type = user_data.get("case_type", "Business")
-        return f"{case_type} Legal Strategy Analysis"
-    else:
-        return "Comprehensive Analysis Complete"
+    return f"""
+    <div class="actions-section">
+        <div class="section-header">
+            <h3>📋 {get_localized_text('action_items', language)}</h3>
+        </div>
+        <div class="actions-grid">
+            {actions_html}
+        </div>
+    </div>
+    """
 
 
-def create_fallback_response(tool_config, user_data, base_result):
-    """Create donation banner when AI is unavailable instead of fallback content"""
-    category = tool_config.get("category", "general")
+def format_analysis_content(ai_analysis):
+    """Format the full AI analysis content"""
+    # Convert markdown-style formatting to HTML
+    html = ai_analysis
+    html = html.replace('**', '<strong>').replace('**', '</strong>')
+    html = html.replace('*', '<em>').replace('*', '</em>')
+
+    # Convert bullet points to HTML lists
+    lines = html.split('\n')
+    formatted_lines = []
+    in_list = False
+
+    for line in lines:
+        line = line.strip()
+        if line.startswith(('- ', '• ')):
+            if not in_list:
+                formatted_lines.append('<ul>')
+                in_list = True
+            formatted_lines.append(f'<li>{line[2:]}</li>')
+        else:
+            if in_list:
+                formatted_lines.append('</ul>')
+                in_list = False
+            if line:
+                if line.startswith('#'):
+                    level = len(line) - len(line.lstrip('#'))
+                    formatted_lines.append(f'<h{level + 2}>{line.lstrip("# ")}</h{level + 2}>')
+                else:
+                    formatted_lines.append(f'<p>{line}</p>')
+
+    if in_list:
+        formatted_lines.append('</ul>')
+
+    return '\n'.join(formatted_lines)
+
+
+def get_localized_text(key, language):
+    """Get localized text for UI elements"""
+    texts = {
+        'ai_analysis': {
+            'English': 'AI Strategic Analysis',
+            'Spanish': 'Análisis Estratégico IA',
+            'French': 'Analyse Stratégique IA',
+            'German': 'KI-Strategische Analyse',
+            'Italian': 'Analisi Strategica IA'
+        },
+        'analysis_complete': {
+            'English': 'Analysis Complete',
+            'Spanish': 'Análisis Completo',
+            'French': 'Analyse Terminée',
+            'German': 'Analyse Abgeschlossen',
+            'Italian': 'Analisi Completa'
+        },
+        'key_metrics': {
+            'English': 'Key Metrics',
+            'Spanish': 'Métricas Clave',
+            'French': 'Métriques Clés',
+            'German': 'Wichtige Kennzahlen',
+            'Italian': 'Metriche Chiave'
+        },
+        'key_insights': {
+            'English': 'Key Insights',
+            'Spanish': 'Puntos Clave',
+            'French': 'Insights Clés',
+            'German': 'Wichtige Erkenntnisse',
+            'Italian': 'Insights Chiave'
+        },
+        'value_ladder': {
+            'English': 'Value Ladder',
+            'Spanish': 'Escalera de Valor',
+            'French': 'Échelle de Valeur',
+            'German': 'Wertleiter',
+            'Italian': 'Scala del Valore'
+        },
+        'comparison': {
+            'English': 'Comparison',
+            'Spanish': 'Comparación',
+            'French': 'Comparaison',
+            'German': 'Vergleich',
+            'Italian': 'Confronto'
+        },
+        'action_items': {
+            'English': 'Action Items',
+            'Spanish': 'Elementos de Acción',
+            'French': 'Éléments d\'Action',
+            'German': 'Aktionspunkte',
+            'Italian': 'Elementi d\'Azione'
+        },
+        'option': {
+            'English': 'Option',
+            'Spanish': 'Opción',
+            'French': 'Option',
+            'German': 'Option',
+            'Italian': 'Opzione'
+        },
+        'details': {
+            'English': 'Details',
+            'Spanish': 'Detalles',
+            'French': 'Détails',
+            'German': 'Details',
+            'Italian': 'Dettagli'
+        }
+    }
+
+    return texts.get(key, {}).get(language, texts.get(key, {}).get('English', key))
+
+
+def create_fallback_response(tool_config, user_data, base_result, localization=None):
+    """Create fallback response when AI analysis is unavailable"""
+    if not localization:
+        localization = {}
+
+    language = localization.get('language', 'English')
+    currency = localization.get('currency', 'USD')
+
     tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
 
-    # Get location data for localization
-    location_data = user_data.get('locationData', {})
-    currency = location_data.get('currency', 'USD')
-    country = location_data.get('name', location_data.get('country', ''))
-
-    # Calculate next reset time (assuming daily reset at midnight UTC)
-    from datetime import datetime, timedelta
-    now = datetime.utcnow()
-    next_reset = (now + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
-    hours_until_reset = int((next_reset - now).total_seconds() / 3600)
-
-    donation_banner_html = f"""
-    <div class="donation-banner-container">
-        <div class="donation-header">
-            <div class="header-icon">🤖</div>
-            <h2>AI Analysis Temporarily Unavailable</h2>
-            <p class="header-subtitle">Daily AI limit reached for enhanced analysis</p>
-        </div>
-
-        <div class="basic-result-display">
-            <div class="result-card">
-                <h3 class="result-title">📊 {tool_name} Result</h3>
-                <div class="result-value">{base_result}</div>
-                <p class="result-note">Basic calculation complete - AI insights require support</p>
-            </div>
-        </div>
-
-        <div class="donation-content">
-            <div class="support-message">
-                <h3>💡 Want Advanced AI Analysis?</h3>
-                <p>Support our platform to unlock:</p>
-                <div class="features-grid">
-                    <div class="feature-item">
-                        <span class="feature-icon">🎯</span>
-                        <span class="feature-text">Strategic Insights & Market Intelligence</span>
-                    </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">💡</span>
-                        <span class="feature-text">Expert Recommendations & Action Plans</span>
-                    </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">📊</span>
-                        <span class="feature-text">Interactive Charts & Visualizations</span>
-                    </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">🚀</span>
-                        <span class="feature-text">Personalized Optimization Strategies</span>
-                    </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">⚡</span>
-                        <span class="feature-text">Risk Assessment & Mitigation Plans</span>
-                    </div>
-                    <div class="feature-item">
-                        <span class="feature-icon">🎓</span>
-                        <span class="feature-text">Expert Tips & Success Stories</span>
-                    </div>
-                </div>
-            </div>
-
-            <div class="donation-section">
-                <div class="donation-card">
-                    <h4>☕ Support Our Platform</h4>
-                    <p>Your support helps us provide advanced AI analysis and keep improving our tools.</p>
-
-                    <div class="donation-button-container">
-                        <p style="text-align:center;"><a href="https://www.buymeacoffee.com/shakdiesel" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;"></a></p>
-                    </div>
-
-                    <div class="support-benefits">
-                        <div class="benefit-item">
-                            <span class="benefit-icon">⚡</span>
-                            <span class="benefit-text">Faster AI processing</span>
-                        </div>
-                        <div class="benefit-item">
-                            <span class="benefit-icon">🔓</span>
-                            <span class="benefit-text">Higher daily limits</span>
-                        </div>
-                        <div class="benefit-item">
-                            <span class="benefit-icon">🎯</span>
-                            <span class="benefit-text">Premium features</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="reset-info">
-            <div class="reset-card">
-                <div class="reset-icon">🕐</div>
-                <div class="reset-content">
-                    <h4>AI Analysis Resets In</h4>
-                    <div class="countdown-display">
-                        <span class="countdown-number">{hours_until_reset}</span>
-                        <span class="countdown-label">hour{'' if hours_until_reset == 1 else 's'}</span>
-                    </div>
-                    <p class="reset-note">Free AI analysis available again at midnight UTC</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="alternative-actions">
-            <div class="action-card">
-                <h4>🔄 Meanwhile, You Can:</h4>
-                <div class="action-list">
-                    <div class="action-item">
-                        <span class="action-icon">📱</span>
-                        <span class="action-text">Save this result for later reference</span>
-                    </div>
-                    <div class="action-item">
-                        <span class="action-icon">🔍</span>
-                        <span class="action-text">Try other calculators and tools</span>
-                    </div>
-                    <div class="action-item">
-                        <span class="action-icon">📚</span>
-                        <span class="action-text">Explore our resource library</span>
-                    </div>
-                    <div class="action-item">
-                        <span class="action-icon">💌</span>
-                        <span class="action-text">Subscribe for updates and tips</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="thank-you-message">
-            <h4>🙏 Thank You for Using Our Platform</h4>
-            <p>We appreciate your support in helping us provide better financial tools and analysis for everyone.</p>
-        </div>
-    </div>
-    """
-
-    return donation_banner_html
-
-
-def generate_business_finance_insights(user_data, currency, country):
-    """Generate comprehensive business/finance insights"""
-    amount = user_data.get('amount', user_data.get('revenue', 100000))
     return f"""
-    <div class="insights-grid">
-        <div class="insight-card primary">
-            <div class="insight-icon">💰</div>
-            <div class="insight-content">
-                <h4>Financial Health Analysis</h4>
-                <p>Your {currency}{amount:,.0f} investment/revenue indicates <strong>strong financial positioning</strong> for strategic growth. Current market conditions favor diversified investment approaches with 60% equity, 25% bonds, and 15% alternative investments.</p>
-                <div class="insight-metrics">
-                    <span class="metric-pill positive">ROI Potential: 8-12%</span>
-                    <span class="metric-pill neutral">Risk Level: Moderate</span>
-                </div>
+    {get_modern_css()}
+    <div class="ai-analysis-container">
+        <div class="fallback-section">
+            <div class="fallback-header">
+                <div class="fallback-icon">⚡</div>
+                <h2>{get_localized_text('analysis_complete', language)}</h2>
+                <p class="fallback-subtitle">{tool_name} - Basic Result</p>
             </div>
-        </div>
 
-        <div class="insight-card success">
-            <div class="insight-icon">📈</div>
-            <div class="insight-content">
-                <h4>Market Opportunity Assessment</h4>
-                <p>Current economic indicators show <strong>favorable conditions</strong> for strategic investments. Interest rates at current levels provide optimal borrowing opportunities, while inflation trends suggest focusing on growth assets.</p>
-                <div class="insight-metrics">
-                    <span class="metric-pill positive">Market Score: 8.5/10</span>
-                    <span class="metric-pill positive">Timing: Excellent</span>
-                </div>
+            <div class="result-card">
+                <div class="result-value">{base_result}</div>
+                <p class="result-note">AI analysis temporarily unavailable - upgrade for full insights</p>
             </div>
-        </div>
 
-        <div class="insight-card info">
-            <div class="insight-icon">🎯</div>
-            <div class="insight-content">
-                <h4>Strategic Positioning</h4>
-                <p>Your financial profile aligns with <strong>growth-oriented strategies</strong>. Consider tax-advantaged accounts, dollar-cost averaging, and rebalancing quarterly to maximize compound returns over 10+ year horizon.</p>
-                <div class="insight-metrics">
-                    <span class="metric-pill info">Growth Phase: Active</span>
-                    <span class="metric-pill info">Strategy: Aggressive</span>
+            <div class="upgrade-section">
+                <h3>🚀 Get Complete AI Analysis</h3>
+                <p>Unlock strategic insights, recommendations, and action plans</p>
+                <div class="support-button">
+                    <a href="https://www.buymeacoffee.com/shakdiesel" target="_blank">
+                        <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 50px;">
+                    </a>
                 </div>
-            </div>
-        </div>
-
-        <div class="insight-card warning">
-            <div class="insight-icon">⚡</div>
-            <div class="insight-content">
-                <h4>Optimization Opportunities</h4>
-                <p>Identified potential for <strong>15-25% efficiency improvements</strong> through strategic tax planning, fee optimization, and automated investment systems. Emergency fund should cover 6-12 months expenses.</p>
-                <div class="insight-metrics">
-                    <span class="metric-pill warning">Savings Potential: {currency}{amount * 0.15:,.0f}</span>
-                    <span class="metric-pill warning">Action Required: High</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="detailed-analysis">
-        <h4>🔍 Deep Dive Analysis</h4>
-        <div class="analysis-points">
-            <div class="analysis-point">
-                <strong>Cash Flow Optimization:</strong> Implement systematic investment plan with monthly contributions of {currency}{amount * 0.05:,.0f} to maximize compound growth potential.
-            </div>
-            <div class="analysis-point">
-                <strong>Tax Efficiency:</strong> Utilize tax-advantaged accounts to potentially save {currency}{amount * 0.02:,.0f} annually in tax obligations.
-            </div>
-            <div class="analysis-point">
-                <strong>Risk Management:</strong> Diversification across asset classes can reduce portfolio volatility by 20-30% while maintaining growth potential.
-            </div>
-            <div class="analysis-point">
-                <strong>Market Timing:</strong> Current valuations suggest focusing on value stocks and international diversification for optimal risk-adjusted returns.
             </div>
         </div>
     </div>
     """
 
 
-def convert_markdown_to_html(markdown_text):
-    """Convert markdown text to HTML"""
-    if not markdown_text:
-        return '<p>AI analysis not available.</p>'
+def get_modern_css():
+    """Return modern Material Design CSS"""
+    return """
+    <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
 
-    # Convert markdown to HTML
-    html = markdown_text
-    html = html.replace('### ', '<h3>')
-    html = html.replace('## ', '<h2>')
-    html = html.replace('# ', '<h1>')
-    html = html.replace('**', '<strong>', 1).replace('**', '</strong>', 1)
+    .ai-analysis-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        line-height: 1.6;
+        color: #1a1a1a;
+    }
 
-    # Handle multiple bold text
-    import re
-    html = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', html)
-    html = re.sub(r'\*(.*?)\*', r'<em>\1</em>', html)
+    /* Header Section */
+    .header-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 24px;
+        padding: 40px;
+        margin-bottom: 32px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
 
-    # Convert line breaks to paragraphs
-    paragraphs = html.split('\n\n')
-    formatted_paragraphs = []
+    .header-section::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 4s ease-in-out infinite;
+    }
 
-    for para in paragraphs:
-        para = para.strip()
-        if para:
-            if para.startswith('<h'):
-                formatted_paragraphs.append(para)
-            elif para.startswith('-') or para.startswith('•'):
-                # Handle lists
-                list_items = para.split('\n')
-                list_html = '<ul>'
-                for item in list_items:
-                    if item.strip():
-                        clean_item = item.replace('- ', '').replace('• ', '').strip()
-                        list_html += f'<li>{clean_item}</li>'
-                list_html += '</ul>'
-                formatted_paragraphs.append(list_html)
-            else:
-                formatted_paragraphs.append(f'<p>{para.replace(chr(10), "<br>")}</p>')
+    @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 0.5; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+    }
 
-    return '\n'.join(formatted_paragraphs)
+    .header-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        z-index: 1;
+    }
 
+    .result-display {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
 
-def generate_charts_html(user_data, base_result, category):
-    """Generate interactive charts based on category"""
-    if category == "health":
-        return f"""
-        <div class="chart-container">
-            <h3>📈 Health Progress Tracker</h3>
-            <canvas id="healthChart" width="400" height="200"></canvas>
-            <script>
-                // Wait for Chart.js to be available
-                function createHealthChart() {{
-                    if (typeof Chart === 'undefined') {{
-                        console.log('Chart.js not loaded yet, retrying...');
-                        setTimeout(createHealthChart, 500);
-                        return;
-                    }}
+    .result-icon {
+        font-size: 3rem;
+        filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
+    }
 
-                    const ctx = document.getElementById('healthChart');
-                    if (!ctx) return;
+    .result-value {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin: 0;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
 
-                    new Chart(ctx, {{
-                        type: 'line',
-                        data: {{
-                            labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4', 'Week 5', 'Week 6'],
-                            datasets: [{{
-                                label: 'Progress',
-                                data: [0, 10, 25, 40, 60, 80],
-                                borderColor: '#4CAF50',
-                                backgroundColor: 'rgba(76, 175, 80, 0.1)',
-                                tension: 0.4
-                            }}]
-                        }},
-                        options: {{
-                            responsive: true,
-                            scales: {{
-                                y: {{
-                                    beginAtZero: true,
-                                    max: 100
-                                }}
-                            }}
-                        }}
-                    }});
-                }}
+    .result-subtitle {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin: 8px 0 0 0;
+    }
 
-                // Try to create chart immediately, or wait for page load
-                if (document.readyState === 'loading') {{
-                    document.addEventListener('DOMContentLoaded', createHealthChart);
-                }} else {{
-                    createHealthChart();
-                }}
-            </script>
-        </div>
-        """
+    .ai-badge {
+        background: rgba(255,255,255,0.2);
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+
+    /* Section Headers */
+    .section-header {
+        margin-bottom: 24px;
+    }
+
+    .section-header h3 {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #2d3748;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* Metrics Section */
+    .metrics-section {
+        margin-bottom: 40px;
+    }
+
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+    }
+
+    .metric-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .metric-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        transition: left 0.6s;
+    }
+
+    .metric-card:hover::before {
+        left: 100%;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+
+    .metric-card.primary { border-left: 4px solid #667eea; }
+    .metric-card.success { border-left: 4px solid #48bb78; }
+    .metric-card.warning { border-left: 4px solid #ed8936; }
+    .metric-card.info { border-left: 4px solid #4299e1; }
+
+    .metric-icon {
+        font-size: 2rem;
+        width: 64px;
+        height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f7fafc, #edf2f7);
+        border-radius: 16px;
+        flex-shrink: 0;
+    }
+
+    .metric-content {
+        flex: 1;
+    }
+
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 4px;
+    }
+
+    .metric-label {
+        color: #718096;
+        font-size: 0.9rem;
+        font-weight: 500;
+    }
+
+    /* Insights Section */
+    .insights-section {
+        margin-bottom: 40px;
+    }
+
+    .insights-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+    }
+
+    .insight-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+    }
+
+    .insight-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+
+    .insight-icon {
+        font-size: 1.5rem;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 12px;
+        flex-shrink: 0;
+    }
+
+    .insight-text {
+        color: #4a5568;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    /* Value Ladder Section */
+    .ladder-section {
+        margin-bottom: 40px;
+    }
+
+    .ladder-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 20px;
+        padding: 32px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ladder-container::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: pulse 6s ease-in-out infinite;
+    }
+
+    .ladder-step {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        background: rgba(255,255,255,0.1);
+        border-radius: 16px;
+        padding: 24px;
+        margin: 16px 0;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.2);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1;
+    }
+
+    .ladder-step:hover {
+        background: rgba(255,255,255,0.2);
+        transform: translateX(8px);
+    }
+
+    .step-number {
+        width: 48px;
+        height: 48px;
+        background: rgba(255,255,255,0.2);
+        border: 2px solid rgba(255,255,255,0.4);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .step-content {
+        flex: 1;
+    }
+
+    .step-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 8px;
+        color: white;
+    }
+
+    .step-description {
+        color: rgba(255,255,255,0.9);
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .step-arrow {
+        font-size: 1.5rem;
+        opacity: 0.7;
+        flex-shrink: 0;
+    }
+
+    /* Comparison Section */
+    .comparison-section {
+        margin-bottom: 40px;
+    }
+
+    .comparison-table {
+        background: white;
+        border-radius: 16px;
+        overflow: hidden;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+    }
+
+    .comparison-table table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .comparison-table th {
+        background: linear-gradient(135deg, #f7fafc, #edf2f7);
+        color: #2d3748;
+        padding: 20px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .comparison-table td {
+        padding: 16px 20px;
+        border-bottom: 1px solid #e2e8f0;
+        color: #4a5568;
+    }
+
+    .comparison-table tr:hover {
+        background: #f7fafc;
+    }
+
+    .comparison-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* Actions Section */
+    .actions-section {
+        margin-bottom: 40px;
+    }
+
+    .actions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+    }
+
+    .action-item {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+        transition: all 0.3s ease;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .action-item::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        transition: left 0.6s;
+    }
+
+    .action-item:hover::before {
+        left: 100%;
+    }
+
+    .action-item:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+
+    .action-item.high { border-left: 4px solid #f56565; }
+    .action-item.medium { border-left: 4px solid #ed8936; }
+    .action-item.low { border-left: 4px solid #48bb78; }
+
+    .action-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16px;
+    }
+
+    .action-icon {
+        font-size: 1.5rem;
+        width: 48px;
+        height: 48px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #f7fafc, #edf2f7);
+        border-radius: 12px;
+    }
+
+    .action-priority {
+        padding: 4px 12px;
+        border-radius: 16px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .action-priority.high {
+        background: linear-gradient(135deg, #f56565, #e53e3e);
+        color: white;
+    }
+
+    .action-priority.medium {
+        background: linear-gradient(135deg, #ed8936, #dd6b20);
+        color: white;
+    }
+
+    .action-priority.low {
+        background: linear-gradient(135deg, #48bb78, #38a169);
+        color: white;
+    }
+
+    .action-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .action-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #2d3748;
+        margin-bottom: 8px;
+        line-height: 1.3;
+    }
+
+    .action-meta {
+        color: #718096;
+        font-size: 0.9rem;
+        line-height: 1.4;
+    }
+
+    /* Analysis Content Section */
+    .analysis-section {
+        margin-bottom: 40px;
+    }
+
+    .analysis-content {
+        background: white;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid #e2e8f0;
+    }
+
+    .analysis-content h2,
+    .analysis-content h3,
+    .analysis-content h4 {
+        color: #2d3748;
+        margin: 24px 0 16px 0;
+        font-weight: 600;
+    }
+
+    .analysis-content h2 { font-size: 1.5rem; }
+    .analysis-content h3 { font-size: 1.3rem; }
+    .analysis-content h4 { font-size: 1.1rem; }
+
+    .analysis-content p {
+        color: #4a5568;
+        margin: 16px 0;
+        line-height: 1.7;
+    }
+
+    .analysis-content ul {
+        margin: 16px 0;
+        padding-left: 0;
+    }
+
+    .analysis-content li {
+        background: #f7fafc;
+        margin: 8px 0;
+        padding: 12px 16px;
+        border-left: 4px solid #667eea;
+        border-radius: 0 8px 8px 0;
+        list-style: none;
+        color: #4a5568;
+    }
+
+    .analysis-content strong {
+        color: #2d3748;
+        font-weight: 600;
+    }
+
+    .analysis-content em {
+        color: #667eea;
+        font-style: normal;
+        font-weight: 500;
+    }
+
+    /* Fallback Section */
+    .fallback-section {
+        text-align: center;
+        padding: 40px;
+    }
+
+    .fallback-header {
+        margin-bottom: 32px;
+    }
+
+    .fallback-icon {
+        font-size: 4rem;
+        margin-bottom: 16px;
+    }
+
+    .fallback-header h2 {
+        font-size: 2rem;
+        font-weight: 700;
+        color: #2d3748;
+        margin-bottom: 8px;
+    }
+
+    .fallback-subtitle {
+        color: #718096;
+        font-size: 1.1rem;
+    }
+
+    .result-card {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border-radius: 20px;
+        padding: 32px;
+        margin: 32px 0;
+        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+    }
+
+    .result-card .result-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    .result-note {
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+
+    .upgrade-section {
+        background: #f7fafc;
+        border-radius: 16px;
+        padding: 32px;
+        margin: 32px 0;
+    }
+
+    .upgrade-section h3 {
+        color: #2d3748;
+        font-size: 1.5rem;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+
+    .upgrade-section p {
+        color: #4a5568;
+        font-size: 1.1rem;
+        margin-bottom: 24px;
+    }
+
+    .support-button {
+        display: flex;
+        justify-content: center;
+    }
+
+    .support-button img {
+        transition: transform 0.3s ease;
+    }
+
+    .support-button img:hover {
+        transform: scale(1.05);
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+        .ai-analysis-container {
+            padding: 16px;
+        }
+
+        .header-section {
+            padding: 24px;
+        }
+
+        .header-content {
+            flex-direction: column;
+            text-align: center;
+            gap: 20px;
+        }
+
+        .result-display {
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .result-value {
+            font-size: 2rem !important;
+        }
+
+        .metrics-grid,
+        .insights-grid,
+        .actions-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+
+        .metric-card,
+        .insight-card,
+        .action-item {
+            padding: 20px;
+        }
+
+        .metric-card {
+            flex-direction: column;
+            text-align: center;
+            gap: 16px;
+        }
+
+        .ladder-step {
+            flex-direction: column;
+            text-align: center;
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .step-arrow {
+            transform: rotate(90deg);
+        }
+
+        .section-header h3 {
+            font-size: 1.3rem;
+            justify-content: center;
+        }
+
+        .analysis-content {
+            padding: 24px;
+        }
+
+        .comparison-table th,
+        .comparison-table td {
+            padding: 12px 16px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .header-section,
+        .ladder-container,
+        .analysis-content,
+        .upgrade-section {
+            padding: 20px;
+        }
+
+        .result-icon {
+            font-size: 2.5rem;
+        }
+
+        .metric-value {
+            font-size: 1.5rem;
+        }
+
+        .action-title {
+            font-size: 1rem;
+        }
+
+        .section-header h3 {
+            font-size: 1.2rem;
+        }
+    }
+
+    /* Animation Classes */
+    .fade-in {
+        animation: fadeIn 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .slide-in {
+        animation: slideIn 0.8s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    /* Loading States */
+    .loading {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .loading::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+        animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+
+    /* Accessibility */
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
+    /* Focus States */
+    .action-item:focus,
+    .metric-card:focus,
+    .insight-card:focus {
+        outline: 2px solid #667eea;
+        outline-offset: 2px;
+    }
+
+    /* Print Styles */
+    @media print {
+        .ai-analysis-container {
+            box-shadow: none;
+            border: 1px solid #ddd;
+        }
+
+        .header-section,
+        .ladder-container {
+            background: #f5f5f5 !important;
+            color: #333 !important;
+        }
+
+        .metric-card,
+        .insight-card,
+        .action-item,
+        .analysis-content {
+            box-shadow: none;
+            border: 1px solid #ddd;
+            page-break-inside: avoid;
+        }
+    }
+    </style>"""
