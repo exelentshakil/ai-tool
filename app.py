@@ -11,7 +11,7 @@ from datetime import datetime
 from utils.database import init_databases, get_openai_cost_today
 from utils.rate_limiting import get_remote_address, check_user_limit, is_premium_user, increment_user_usage
 from utils.validation import validate_tool_inputs
-from utils.ai_analysis import generate_ai_analysis, generate_base_result, create_fallback_response
+from utils.ai_analysis import generate_ai_analysis, create_fallback_response
 from utils.tools_config import load_all_tools
 from utils import tools_config
 from config.settings import *
