@@ -53,14 +53,31 @@ def build_analysis_prompt(tool_name, category, user_data, localization=None):
     country_name = localization.get('country_name', '')
     currency = localization.get('currency', 'USD')
 
+    # Fix currency encoding issue
+    if currency == 'u20ac':
+        currency = 'EUR'
+
     context_items = []
+
+    # Safe extraction of location data - handle both dict and string
     location_data = user_data.get('locationData', {})
+    if isinstance(location_data, str):
+        # If locationData is a string, create a basic dict
+        location_data = {'name': country_name}
+    elif not isinstance(location_data, dict):
+        # If it's neither string nor dict, use empty dict
+        location_data = {}
+
     city = location_data.get('city', '')
     region = location_data.get('region', '')
     country = location_data.get('name', location_data.get('country', country_name))
     local_currency = location_data.get('currency', currency)
 
-    # Build user context
+    # Fix currency encoding for local_currency too
+    if local_currency == 'u20ac':
+        local_currency = 'EUR'
+
+    # Build user context safely
     for key, value in user_data.items():
         if key == 'locationData':
             if city and region:
@@ -69,10 +86,12 @@ def build_analysis_prompt(tool_name, category, user_data, localization=None):
                 context_items.append(f"Country: {country}")
         elif isinstance(value, (int, float)) and value > 1000:
             context_items.append(f"{key.replace('_', ' ').title()}: {local_currency}{value:,.0f}")
-        else:
+        elif isinstance(value, str) and value.strip():  # Only add non-empty strings
+            context_items.append(f"{key.replace('_', ' ').title()}: {value}")
+        elif isinstance(value, (int, float)):
             context_items.append(f"{key.replace('_', ' ').title()}: {value}")
 
-    user_context = " | ".join(context_items[:6])
+    user_context = " | ".join(context_items[:8])  # Increased to 8 items
 
     prompt = f"""
 You are an expert analyst providing comprehensive strategic insights for a {tool_name}.
@@ -81,6 +100,7 @@ USER CONTEXT: {user_context}
 CATEGORY: {category}
 LANGUAGE: {language}
 CURRENCY: {local_currency}
+COUNTRY: {country}
 
 Analyze the user's situation and provide a complete strategic analysis including:
 
@@ -94,12 +114,101 @@ Analyze the user's situation and provide a complete strategic analysis including
 8. OPTIMIZATION OPPORTUNITIES (3-4 immediate improvements)
 9. MARKET INTELLIGENCE (future outlook and timing)
 
-Respond entirely in {language}. Include specific numbers, percentages, and actionable steps. Make everything highly specific to their situation and market context.
+Respond entirely in {language}. Include specific numbers, percentages, and actionable steps. Make everything highly specific to their situation and market context in {country}.
 
-Calculate the main result first, then provide comprehensive analysis around that result.
+Use {local_currency} currency for all financial calculations. Calculate the main result first, then provide comprehensive analysis around that result.
 """
 
     return prompt
+
+
+def generate_ai_analysis(tool_config, user_data, ip, localization=None):
+    """Generate pure AI analysis without base result"""
+    if get_openai_cost_today() >= DAILY_OPENAI_BUDGET or get_openai_cost_month() >= MONTHLY_OPENAI_BUDGET:
+        return create_fallback_response(tool_config, user_data, localization)
+
+    category = tool_config.get("category", "general")
+    tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
+
+    # Clean up user_data before processing
+    cleaned_user_data = clean_user_data(user_data)
+
+    # Build AI prompt
+    prompt = build_analysis_prompt(tool_name, category, cleaned_user_data, localization)
+
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": get_ai_system_prompt(localization)},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=2000,
+            temperature=0.7
+        )
+
+        ai_analysis = response.choices[0].message.content
+        pt, ct = response.usage.prompt_tokens, response.usage.completion_tokens
+        cost = (pt * 0.00015 + ct * 0.0006) / 1000
+        log_openai_cost(tool_config['slug'], pt, ct, cost)
+
+        # Generate rich HTML response
+        rich_response = generate_rich_html_response(ai_analysis, cleaned_user_data, tool_config, localization)
+        return rich_response
+
+    except Exception as e:
+        print(f"AI analysis failed: {str(e)}")
+        return create_fallback_response(tool_config, cleaned_user_data, localization)
+
+
+def clean_user_data(user_data):
+    """Clean and normalize user data"""
+    cleaned_data = {}
+
+    for key, value in user_data.items():
+        if key == 'locationData':
+            # Ensure locationData is always a dict
+            if isinstance(value, dict):
+                cleaned_data[key] = value
+            elif isinstance(value, str):
+                cleaned_data[key] = {'name': value}
+            else:
+                cleaned_data[key] = {}
+        elif key in ['currency', 'currency_symbol']:
+            # Fix currency encoding
+            if value == 'u20ac':
+                cleaned_data[key] = 'EUR'
+            else:
+                cleaned_data[key] = value
+        else:
+            cleaned_data[key] = value
+
+    return cleaned_data
+
+
+def get_ai_system_prompt(localization=None):
+    """Get AI system prompt with localization support"""
+    if not localization:
+        localization = {}
+
+    language = localization.get('language', 'English')
+    currency = localization.get('currency', 'USD')
+    country_name = localization.get('country_name', '')
+
+    # Fix currency encoding
+    if currency == 'u20ac':
+        currency = 'EUR'
+
+    base_prompt = f"""You are an expert financial and business analyst. Provide strategic insights that are actionable, data-driven, and tailored to specific contexts.
+
+Use {currency} currency for all calculations. Adapt recommendations to {country_name} market context when relevant. 
+
+Structure your response with clear sections and include specific numbers, percentages, and actionable steps. Make everything highly practical and implementable."""
+
+    if language != 'English':
+        base_prompt += f"\n\nRespond entirely in {language}."
+
+    return base_prompt
 
 
 def create_fallback_response(tool_config, user_data, localization=None):
@@ -109,6 +218,10 @@ def create_fallback_response(tool_config, user_data, localization=None):
 
     language = localization.get('language', 'English')
     currency = localization.get('currency', 'USD')
+
+    # Fix currency encoding
+    if currency == 'u20ac':
+        currency = 'EUR'
 
     tool_name = tool_config.get("seo_data", {}).get("title", "Analysis Tool")
     category = tool_config.get("category", "general")
@@ -139,7 +252,6 @@ def create_fallback_response(tool_config, user_data, localization=None):
         </div>
     </div>
     """
-
 
 def get_ai_system_prompt(localization=None):
     """Get AI system prompt with localization support"""

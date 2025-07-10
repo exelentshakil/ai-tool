@@ -28,54 +28,276 @@ class EnhancedCalculatorCore {
         // Load existing cache on startup
         this.loadCacheFromStorage();
     }
+// Add these improved methods to your EnhancedCalculatorCore class
 
-    // Enhanced currency formatting with localization
-    getCurrencySymbol(currencyCode) {
-        const symbols = {
-            "USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "CAD": "C$",
-            "AUD": "A$", "CHF": "Fr", "NOK": "kr", "SEK": "kr", "DKK": "kr",
-            "NZD": "NZ$", "CNY": "¥", "INR": "₹", "BRL": "R$", "KRW": "₩"
-        };
-        return symbols[currencyCode] || currencyCode;
+// Enhanced currency formatting with proper locale handling
+formatCurrency(amount, currency) {
+    const currencyCode = currency || this.currency;
+    const numericAmount = parseFloat(amount) || 0;
+
+    try {
+        return new Intl.NumberFormat(this.locale, {
+            style: 'currency',
+            currency: currencyCode,
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(numericAmount);
+    } catch (error) {
+        // Fallback formatting with proper symbol placement
+        const symbol = this.getCurrencySymbol(currencyCode);
+        const formattedNumber = this.formatNumber(numericAmount);
+
+        // Handle symbol placement based on currency
+        if (currencyCode === 'EUR') {
+            return formattedNumber + ' €';
+        } else if (currencyCode === 'GBP') {
+            return '£' + formattedNumber;
+        } else {
+            return symbol + formattedNumber;
+        }
+    }
+}
+
+// Enhanced number formatting with proper locale
+formatNumber(number) {
+    const numericValue = parseFloat(number) || 0;
+    try {
+        return new Intl.NumberFormat(this.locale, {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(numericValue);
+    } catch (error) {
+        // Fallback formatting
+        return numericValue.toLocaleString();
+    }
+}
+
+// Improved currency elements update
+updateCurrencyElements() {
+    // Update slider values with local currency
+    const currencySliders = document.querySelectorAll('.slider-input[data-format="currency"]');
+    for (let i = 0; i < currencySliders.length; i++) {
+        const slider = currencySliders[i];
+        const valueDisplay = document.getElementById(slider.id + '-value');
+        if (valueDisplay) {
+            const amount = parseFloat(slider.value) || 0;
+            const formattedValue = this.formatCurrency(amount);
+            valueDisplay.textContent = formattedValue;
+
+            // Clean up any encoding issues
+            valueDisplay.innerHTML = valueDisplay.textContent;
+        }
     }
 
-    // Get locale from country code
-    getLocaleFromCountry(countryCode) {
-        const locales = {
-            "US": "en-US", "UK": "en-GB", "CA": "en-CA", "AU": "en-AU",
-            "DE": "de-DE", "FR": "fr-FR", "ES": "es-ES", "IT": "it-IT",
-            "NO": "no-NO", "DK": "da-DK", "SE": "sv-SE", "FI": "fi-FI",
-            "NL": "nl-NL", "BE": "nl-BE", "CH": "de-CH", "AT": "de-AT",
-            "IE": "en-IE", "NZ": "en-NZ"
-        };
-        return locales[countryCode] || "en-US";
+    // Update any currency labels
+    const currencyLabels = document.querySelectorAll('[data-currency-label]');
+    for (let i = 0; i < currencyLabels.length; i++) {
+        const label = currencyLabels[i];
+        label.textContent = this.currency;
     }
+}
+
+// Add global slider update function
+updateSliderValue(slider) {
+    const calculator = window.calculator || window.EnhancedCalculatorCore;
+    if (!calculator) {
+        console.warn('Calculator instance not found');
+        return;
+    }
+
+    const valueDisplay = document.getElementById(slider.id + '-value');
+    if (!valueDisplay) return;
+
+    const value = parseFloat(slider.value) || 0;
+    const format = slider.getAttribute('data-format');
+
+    if (format === 'currency') {
+        valueDisplay.textContent = calculator.formatCurrency(value);
+    } else if (format === 'number') {
+        valueDisplay.textContent = calculator.formatNumber(value);
+    } else if (format === 'percentage') {
+        valueDisplay.textContent = value + '%';
+    } else {
+        valueDisplay.textContent = value;
+    }
+
+    // Clean up any encoding issues
+    valueDisplay.innerHTML = valueDisplay.textContent;
+}
+
+// Enhanced locale setup
+getLocaleFromCountry(countryCode) {
+    const locales = {
+        "US": "en-US", "UK": "en-GB", "CA": "en-CA", "AU": "en-AU",
+        "DE": "de-DE", "FR": "fr-FR", "ES": "es-ES", "IT": "it-IT",
+        "NO": "nb-NO", "DK": "da-DK", "SE": "sv-SE", "FI": "fi-FI",
+        "NL": "nl-NL", "BE": "nl-BE", "CH": "de-CH", "AT": "de-AT",
+        "IE": "en-IE", "NZ": "en-NZ", "PT": "pt-PT", "BR": "pt-BR",
+        "IN": "en-IN", "JP": "ja-JP", "KR": "ko-KR", "CN": "zh-CN"
+    };
+    return locales[countryCode] || "en-US";
+}
+
+// Improved currency symbol mapping
+getCurrencySymbol(currencyCode) {
+    const symbols = {
+        "USD": "$", "EUR": "€", "GBP": "£", "JPY": "¥", "CAD": "C$",
+        "AUD": "A$", "CHF": "CHF", "NOK": "kr", "SEK": "kr", "DKK": "kr",
+        "NZD": "NZ$", "CNY": "¥", "INR": "₹", "BRL": "R$", "KRW": "₩",
+        "PLN": "zł", "CZK": "Kč", "HUF": "Ft", "RON": "lei", "BGN": "лв"
+    };
+    return symbols[currencyCode] || currencyCode;
+}
+
+// Enhanced UI localization update
+updateUILocalization() {
+    // Update form labels based on country
+    const locationInput = document.querySelector('input[name="location"]');
+    if (locationInput && this.countryData.local_term) {
+        const formGroup = locationInput.closest('.form-group');
+        if (formGroup) {
+            const label = formGroup.querySelector('label');
+            if (label) {
+                const localTerm = this.countryData.local_term;
+                label.innerHTML = label.innerHTML.replace(/ZIP code|postal code|postcode/gi, localTerm);
+            }
+        }
+        locationInput.placeholder = 'Enter your ' + this.countryData.local_term;
+    }
+
+    // Update currency-related elements
+    const currencyElements = document.querySelectorAll('[data-currency]');
+    for (let i = 0; i < currencyElements.length; i++) {
+        const element = currencyElements[i];
+        element.textContent = element.textContent.replace(/\$|USD/g, this.currencySymbol);
+    }
+
+    // Fix any existing currency display issues
+    this.fixCurrencyDisplayIssues();
+}
+
+// New method to fix currency display issues
+fixCurrencyDisplayIssues() {
+    // Find and fix any malformed currency displays
+    const currencyDisplays = document.querySelectorAll('.slider-value, [data-format="currency"]');
+    for (let i = 0; i < currencyDisplays.length; i++) {
+        const element = currencyDisplays[i];
+        let text = element.textContent || element.innerHTML;
+
+        // Fix common currency encoding issues
+        text = text.replace(/u20ac/gi, '€');
+        text = text.replace(/&euro;/gi, '€');
+        text = text.replace(/&#8364;/gi, '€');
+        text = text.replace(/u00a3/gi, '£');
+        text = text.replace(/&pound;/gi, '£');
+
+        // Update the element
+        element.textContent = text;
+    }
+}
+
+// Add initialization method that sets up currency properly
+initializeCurrencyHandling() {
+    console.log('🔧 Initializing currency handling for:', this.currency);
+
+    // Set up global slider update function
+    if (!window.updateSliderValue) {
+        window.updateSliderValue = (slider) => {
+            this.updateSliderValue(slider);
+        };
+    }
+
+    // Fix existing currency displays
+    this.updateCurrencyElements();
+    this.fixCurrencyDisplayIssues();
+
+    // Set up currency change observers
+    this.observeCurrencyChanges();
+}
+
+// Method to observe and fix currency changes
+observeCurrencyChanges() {
+    // Create a mutation observer to watch for currency display changes
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                // Check if any currency-related elements were modified
+                const target = mutation.target;
+                if (target.classList && (
+                    target.classList.contains('slider-value') ||
+                    target.hasAttribute('data-format')
+                )) {
+                    setTimeout(() => this.fixCurrencyDisplayIssues(), 100);
+                }
+            }
+        });
+    });
+
+    // Start observing
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true
+    });
+}
+
+// Update the initialization to include currency handling
+init() {
+    try {
+        this.setupModules();
+        this.initializeModules();
+        this.setupLocalization();
+        this.initializeCurrencyHandling(); // Add this line
+        console.log('✅ All calculator modules initialized successfully');
+    } catch (error) {
+        console.error('❌ Calculator initialization failed:', error);
+        this.handleInitError(error);
+    }
+}
+
+// Add method to update slider value (called by global function)
+updateSliderValue(slider) {
+    const valueDisplay = document.getElementById(slider.id + '-value');
+    if (!valueDisplay) return;
+
+    const value = parseFloat(slider.value) || 0;
+    const format = slider.getAttribute('data-format');
+
+    if (format === 'currency') {
+        valueDisplay.textContent = this.formatCurrency(value);
+    } else if (format === 'number') {
+        valueDisplay.textContent = this.formatNumber(value);
+    } else if (format === 'percentage') {
+        valueDisplay.textContent = value + '%';
+    } else {
+        valueDisplay.textContent = value;
+    }
+}
+
+// Add this CSS to fix currency display issues
+addCurrencyFixCSS() {
+    const style = document.createElement('style');
+    style.textContent = `
+        .slider-value {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            unicode-bidi: embed;
+            direction: ltr;
+        }
+        
+        .currency-display {
+            white-space: nowrap;
+        }
+        
+        /* Fix for euro symbol display */
+        .slider-value::before {
+            content: '';
+        }
+    `;
+    document.head.appendChild(style);
+}
+
 
     // Enhanced number formatting with localization
-    formatCurrency(amount, currency) {
-        const currencyCode = currency || this.currency;
-        try {
-            return new Intl.NumberFormat(this.locale, {
-                style: 'currency',
-                currency: currencyCode,
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(amount);
-        } catch (error) {
-            // Fallback formatting
-            return this.currencySymbol + this.formatNumber(amount);
-        }
-    }
-
-    formatNumber(number) {
-        try {
-            return new Intl.NumberFormat(this.locale).format(number);
-        } catch (error) {
-            // Fallback formatting
-            return number.toLocaleString();
-        }
-    }
-
     formatDate(date, options) {
         options = options || {};
         try {
@@ -359,42 +581,6 @@ class EnhancedCalculatorCore {
 
         // Add country-specific styling
         this.addCountrySpecificStyling();
-    }
-
-    updateUILocalization() {
-        // Update form labels based on country
-        const locationInput = document.querySelector('input[name="location"]');
-        if (locationInput && this.countryData.local_term) {
-            const formGroup = locationInput.closest('.form-group');
-            if (formGroup) {
-                const label = formGroup.querySelector('label');
-                if (label) {
-                    const localTerm = this.countryData.local_term;
-                    label.innerHTML = label.innerHTML.replace(/ZIP code|postal code|postcode/gi, localTerm);
-                }
-            }
-            locationInput.placeholder = 'Enter your ' + this.countryData.local_term;
-        }
-
-        // Update currency-related elements
-        const currencyElements = document.querySelectorAll('[data-currency]');
-        for (let i = 0; i < currencyElements.length; i++) {
-            const element = currencyElements[i];
-            element.textContent = element.textContent.replace(/\$|USD/g, this.currencySymbol);
-        }
-    }
-
-    updateCurrencyElements() {
-        // Update slider values with local currency
-        const currencySliders = document.querySelectorAll('.slider-input[data-format="currency"]');
-        for (let i = 0; i < currencySliders.length; i++) {
-            const slider = currencySliders[i];
-            const valueDisplay = document.getElementById(slider.id + '-value');
-            if (valueDisplay) {
-                const amount = parseInt(slider.value);
-                valueDisplay.textContent = this.formatCurrency(amount);
-            }
-        }
     }
 
     addCountrySpecificStyling() {
