@@ -184,49 +184,56 @@ def get_user_usage_current_hour(ip: str) -> int:
         logger.error(f"❌ Error getting user usage: {str(e)}")
         return 0
 
-def increment_user_usage(ip: str, tools_slug: str = None) -> bool:
-    """
-    Increment user usage for current hour (backward compatible with optional tools_slug)
 
-    Args:
-        ip: User IP address
-        tools_slug: Optional tool identifier
-
-    Returns:
-        bool: Success status
-    """
+def increment_user_usage(ip, tool_name=None):
+    """Increment user usage count for current hour"""
     if not supabase:
-        logger.error("❌ Supabase not initialized, cannot increment usage")
-        return False
+        return
 
     try:
         current_hour = datetime.now().strftime('%Y-%m-%d-%H')
-        current_usage = get_user_usage_current_hour(ip)
+        current_time = datetime.now().isoformat()
 
-        data = {
-            'ip': str(ip),
-            'hour_key': current_hour,
-            'count': current_usage + 1,
-            'updated_at': datetime.now().isoformat()
-        }
-
-        # Add tools_slug if provided
-        if tools_slug:
-            data['tools_slug'] = str(tools_slug)
-
-        result = supabase.table('user_limits').upsert(data).execute()
+        # Check if record exists for this IP and hour
+        result = supabase.table('user_limits').select('*').eq('ip', ip).eq('hour_key', current_hour).execute()
 
         if result.data:
-            tool_info = f" (tool: {tools_slug})" if tools_slug else ""
-            logger.info(f"✅ Usage incremented for {ip}: +1{tool_info}")
-            return True
+            # Update existing record
+            existing_record = result.data[0]
+            new_count = existing_record['count'] + 1
+
+            update_data = {
+                'count': new_count,
+                'last_used': current_time,
+                'updated_at': current_time
+            }
+
+            # Use 'last_tool' instead of 'tools_slug' (matches your table schema)
+            if tool_name:
+                update_data['last_tool'] = tool_name
+
+            supabase.table('user_limits').update(update_data).eq('id', existing_record['id']).execute()
+            print(f"✅ Updated usage for {ip}: {new_count} requests this hour")
+
         else:
-            logger.warning(f"⚠️ Usage increment returned no data for {ip}")
-            return False
+            # Create new record
+            insert_data = {
+                'ip': ip,
+                'hour_key': current_hour,
+                'count': 1,
+                'last_used': current_time,
+                'updated_at': current_time
+            }
+
+            # Use 'last_tool' instead of 'tools_slug'
+            if tool_name:
+                insert_data['last_tool'] = tool_name
+
+            supabase.table('user_limits').insert(insert_data).execute()
+            print(f"✅ Created new usage record for {ip}: 1 request")
 
     except Exception as e:
-        logger.error(f"❌ Error incrementing user usage for {ip}: {str(e)}")
-        return False
+        print(f"❌ Error incrementing user usage for {ip}: {e}")
 
 # =============================================================================
 # ENHANCED FUNCTIONS FOR DASHBOARD
