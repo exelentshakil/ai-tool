@@ -470,13 +470,14 @@ def get_text(key, language):
 
     return texts.get(language, texts['English']).get(key, key)
 
+def build_prompt(tool_name, category, user_data, localization=None):
+    return build_enhanced_prompt(tool_name, category, user_data, localization)
 
 # Usage example:
 """
 # Replace your existing functions with these enhanced versions:
 
-def build_prompt(tool_name, category, user_data, localization=None):
-    return build_enhanced_prompt(tool_name, category, user_data, localization)
+
 
 def get_system_prompt(localization=None):
     return get_enhanced_system_prompt(localization)
