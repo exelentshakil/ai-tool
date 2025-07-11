@@ -16,11 +16,13 @@ def load_all_tools():
 
         if not os.path.exists(TOOLS_CONFIG_FILE):
             print(f"❌ {TOOLS_CONFIG_FILE} not found!")
-            print(f"🔍 Attempting to create default config...")
-            create_default_tools_config()
+            #print(f"🔍 Attempting to create default config...")
+            #create_default_tools_config()
 
             # Try loading again after creating default
             if os.path.exists(TOOLS_CONFIG_FILE):
+                print(f"✅ Loaded {TOOLS_CONFIG_FILE} config file")
+
                 with open(TOOLS_CONFIG_FILE, 'r', encoding='utf-8') as f:
                     ALL_TOOLS = json.load(f)
                 print(f"✅ Loaded {len(ALL_TOOLS)} tools from newly created config")
