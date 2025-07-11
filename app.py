@@ -235,9 +235,9 @@ def process_tool():
 
 # Import and register all blueprints
 try:
-    from routes.tools_routes import tools_bp
+    from routes.tools_routes import tools_api_bp
 
-    app.register_blueprint(tools_bp)
+    app.register_blueprint(tools_api_bp)
     print("✅ Tools routes registered")
 except ImportError as e:
     print(f"⚠️ Tools routes not found: {e}")
