@@ -17,48 +17,10 @@ def list_tools():
         sort_by = request.args.get('sort', 'name')
         limit = int(request.args.get('limit', 50))
 
-        tools = []
-
-        # Apply search if provided
-        if search_query:
-            search_results = search_tools(search_query, category if category != 'all' else None)
-            tools = search_results[:limit]
-        else:
-            # Filter by category if specified
-            if category and category != 'all':
-                filtered_tools = get_tools_by_category(category)
-            else:
-                filtered_tools = ALL_TOOLS
-
-            # Convert to list format
-            for slug, tool_data in filtered_tools.items():
-                tool = {
-                    'slug': slug,
-                    'name': tool_data.get('seo_data', {}).get('title', slug.replace('-', ' ').title()),
-                    'description': tool_data.get('seo_data', {}).get('description', 'AI-powered analysis tool'),
-                    'category': tool_data.get('category', 'other'),
-                    'rpm': tool_data.get('rpm', 25),
-                    'keywords': tool_data.get('seo_data', {}).get('keywords', ''),
-                    'url': f'/{slug}',
-                    'base_name': tool_data.get('base_name', ''),
-                    'focus_keyword': tool_data.get('seo_data', {}).get('focus_keyword', '')
-                }
-                tools.append(tool)
-
-            # Apply limit
-            tools = tools[:limit]
-
-        # Sort tools
-        if sort_by == 'rpm':
-            tools.sort(key=lambda x: x.get('rpm', 0), reverse=True)
-        elif sort_by == 'category':
-            tools.sort(key=lambda x: (x['category'], x['name']))
-        else:  # default to name
-            tools.sort(key=lambda x: x['name'])
 
         return jsonify({
-            'tools': tools,
-            'total_count': len(tools),
+            'tools': ALL_TOOLS,
+            'total_count': len(ALL_TOOLS),
             'categories': list(set(tool['category'] for tool in ALL_TOOLS.values())),
             'filters': {
                 'category': category,
