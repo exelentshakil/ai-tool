@@ -36,7 +36,7 @@ DB_FILES = {
 }
 
 # ─── TOOLS CONFIGURATION ────────────────────────────────────────────────────────
-TOOLS_CONFIG_FILE = 'tools_config_old.json'
+TOOLS_CONFIG_FILE = 'tools_config.json'
 
 # ─── RESPONSE MODES ─────────────────────────────────────────────────────────────
 class ResponseMode:
