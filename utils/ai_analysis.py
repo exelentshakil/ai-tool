@@ -473,18 +473,11 @@ def get_text(key, language):
 def build_prompt(tool_name, category, user_data, localization=None):
     return build_enhanced_prompt(tool_name, category, user_data, localization)
 
-# Usage example:
-"""
-# Replace your existing functions with these enhanced versions:
-
-
-
 def get_system_prompt(localization=None):
     return get_enhanced_system_prompt(localization)
 
 def generate_html_response(ai_analysis, user_data, tool_config, localization=None):
     return generate_enhanced_html_response(ai_analysis, user_data, tool_config, localization)
-"""
 
 
 def format_content(content):
