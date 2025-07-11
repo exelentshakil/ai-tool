@@ -243,7 +243,7 @@ def generate_enhanced_html_response(ai_analysis, user_data, tool_config, localiz
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
 
     # Enhanced content formatting for local recommendations
-    formatted_content = format_enhanced_content(ai_analysis, country, language)
+    formatted_content = format_enhanced_content_advanced(ai_analysis, country, language)
 
     return f"""
 <style>
@@ -397,42 +397,256 @@ def generate_enhanced_html_response(ai_analysis, user_data, tool_config, localiz
 </div>
 """
 
+
 def format_enhanced_content(ai_analysis, country, language):
-    """Enhanced content formatting with modern material design UI/UX"""
+    """Enhanced content formatting with special styling for local recommendations"""
 
-    if not ai_analysis or not isinstance(ai_analysis, str):
-        return "<p>No analysis available.</p>"
+    content = ai_analysis
 
-    # Clean the content first
+    # First, handle all markdown headers (###, ##, #) before other formatting
+    content = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', content, flags=re.MULTILINE)
+    content = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', content, flags=re.MULTILINE)
+    content = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', content, flags=re.MULTILINE)
+
+    # Add icons to specific section headers (case-insensitive)
+    content = re.sub(r'<h3>(.*?RESULT.*?)</h3>', r'<h3><span class="section-icon">📊</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?INSIGHTS?.*?)</h3>', r'<h3><span class="section-icon">💡</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?PROVIDERS?.*?)</h3>',
+                     r'<h3><span class="section-icon">🏢</span>\1<span class="local-badge">Local</span></h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?COMPARISON.*?)</h3>', r'<h3><span class="section-icon">🔍</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?EXPERTS?.*?)</h3>', r'<h3><span class="section-icon">👨‍💼</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?ACTIONS?.*?)</h3>', r'<h3><span class="section-icon">🚀</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?STEPS?.*?)</h3>', r'<h3><span class="section-icon">✅</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?RECOMMEND.*?)</h3>', r'<h3><span class="section-icon">🎯</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?SUMMARY.*?)</h3>', r'<h3><span class="section-icon">📋</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?BENEFITS?.*?)</h3>', r'<h3><span class="section-icon">🌟</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?TIPS?.*?)</h3>', r'<h3><span class="section-icon">💡</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?COSTS?.*?)</h3>', r'<h3><span class="section-icon">💰</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+    content = re.sub(r'<h3>(.*?FEES?.*?)</h3>', r'<h3><span class="section-icon">💰</span>\1</h3>', content,
+                     flags=re.IGNORECASE)
+
+    # Handle remaining bold headers that might not have been caught
+    content = re.sub(
+        r'\*\*(.*?(?:RESULT|INSIGHT|PROVIDER|COMPARISON|EXPERT|ACTION|STEP|RECOMMEND|SUMMARY|BENEFIT|TIP|COST|FEE).*?)\*\*',
+        r'<h3><span class="section-icon">📌</span>\1</h3>', content, flags=re.IGNORECASE)
+
+    # Convert markdown-style formatting BEFORE processing providers
+    content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
+    content = re.sub(r'\*(.*?)\*', r'<em>\1</em>', content)
+
+    # Enhanced formatting for companies/providers
+    # Pattern 1: Company Name (website.com, phone)
+    content = re.sub(
+        r'([A-Z][a-zA-Z\s&\-\'\.]+?)\s*\(([^,)]*\.[a-z]{2,4})[^)]*\)',
+        r'<div class="provider-card"><div class="provider-name">\1</div><a href="https://\2" target="_blank" class="provider-contact">🌐 Visit Website</a></div>',
+        content
+    )
+
+    # Pattern 2: Standalone website links
+    content = re.sub(
+        r'(?<!href="https://|href=")([a-zA-Z0-9-]+\.[a-z]{2,4})(?![^<]*>)',
+        r'<a href="https://\1" target="_blank" class="provider-contact">🌐 \1</a>',
+        content
+    )
+
+    # Pattern 3: Phone numbers (more precise pattern)
+    content = re.sub(
+        r'(?<!tel:)(\+?[\d\s\-\(\)]{10,})',
+        r'<a href="tel:\1" class="provider-contact">📞 \1</a>',
+        content
+    )
+
+    # Enhanced action steps (numbered lists)
+    content = re.sub(
+        r'^(\d+\.\s*.+?)$',
+        r'<div class="action-step"><span class="step-number">\1</span></div>',
+        content,
+        flags=re.MULTILINE
+    )
+
+    # Format bullet points
+    content = re.sub(r'^[-•]\s*(.+?)$', r'<div class="bullet-point">• \1</div>', content, flags=re.MULTILINE)
+
+    # Add special formatting for key-value pairs
+    content = re.sub(
+        r'^([A-Za-z\s]+?):\s*(.+?)$',
+        r'<div class="key-value"><span class="key">\1:</span> <span class="value">\2</span></div>',
+        content,
+        flags=re.MULTILINE
+    )
+
+    # Format important notes/warnings
+    content = re.sub(
+        r'(⚠️|❗|🚨|NOTE:|IMPORTANT:|WARNING:)(.*?)(?=\n|$)',
+        r'<div class="important-note"><span class="note-icon">\1</span>\2</div>',
+        content,
+        flags=re.IGNORECASE
+    )
+
+    # Clean up multiple line breaks and convert to proper HTML
+    content = re.sub(r'\n{3,}', '\n\n', content)
+    content = content.replace('\n\n', '</p><p>')
+    content = f'<div class="formatted-content"><p>{content}</p></div>'
+
+    # Clean up empty paragraphs
+    content = re.sub(r'<p>\s*</p>', '', content)
+    content = re.sub(r'<p>(\s*<(?:h[1-6]|div))', r'\1', content)
+    content = re.sub(r'(</(?:h[1-6]|div)>\s*)</p>', r'\1', content)
+
+    return content
+
+
+def format_enhanced_content_advanced(ai_analysis, country, language):
+    """More advanced version with better parsing"""
+
     content = ai_analysis.strip()
 
-    # Remove any existing HTML artifacts
-    content = re.sub(r'<[^>]+>', '', content)
+    # Step 1: Split content into sections for better processing
+    sections = []
+    current_section = ""
 
-    # Split into sections and process
-    sections = re.split(r'\n\s*###\s*', content)
-    formatted_sections = []
-
-    for i, section in enumerate(sections):
-        if not section.strip():
+    for line in content.split('\n'):
+        line = line.strip()
+        if not line:
+            if current_section:
+                current_section += '\n'
             continue
 
-        # Skip numbering prefixes like "1. ", "2. " etc at start of sections
-        section = re.sub(r'^\d+\.\s*', '', section.strip())
+        # Check if it's a header
+        if (line.startswith('###') or line.startswith('##') or line.startswith('#') or
+                (line.startswith('**') and line.endswith('**') and len(line.split()) <= 5)):
 
-        if i == 0:
-            # First section is usually intro - format as main content
-            formatted_section = format_intro_section(section)
+            if current_section:
+                sections.append(current_section.strip())
+                current_section = ""
+
+            # Process header
+            header_text = line.strip('#').strip('*').strip()
+
+            # Add appropriate icon
+            icon = get_section_icon(header_text)
+
+            if any(keyword in header_text.upper() for keyword in ['PROVIDER', 'COMPANY', 'BUSINESS']):
+                sections.append(
+                    f'<h3><span class="section-icon">{icon}</span>{header_text}<span class="local-badge">Local</span></h3>')
+            else:
+                sections.append(f'<h3><span class="section-icon">{icon}</span>{header_text}</h3>')
         else:
-            formatted_section = format_content_section(section, country)
+            current_section += line + '\n'
 
-        if formatted_section:
-            formatted_sections.append(formatted_section)
+    if current_section:
+        sections.append(current_section.strip())
 
-    # Join all sections and add custom CSS
-    result = get_modern_css() + '\n'.join(formatted_sections)
+    # Step 2: Process each section
+    formatted_sections = []
+    for section in sections:
+        if section.startswith('<h3>'):
+            formatted_sections.append(section)
+        else:
+            formatted_sections.append(format_section_content(section))
 
-    return f'<div class="modern-ai-analysis">{result}</div>'
+    # Join all sections
+    final_content = '\n'.join(formatted_sections)
+
+    return f'<div class="formatted-content">{final_content}</div>'
+
+
+def get_section_icon(header_text):
+    """Get appropriate icon for section header"""
+    header_upper = header_text.upper()
+
+    icon_map = {
+        'RESULT': '📊',
+        'INSIGHT': '💡',
+        'PROVIDER': '🏢',
+        'COMPANY': '🏢',
+        'BUSINESS': '🏢',
+        'COMPARISON': '🔍',
+        'EXPERT': '👨‍💼',
+        'ACTION': '🚀',
+        'STEP': '✅',
+        'RECOMMEND': '🎯',
+        'SUGGESTION': '🎯',
+        'SUMMARY': '📋',
+        'BENEFIT': '🌟',
+        'ADVANTAGE': '🌟',
+        'TIP': '💡',
+        'COST': '💰',
+        'PRICE': '💰',
+        'FEE': '💰',
+        'CONTACT': '📞',
+        'LOCATION': '📍',
+        'ADDRESS': '📍',
+        'REQUIREMENT': '📋',
+        'DOCUMENT': '📄',
+        'PROCESS': '⚙️',
+        'TIMELINE': '⏱️',
+        'WARNING': '⚠️',
+        'IMPORTANT': '❗',
+        'NOTE': '📝'
+    }
+
+    for keyword, icon in icon_map.items():
+        if keyword in header_upper:
+            return icon
+
+    return '📌'  # Default icon
+
+
+def format_section_content(content):
+    """Format the content of a section"""
+    if not content.strip():
+        return ""
+
+    # Convert markdown formatting
+    content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
+    content = re.sub(r'\*(.*?)\*', r'<em>\1</em>', content)
+
+    # Format providers/companies
+    content = re.sub(
+        r'^([A-Z][a-zA-Z\s&\-\'\.]+?)\s*\(([^,)]*\.[a-z]{2,4})[^)]*\)',
+        r'<div class="provider-card"><div class="provider-name">\1</div><a href="https://\2" target="_blank" class="provider-contact">🌐 Visit Website</a></div>',
+        content,
+        flags=re.MULTILINE
+    )
+
+    # Format numbered lists
+    content = re.sub(
+        r'^(\d+)\.\s*(.+?)$',
+        r'<div class="action-step"><span class="step-number">\1.</span> <span class="step-content">\2</span></div>',
+        content,
+        flags=re.MULTILINE
+    )
+
+    # Format bullet points
+    content = re.sub(r'^[-•]\s*(.+?)$', r'<div class="bullet-point">• \1</div>', content, flags=re.MULTILINE)
+
+    # Format key-value pairs
+    content = re.sub(
+        r'^([A-Za-z\s]+?):\s*(.+?)$',
+        r'<div class="key-value"><span class="key">\1:</span> <span class="value">\2</span></div>',
+        content,
+        flags=re.MULTILINE
+    )
+
+    # Wrap in paragraphs if it's just plain text
+    if not any(tag in content for tag in ['<div', '<span', '<a']):
+        paragraphs = content.split('\n\n')
+        content = ''.join(f'<p>{p.strip()}</p>' for p in paragraphs if p.strip())
+
+    return content
 
 
 def format_intro_section(content):
