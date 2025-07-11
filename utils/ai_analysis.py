@@ -1015,7 +1015,7 @@ def parse_resources_content(content):
         resource = None
 
         # Format: **Name:** [Link](URL) - Description
-        markdown_match = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*)
+        markdown_match = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*)'
                                    , line)
         if markdown_match:
             name = markdown_match.group(1).strip()
