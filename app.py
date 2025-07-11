@@ -18,7 +18,7 @@ from utils.database import (
 from utils.database import is_ip_blocked, log_tool_usage
 from utils.rate_limiting import get_remote_address, check_user_limit, is_premium_user, increment_user_usage
 from utils.validation import validate_tool_inputs
-from utils.ai_analysis import generate_ai_analysis, create_simple_fallback
+from utils.ai_analysis import generate_ai_analysis
 from utils.tools_config import load_all_tools
 from utils import tools_config
 from config.settings import *
@@ -186,7 +186,6 @@ def process_tool():
             ai_analysis = generate_ai_analysis(tool_config, validated_data, ip, localization)
             increment_user_usage(ip, tool_slug)
         else:
-            ai_analysis = create_simple_fallback(tool_config, validated_data, localization)
             if limit_check.get("blocked", False):
                 # Add rate limit message in appropriate language
                 rate_limit_messages = {
@@ -198,27 +197,33 @@ def process_tool():
                 language = localization.get('language', 'English')
                 rate_message = rate_limit_messages.get(language,
                                                        f"\n\n**Rate Limit:** {limit_check.get('message', 'Hourly limit reached')}")
-                ai_analysis += rate_message
+                ai_analysis = rate_message
 
-        is_rate_limited = limit_check.get("blocked", False)
+                is_rate_limited = limit_check.get("blocked", False)
 
-        return jsonify({
-            "output": {
-                "ai_analysis": ai_analysis,
-                "rate_limited": is_rate_limited,
-                "localization": localization
-            },
-            "tool_info": tool_config,
-            "user_info": {
-                "current_usage": limit_check.get("usage_count", 0),
-                "remaining_free": limit_check.get("remaining", 0),
-                "is_rate_limited": is_rate_limited,
-                "upgrade_available": not is_premium_user(ip),
-                "rate_limit_message": limit_check.get("message") if is_rate_limited else None,
-                "ip_address": ip  # For debugging
-            },
-            "input_data": validated_data
-        }), 200
+                if is_rate_limited:
+                    return jsonify({
+                        "error": "Rate limit exceeded",
+                        "message": rate_message,
+                    }), 429
+
+                return jsonify({
+                    "output": {
+                        "ai_analysis": ai_analysis,
+                        "rate_limited": is_rate_limited,
+                        "localization": localization
+                    },
+                    "tool_info": tool_config,
+                    "user_info": {
+                        "current_usage": limit_check.get("usage_count", 0),
+                        "remaining_free": limit_check.get("remaining", 0),
+                        "is_rate_limited": is_rate_limited,
+                        "upgrade_available": not is_premium_user(ip),
+                        "rate_limit_message": limit_check.get("message") if is_rate_limited else None,
+                        "ip_address": ip  # For debugging
+                    },
+                    "input_data": validated_data
+                }), 200
 
     except Exception as e:
         app.logger.error(f"Process tool error: {str(e)}")
