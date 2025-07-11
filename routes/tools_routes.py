@@ -1,8 +1,8 @@
 from flask import Blueprint, request, jsonify
-from utils.tools_config import (
-    ALL_TOOLS, get_tools_by_category, get_core_tools,
-    search_tools, get_tool_statistics, get_similar_tools
-)
+
+from utils.tools_config import load_all_tools
+from utils import tools_config
+
 tools_bp = Blueprint('tools', __name__)
 
 # Fix the /tools endpoint to always return tools_array
@@ -16,10 +16,8 @@ def tools_endpoint():
         core_only = request.args.get('core_only', 'false').lower() == 'true'
 
         # Get all tools by default, not just core tools
-        if core_only:
-            tools_source = get_core_tools()
-        else:
-            tools_source = ALL_TOOLS
+
+        tools_source = tools_config
 
         # Always transform to array format for frontend
         tools = []
@@ -85,7 +83,7 @@ def get_all_tools():
     """Get all tools without any filtering - for debugging"""
     try:
         tools = []
-        for slug, tool_data in ALL_TOOLS.items():
+        for slug, tool_data in tools_config.items():
             title = tool_data.get('seo_data', {}).get('title', slug.replace('-', ' ').title())
 
             tool = {
