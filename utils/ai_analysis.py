@@ -1212,27 +1212,6 @@ def get_country_flag(country):
     return flags.get(country.lower(), '🌍')
 
 
-def format_generic_section(title, content):
-    """Format generic sections"""
-    formatted_content = []
-    for line in content:
-        if line.strip():
-            line = format_inline_styling(line)
-            formatted_content.append(f'<p>{line}</p>')
-
-    return f'''
-    <div class="content-section generic-section">
-        <h3 class="section-title">
-            <span class="section-icon">📋</span>
-            <span class="title-text">{title}</span>
-        </h3>
-        <div class="section-content">
-            {"".join(formatted_content)}
-        </div>
-    </div>
-    '''
-
-
 def get_modern_css():
     """Return modern CSS styles"""
     return '''
