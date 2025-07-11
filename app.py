@@ -199,31 +199,31 @@ def process_tool():
                                                        f"\n\n**Rate Limit:** {limit_check.get('message', 'Hourly limit reached')}")
                 ai_analysis = rate_message
 
-                is_rate_limited = limit_check.get("blocked", False)
+        is_rate_limited = limit_check.get("blocked", False)
 
-                if is_rate_limited:
-                    return jsonify({
-                        "error": "Rate limit exceeded",
-                        "message": rate_message,
-                    }), 429
+        if is_rate_limited:
+            return jsonify({
+                "error": "Rate limit exceeded",
+                "message": rate_message,
+            }), 429
 
-                return jsonify({
-                    "output": {
-                        "ai_analysis": ai_analysis,
-                        "rate_limited": is_rate_limited,
-                        "localization": localization
-                    },
-                    "tool_info": tool_config,
-                    "user_info": {
-                        "current_usage": limit_check.get("usage_count", 0),
-                        "remaining_free": limit_check.get("remaining", 0),
-                        "is_rate_limited": is_rate_limited,
-                        "upgrade_available": not is_premium_user(ip),
-                        "rate_limit_message": limit_check.get("message") if is_rate_limited else None,
-                        "ip_address": ip  # For debugging
-                    },
-                    "input_data": validated_data
-                }), 200
+        return jsonify({
+            "output": {
+                "ai_analysis": ai_analysis,
+                "rate_limited": is_rate_limited,
+                "localization": localization
+            },
+            "tool_info": tool_config,
+            "user_info": {
+                "current_usage": limit_check.get("usage_count", 0),
+                "remaining_free": limit_check.get("remaining", 0),
+                "is_rate_limited": is_rate_limited,
+                "upgrade_available": not is_premium_user(ip),
+                "rate_limit_message": limit_check.get("message") if is_rate_limited else None,
+                "ip_address": ip  # For debugging
+            },
+            "input_data": validated_data
+        }), 200
 
     except Exception as e:
         app.logger.error(f"Process tool error: {str(e)}")
