@@ -1,6 +1,7 @@
 from openai import OpenAI
 from utils.database import get_openai_cost_today, get_openai_cost_month, log_openai_cost, log_openai_cost_enhanced
 from config.settings import OPENAI_API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
+import re
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
