@@ -809,6 +809,17 @@ try {
                 rateLimitMessage: '⏰ Daily AI analysis limit reached!'
             };
         }
+        if (backendError.message.includes('403') || backendError.message.includes('limit')) {
+            return {
+                traits: traits,
+                enhancedAnalysis: null,
+                faceData: generateBasicFaceData(),
+                userImage: img, // Store image in result
+                useEnhanced: false,
+                isRateLimited: true,
+                rateLimitMessage: '🚫 Your IP address has been blocked for policy violations!'
+            };
+        }
 
         throw backendError;
     }
@@ -1102,6 +1113,10 @@ async function sendToEnhancedBackend(traits, faceData) {
         if (response.status === 429) {
             const errorData = await response.json();
             throw new Error(`429: ${errorData.message || 'Rate limit exceeded'}`);
+        }
+        if (response.status === 403) {
+            const errorData = await response.json();
+            throw new Error(`403: ${errorData.message || 'Your IP address has been blocked for policy violations'}`);
         }
         throw new Error(`HTTP error! status: ${response.status}`);
     }
@@ -2362,7 +2377,11 @@ elements.analyzeBtn.click(async () => {
                 }
             } else {
                 console.error('❌ No analysis result to display');
-                showErrorState('Analysis failed. Please try again.');
+                if (result.blocked) {
+                   showErrorState('🚫Your IP address has been blocked for policy violations');
+                } else {
+                     showErrorState('Analysis failed. Please try again.');
+                }
             }
         }, 1500); // Give user time to see completion
 

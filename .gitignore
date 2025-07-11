@@ -7,6 +7,8 @@ ecosystem.config.js
 ecosystem.production.js
 gunicorn.conf.py
 
+tools_generator.py
+
 # Deployment scripts
 safe_deploy.sh
 start_app.sh

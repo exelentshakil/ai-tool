@@ -36,7 +36,7 @@ DB_FILES = {
 }
 
 # ─── TOOLS CONFIGURATION ────────────────────────────────────────────────────────
-TOOLS_CONFIG_FILE = 'tools_config.json'
+TOOLS_CONFIG_FILE = 'tools_config_old.json'
 
 # ─── RESPONSE MODES ─────────────────────────────────────────────────────────────
 class ResponseMode:
@@ -82,7 +82,7 @@ else:
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DAILY_OPENAI_BUDGET = os.getenv('DAILY_OPENAI_BUDGET', 0.0)
 MONTHLY_OPENAI_BUDGET = os.getenv('MONTHLY_OPENAI_BUDGET', 0.0)
-TOOLS_CONFIG_FILE= "tools_config.json"
+TOOLS_CONFIG_FILE= "tools_config_old.json"
 
 if OPENAI_API_KEY:
     logger.info("✅ OpenAI API key loaded successfully")

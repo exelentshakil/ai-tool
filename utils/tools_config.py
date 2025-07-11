@@ -7,7 +7,7 @@ ALL_TOOLS = {}
 
 
 def load_all_tools():
-    """Load all tools from tools_config.json"""
+    """Load all tools from tools_config_old.json"""
     global ALL_TOOLS
     try:
         print(f"🔍 Looking for tools config file: {TOOLS_CONFIG_FILE}")
