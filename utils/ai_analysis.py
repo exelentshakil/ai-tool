@@ -84,8 +84,6 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         except:
             pass  # Don't fail on error logging
 
-        return create_simple_fallback(tool_config, cleaned_data, localization)
-
 def clean_user_data(user_data):
     cleaned = {}
     for key, value in user_data.items():
@@ -1755,93 +1753,3 @@ def format_content(content):
         html_lines.append('</ul>')
 
     return '\n'.join(html_lines)
-
-
-def create_simple_fallback(tool_config, user_data, localization=None):
-    """Simple fallback with just donation message"""
-    if not localization:
-        localization = {}
-
-    language = localization.get('language', 'English')
-    tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
-
-    return f"""
-<style>
-.simple-fallback {{
-    max-width: 600px;
-    margin: 20px auto;
-    text-align: center;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    padding: 20px;
-}}
-.fallback-header {{
-    background: linear-gradient(135deg, #667eea, #764ba2);
-    color: white;
-    padding: 30px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-}}
-.fallback-title {{
-    font-size: 1.8rem;
-    margin-bottom: 10px;
-    font-weight: 700;
-}}
-.fallback-subtitle {{
-    opacity: 0.9;
-    font-size: 1rem;
-}}
-.donation-section {{
-    background: #f7fafc;
-    padding: 30px;
-    border-radius: 12px;
-    margin: 20px 0;
-}}
-.donation-section h3 {{
-    color: #2d3748;
-    margin-bottom: 15px;
-    font-size: 1.3rem;
-}}
-.donation-section p {{
-    color: #4a5568;
-    margin-bottom: 20px;
-    line-height: 1.6;
-}}
-.donation-button {{
-    display: inline-block;
-    margin: 20px 0;
-}}
-.limit-message {{
-    background: #fff3cd;
-    color: #856404;
-    padding: 15px;
-    border-radius: 8px;
-    margin: 20px 0;
-    border: 1px solid #ffeaa7;
-}}
-</style>
-
-<div class="simple-fallback">
-    <div class="fallback-header">
-        <div class="fallback-title">⚡ {tool_name}</div>
-        <div class="fallback-subtitle">AI analysis temporarily unavailable</div>
-    </div>
-
-    <div class="limit-message">
-        <strong>Daily AI limit reached</strong><br>
-        Free AI analysis resets at midnight UTC
-    </div>
-
-    <div class="donation-section">
-        <h3>🚀 Support Our Platform</h3>
-        <p>Your support helps us provide advanced AI analysis and keep improving our tools for everyone.</p>
-
-        <div class="donation-button">
-            <a href="https://www.buymeacoffee.com/shakdiesel" target="_blank">
-                <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Support Us" style="height: 50px;">
-            </a>
-        </div>
-
-        <p><small>Thank you for using our platform! 🙏</small></p>
-    </div>
-</div>
-"""
