@@ -241,7 +241,7 @@ def generate_enhanced_html_response(ai_analysis, user_data, tool_config, localiz
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
 
     # Enhanced content formatting for local recommendations
-    formatted_content = format_enhanced_content_advanced(ai_analysis, country, language)
+    formatted_content = format_enhanced_content(ai_analysis, country, language)
 
     return f"""
 <style>
