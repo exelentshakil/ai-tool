@@ -2,6 +2,7 @@ from openai import OpenAI
 from utils.database import get_openai_cost_today, get_openai_cost_month, log_openai_cost, log_openai_cost_enhanced
 from config.settings import OPENAI_API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
 import re
+import html
 
 client = OpenAI(api_key=OPENAI_API_KEY)
 
@@ -396,60 +397,948 @@ def generate_enhanced_html_response(ai_analysis, user_data, tool_config, localiz
 </div>
 """
 
-
 def format_enhanced_content(ai_analysis, country, language):
-    """Enhanced content formatting with special styling for local recommendations"""
+    """Enhanced content formatting with modern material design UI/UX"""
 
-    content = ai_analysis
+    if not ai_analysis or not isinstance(ai_analysis, str):
+        return "<p>No analysis available.</p>"
 
-    # Add icons to section headers
-    content = re.sub(r'\*\*(.*?RESULT.*?)\*\*', r'<h3><span class="section-icon">📊</span>\1</h3>', content)
-    content = re.sub(r'\*\*(.*?INSIGHTS.*?)\*\*', r'<h3><span class="section-icon">💡</span>\1</h3>', content)
-    content = re.sub(r'\*\*(.*?PROVIDERS.*?)\*\*',
-                     r'<h3><span class="section-icon">🏢</span>\1<span class="local-badge">Local</span></h3>', content)
-    content = re.sub(r'\*\*(.*?COMPARISON.*?)\*\*', r'<h3><span class="section-icon">🔍</span>\1</h3>', content)
-    content = re.sub(r'\*\*(.*?EXPERTS.*?)\*\*', r'<h3><span class="section-icon">👨‍💼</span>\1</h3>', content)
-    content = re.sub(r'\*\*(.*?ACTION.*?)\*\*', r'<h3><span class="section-icon">🚀</span>\1</h3>', content)
-    content = re.sub(r'\*\*(.*?STEPS.*?)\*\*', r'<h3><span class="section-icon">✅</span>\1</h3>', content)
+    # Clean the content first
+    content = ai_analysis.strip()
 
-    # Enhanced formatting for companies/providers
-    # Look for patterns like "Company Name (website.com, phone)"
-    content = re.sub(
-        r'([A-Z][a-zA-Z\s&]+?)\s*\(([^,)]+\.[a-z]{2,4})[^)]*\)',
-        r'<div class="provider-card"><div class="provider-name">\1</div><a href="https://\2" target="_blank" class="provider-contact">🌐 Visit Website</a></div>',
-        content
-    )
+    # Remove any existing HTML artifacts
+    content = re.sub(r'<[^>]+>', '', content)
 
-    # Format website links
-    content = re.sub(
-        r'([a-zA-Z0-9-]+\.[a-z]{2,4})',
-        r'<a href="https://\1" target="_blank" class="provider-contact">🌐 \1</a>',
-        content
-    )
+    # Split into sections and process
+    sections = re.split(r'\n\s*###\s*', content)
+    formatted_sections = []
 
-    # Format phone numbers
-    content = re.sub(
-        r'(\+?[\d\s\-\(\)]{8,})',
-        r'<a href="tel:\1" class="provider-contact">📞 \1</a>',
-        content
-    )
+    for i, section in enumerate(sections):
+        if not section.strip():
+            continue
 
-    # Enhanced action steps
-    content = re.sub(
-        r'(\d+\.\s*.*?)(?=\n|$)',
-        r'<div class="action-step">\1</div>',
-        content
-    )
+        # Skip numbering prefixes like "1. ", "2. " etc at start of sections
+        section = re.sub(r'^\d+\.\s*', '', section.strip())
 
-    # Convert markdown-style formatting
-    content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
-    content = re.sub(r'\*(.*?)\*', r'<em>\1</em>', content)
+        if i == 0:
+            # First section is usually intro - format as main content
+            formatted_section = format_intro_section(section)
+        else:
+            formatted_section = format_content_section(section, country)
 
-    # Convert newlines to proper HTML
-    content = content.replace('\n\n', '</p><p>')
-    content = f'<p>{content}</p>'
+        if formatted_section:
+            formatted_sections.append(formatted_section)
 
-    return content
+    # Join all sections and add custom CSS
+    result = get_modern_css() + '\n'.join(formatted_sections)
+
+    return f'<div class="modern-ai-analysis">{result}</div>'
+
+
+def format_intro_section(content):
+    """Format the introduction/main result section"""
+    if not content.strip():
+        return ""
+
+    # Clean up currency encoding issues
+    content = fix_currency_encoding(content)
+
+    # Convert to paragraphs
+    paragraphs = [p.strip() for p in content.split('\n') if p.strip()]
+    formatted_paragraphs = []
+
+    for p in paragraphs:
+        if p.startswith('**') and p.endswith('**'):
+            # This is a header
+            header_text = p.strip('*')
+            formatted_paragraphs.append(
+                f'<h3 class="section-header"><span class="header-icon">📊</span>{header_text}</h3>')
+        else:
+            # Regular paragraph
+            p = format_inline_styling(p)
+            formatted_paragraphs.append(f'<p class="intro-text">{p}</p>')
+
+    return f'<div class="intro-section">{" ".join(formatted_paragraphs)}</div>'
+
+
+def format_content_section(section, country):
+    """Format content sections with modern material design"""
+    if not section.strip():
+        return ""
+
+    lines = [line.strip() for line in section.split('\n') if line.strip()]
+    if not lines:
+        return ""
+
+    # Get section title from first line
+    section_title = lines[0].upper().strip('*')
+    section_content = lines[1:] if len(lines) > 1 else []
+
+    # Determine section type and format accordingly
+    if 'PROVIDER' in section_title or 'COMPANY' in section_title:
+        return format_providers_section(section_title, section_content, country)
+    elif 'COMPARISON' in section_title or 'RESOURCE' in section_title:
+        return format_resources_section(section_title, section_content)
+    elif 'EXPERT' in section_title or 'CONTACT' in section_title:
+        return format_experts_section(section_title, section_content)
+    elif 'ACTION' in section_title or 'STEP' in section_title:
+        return format_action_steps_section(section_title, section_content)
+    elif 'INSIGHT' in section_title:
+        return format_insights_section(section_title, section_content)
+    else:
+        return format_generic_section(section_title, section_content)
+
+
+def format_providers_section(title, content, country):
+    """Format providers with modern card design"""
+    providers = parse_providers(content)
+
+    cards_html = []
+    for provider in providers:
+        card_html = f'''
+        <div class="provider-card">
+            <div class="provider-header">
+                <div class="provider-name">{provider['name']}</div>
+                <div class="provider-rating">
+                    <span class="rating-stars">⭐⭐⭐⭐⭐</span>
+                    <span class="local-badge">Local Expert</span>
+                </div>
+            </div>
+            <div class="provider-description">
+                {provider.get('description', 'Professional service provider')}
+            </div>
+            <div class="provider-actions">
+                {format_provider_contacts(provider)}
+            </div>
+        </div>
+        '''
+        cards_html.append(card_html)
+
+    return f'''
+    <div class="content-section providers-section">
+        <h3 class="section-title">
+            <span class="section-icon">🏢</span>
+            <span class="title-text">Recommended Local Providers</span>
+            <span class="country-flag">{get_country_flag(country)}</span>
+        </h3>
+        <div class="providers-grid">
+            {"".join(cards_html)}
+        </div>
+    </div>
+    '''
+
+
+def format_resources_section(title, content):
+    """Format comparison resources with modern design"""
+    resources = parse_resources(content)
+
+    resource_cards = []
+    for resource in resources:
+        card_html = f'''
+        <div class="resource-card">
+            <div class="resource-icon">🔍</div>
+            <div class="resource-content">
+                <div class="resource-name">{resource['name']}</div>
+                <div class="resource-description">{resource.get('description', 'Comparison and review platform')}</div>
+                <a href="{resource['url']}" target="_blank" class="resource-link">
+                    <span class="link-icon">🌐</span>
+                    Visit Platform
+                </a>
+            </div>
+        </div>
+        '''
+        resource_cards.append(card_html)
+
+    return f'''
+    <div class="content-section resources-section">
+        <h3 class="section-title">
+            <span class="section-icon">🔍</span>
+            <span class="title-text">Comparison Resources</span>
+        </h3>
+        <div class="resources-grid">
+            {"".join(resource_cards)}
+        </div>
+    </div>
+    '''
+
+
+def format_experts_section(title, content):
+    """Format experts section with professional design"""
+    experts = parse_experts(content)
+
+    expert_cards = []
+    for expert in experts:
+        card_html = f'''
+        <div class="expert-card">
+            <div class="expert-icon">👨‍💼</div>
+            <div class="expert-info">
+                <div class="expert-name">{expert['name']}</div>
+                <div class="expert-specialty">{expert.get('specialty', 'Professional Advisor')}</div>
+                <div class="expert-description">{expert.get('description', '')}</div>
+                {format_expert_contacts(expert)}
+            </div>
+        </div>
+        '''
+        expert_cards.append(card_html)
+
+    return f'''
+    <div class="content-section experts-section">
+        <h3 class="section-title">
+            <span class="section-icon">👨‍💼</span>
+            <span class="title-text">Local Experts</span>
+        </h3>
+        <div class="experts-grid">
+            {"".join(expert_cards)}
+        </div>
+    </div>
+    '''
+
+
+def format_action_steps_section(title, content):
+    """Format action steps with modern checklist design"""
+    steps = parse_action_steps(content)
+
+    step_items = []
+    for i, step in enumerate(steps, 1):
+        step_html = f'''
+        <div class="action-step">
+            <div class="step-number">{i}</div>
+            <div class="step-content">
+                <div class="step-text">{step}</div>
+            </div>
+            <div class="step-check">✓</div>
+        </div>
+        '''
+        step_items.append(step_html)
+
+    return f'''
+    <div class="content-section action-section">
+        <h3 class="section-title">
+            <span class="section-icon">🚀</span>
+            <span class="title-text">Action Steps</span>
+        </h3>
+        <div class="action-steps">
+            {"".join(step_items)}
+        </div>
+    </div>
+    '''
+
+
+def format_insights_section(title, content):
+    """Format insights with modern info cards"""
+    insights = parse_insights(content)
+
+    insight_cards = []
+    for insight in insights:
+        card_html = f'''
+        <div class="insight-card">
+            <div class="insight-icon">💡</div>
+            <div class="insight-content">
+                <div class="insight-title">{insight['title']}</div>
+                <div class="insight-text">{insight['content']}</div>
+            </div>
+        </div>
+        '''
+        insight_cards.append(card_html)
+
+    return f'''
+    <div class="content-section insights-section">
+        <h3 class="section-title">
+            <span class="section-icon">💡</span>
+            <span class="title-text">Key Insights</span>
+        </h3>
+        <div class="insights-grid">
+            {"".join(insight_cards)}
+        </div>
+    </div>
+    '''
+
+
+def parse_providers(content):
+    """Parse provider information from content"""
+    providers = []
+    current_provider = {}
+
+    for line in content:
+        line = line.strip()
+        if not line or line.startswith('-'):
+            if current_provider and current_provider.get('name'):
+                providers.append(current_provider)
+                current_provider = {}
+            continue
+
+        if line.startswith('**') and line.endswith('**'):
+            # Provider name
+            current_provider['name'] = line.strip('*')
+        elif 'website' in line.lower():
+            # Extract website URL
+            url_match = re.search(r'https?://[^\s\]]+|www\.[^\s\]]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b', line)
+            if url_match:
+                url = url_match.group()
+                if not url.startswith('http'):
+                    url = 'https://' + url
+                current_provider['website'] = url
+        elif 'phone' in line.lower():
+            # Extract phone number
+            phone_match = re.search(r'[\d\s\-\(\)]{8,}', line)
+            if phone_match:
+                current_provider['phone'] = phone_match.group().strip()
+        elif 'why' in line.lower():
+            # Description
+            current_provider['description'] = line.split(':', 1)[-1].strip()
+
+    # Add the last provider
+    if current_provider and current_provider.get('name'):
+        providers.append(current_provider)
+
+    return providers
+
+
+def parse_resources(content):
+    """Parse resource information"""
+    resources = []
+
+    for line in content:
+        line = line.strip('- ')
+        if ':' in line:
+            parts = line.split(':', 1)
+            name = parts[0].strip('*')
+            url_part = parts[1] if len(parts) > 1 else ''
+
+            # Extract URL
+            url_match = re.search(r'https?://[^\s\]]+|www\.[^\s\]]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b', url_part)
+            url = url_match.group() if url_match else '#'
+            if not url.startswith('http'):
+                url = 'https://' + url
+
+            # Extract description
+            description = re.sub(r'\[.*?\]|\(.*?\)|https?://\S+|www\.\S+', '', url_part).strip('- ')
+
+            resources.append({
+                'name': name,
+                'url': url,
+                'description': description or 'Comparison and review platform'
+            })
+
+    return resources
+
+
+def parse_experts(content):
+    """Parse expert information"""
+    experts = []
+
+    for line in content:
+        line = line.strip('- ')
+        if line:
+            # Simple parsing for experts
+            if ':' in line:
+                parts = line.split(':', 1)
+                name = parts[0].strip('*')
+                description = parts[1].strip() if len(parts) > 1 else ''
+            else:
+                name = line.strip('*')
+                description = 'Professional advisor'
+
+            experts.append({
+                'name': name,
+                'description': description,
+                'specialty': 'Financial Expert'
+            })
+
+    return experts
+
+
+def parse_action_steps(content):
+    """Parse action steps"""
+    steps = []
+
+    for line in content:
+        line = line.strip()
+        if line and not line.startswith('By following'):
+            # Remove numbering and bullet points
+            step = re.sub(r'^\d+\.\s*|^-\s*', '', line)
+            if step:
+                steps.append(step)
+
+    return steps
+
+
+def parse_insights(content):
+    """Parse insights"""
+    insights = []
+
+    for line in content:
+        line = line.strip()
+        if line and ':' in line and line.startswith('**'):
+            parts = line.split(':', 1)
+            title = parts[0].strip('*')
+            content_text = parts[1].strip() if len(parts) > 1 else ''
+
+            insights.append({
+                'title': title,
+                'content': content_text
+            })
+
+    return insights
+
+
+def format_provider_contacts(provider):
+    """Format provider contact information"""
+    contacts = []
+
+    if provider.get('website'):
+        contacts.append(
+            f'<a href="{provider["website"]}" target="_blank" class="contact-btn website-btn"><span class="btn-icon">🌐</span>Visit Website</a>')
+
+    if provider.get('phone'):
+        contacts.append(
+            f'<a href="tel:{provider["phone"]}" class="contact-btn phone-btn"><span class="btn-icon">📞</span>Call Now</a>')
+
+    return ''.join(contacts)
+
+
+def format_expert_contacts(expert):
+    """Format expert contact information"""
+    if expert.get('website'):
+        return f'<a href="{expert["website"]}" target="_blank" class="expert-contact">View Profile</a>'
+    return '<div class="expert-contact">Contact through professional directory</div>'
+
+
+def fix_currency_encoding(text):
+    """Fix currency encoding issues"""
+    # Fix common currency encoding problems
+    text = re.sub(r'u00a3', '£', text)
+    text = re.sub(r'u20ac', '€', text)
+    text = re.sub(r'&pound;', '£', text)
+    text = re.sub(r'&euro;', '€', text)
+    text = re.sub(r'&#8364;', '€', text)
+    return text
+
+
+def format_inline_styling(text):
+    """Format inline styling like bold and italic"""
+    text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'\*(.*?)\*', r'<em>\1</em>', text)
+    return fix_currency_encoding(text)
+
+
+def get_country_flag(country):
+    """Get country flag emoji"""
+    flags = {
+        'united kingdom': '🇬🇧',
+        'uk': '🇬🇧',
+        'united states': '🇺🇸',
+        'usa': '🇺🇸',
+        'canada': '🇨🇦',
+        'australia': '🇦🇺',
+        'germany': '🇩🇪',
+        'france': '🇫🇷',
+        'spain': '🇪🇸',
+        'italy': '🇮🇹',
+        'netherlands': '🇳🇱',
+        'sweden': '🇸🇪',
+        'norway': '🇳🇴',
+        'denmark': '🇩🇰'
+    }
+    return flags.get(country.lower(), '🌍')
+
+
+def format_generic_section(title, content):
+    """Format generic sections"""
+    formatted_content = []
+    for line in content:
+        if line.strip():
+            line = format_inline_styling(line)
+            formatted_content.append(f'<p>{line}</p>')
+
+    return f'''
+    <div class="content-section generic-section">
+        <h3 class="section-title">
+            <span class="section-icon">📋</span>
+            <span class="title-text">{title}</span>
+        </h3>
+        <div class="section-content">
+            {"".join(formatted_content)}
+        </div>
+    </div>
+    '''
+
+
+def get_modern_css():
+    """Return modern CSS styles"""
+    return '''
+<style>
+.modern-ai-analysis {
+    max-width: 1200px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    line-height: 1.6;
+    color: #2d3748;
+}
+
+.intro-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 40px;
+    border-radius: 16px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+}
+
+.intro-text {
+    font-size: 1.1rem;
+    margin: 16px 0;
+    opacity: 0.95;
+}
+
+.content-section {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    border: 1px solid #e2e8f0;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.content-section:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+.section-title {
+    display: flex;
+    align-items: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 24px;
+    color: #1a202c;
+    gap: 12px;
+}
+
+.section-icon {
+    font-size: 1.8rem;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+}
+
+.title-text {
+    flex: 1;
+}
+
+.country-flag {
+    font-size: 1.5rem;
+}
+
+/* Provider Cards */
+.providers-grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+}
+
+.provider-card {
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px solid #cbd5e0;
+    border-radius: 12px;
+    padding: 24px;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.provider-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.provider-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
+    border-color: #667eea;
+}
+
+.provider-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.provider-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #1a202c;
+    line-height: 1.3;
+}
+
+.provider-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.rating-stars {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.local-badge {
+    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(56, 161, 105, 0.3);
+}
+
+.provider-description {
+    color: #4a5568;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.provider-actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.contact-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+    border: none;
+    cursor: pointer;
+}
+
+.website-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+.website-btn:hover {
+    background: linear-gradient(135deg, #5a6fd8 0%, #6b4490 100%);
+    transform: translateY(-1px);
+    color: white;
+    text-decoration: none;
+}
+
+.phone-btn {
+    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
+    color: white;
+}
+
+.phone-btn:hover {
+    background: linear-gradient(135deg, #2f855a 0%, #276749 100%);
+    transform: translateY(-1px);
+    color: white;
+    text-decoration: none;
+}
+
+.btn-icon {
+    font-size: 1rem;
+}
+
+/* Resource Cards */
+.resources-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.resource-card {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
+    border: 1px solid #fdba74;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.resource-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(251, 146, 60, 0.2);
+}
+
+.resource-icon {
+    font-size: 2rem;
+    margin-right: 16px;
+    opacity: 0.8;
+}
+
+.resource-content {
+    flex: 1;
+}
+
+.resource-name {
+    font-weight: 700;
+    color: #9a3412;
+    margin-bottom: 4px;
+}
+
+.resource-description {
+    color: #7c2d12;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.resource-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #ea580c;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.resource-link:hover {
+    color: #c2410c;
+    text-decoration: none;
+}
+
+/* Expert Cards */
+.experts-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.expert-card {
+    display: flex;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #fbbf24;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.expert-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(251, 191, 36, 0.2);
+}
+
+.expert-icon {
+    font-size: 2.5rem;
+    margin-right: 16px;
+    opacity: 0.8;
+}
+
+.expert-info {
+    flex: 1;
+}
+
+.expert-name {
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: 4px;
+    font-size: 1.1rem;
+}
+
+.expert-specialty {
+    color: #b45309;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.expert-description {
+    color: #78350f;
+    font-size: 0.9rem;
+    margin-bottom: 12px;
+}
+
+.expert-contact {
+    display: inline-block;
+    color: #d97706;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+/* Action Steps */
+.action-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.action-step {
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
+    border: 1px solid #86efac;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.action-step:hover {
+    transform: translateX(4px);
+    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2);
+}
+
+.step-number {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: white;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 1.1rem;
+    margin-right: 20px;
+    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
+}
+
+.step-content {
+    flex: 1;
+}
+
+.step-text {
+    color: #166534;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
+.step-check {
+    font-size: 1.5rem;
+    color: #22c55e;
+    opacity: 0.7;
+    margin-left: 12px;
+}
+
+/* Insights */
+.insights-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+}
+
+.insight-card {
+    display: flex;
+    background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
+    border: 1px solid #c4b5fd;
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s ease;
+}
+
+.insight-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.2);
+}
+
+.insight-icon {
+    font-size: 2rem;
+    margin-right: 16px;
+    opacity: 0.8;
+}
+
+.insight-content {
+    flex: 1;
+}
+
+.insight-title {
+    font-weight: 700;
+    color: #581c87;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.insight-text {
+    color: #6b21a8;
+    line-height: 1.5;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .modern-ai-analysis {
+        padding: 16px;
+    }
+
+    .content-section {
+        padding: 24px 20px;
+        margin-bottom: 16px;
+    }
+
+    .providers-grid,
+    .resources-grid,
+    .experts-grid,
+    .insights-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .provider-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .provider-rating {
+        align-items: flex-start;
+    }
+
+    .provider-actions {
+        flex-direction: column;
+    }
+
+    .contact-btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .section-title {
+        font-size: 1.3rem;
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 480px) {
+    .intro-section {
+        padding: 24px 20px;
+    }
+
+    .resource-card,
+    .expert-card {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .resource-icon,
+    .expert-icon {
+        margin-right: 0;
+        margin-bottom: 12px;
+    }
+
+    .action-step {
+        flex-direction: column;
+        text-align: center;
+        gap: 12px;
+    }
+
+    .step-number {
+        margin-right: 0;
+    }
+}
+</style>
+'''
 
 
 def get_text(key, language):
