@@ -15,19 +15,20 @@ def list_tools():
         category = request.args.get('category', '').lower()
         search_query = request.args.get('search', '').lower()
         sort_by = request.args.get('sort', 'name')
-        limit = int(request.args.get('limit', 50))
+        limit = int(request.args.get('limit', 0))  # 0 means no limit
 
         tools = []
 
         # Apply search if provided
         if search_query:
             search_results = search_tools(search_query, category if category != 'all' else None)
-            tools = search_results[:limit]
+            tools = search_results
         else:
             # Filter by category if specified
             if category and category != 'all':
                 filtered_tools = get_tools_by_category(category)
             else:
+                # Use ALL_TOOLS to show everything
                 filtered_tools = ALL_TOOLS
 
             # Convert to list format
@@ -45,10 +46,7 @@ def list_tools():
                 }
                 tools.append(tool)
 
-            # Apply limit
-            tools = tools[:limit]
-
-        # Sort tools
+        # Sort tools before applying limit
         if sort_by == 'rpm':
             tools.sort(key=lambda x: x.get('rpm', 0), reverse=True)
         elif sort_by == 'category':
@@ -56,9 +54,14 @@ def list_tools():
         else:  # default to name
             tools.sort(key=lambda x: x['name'])
 
+        # Apply limit after sorting (if specified)
+        if limit > 0:
+            tools = tools[:limit]
+
         return jsonify({
             'tools': tools,
-            'total_count': len(tools),
+            'total_count': len(ALL_TOOLS),  # Always show total count from ALL_TOOLS
+            'filtered_count': len(tools),
             'categories': list(set(tool['category'] for tool in ALL_TOOLS.values())),
             'filters': {
                 'category': category,
@@ -74,18 +77,18 @@ def list_tools():
 
 @tools_bp.route('/tools', methods=['GET'])
 def tools_endpoint():
-    """Get core tools or filtered tools"""
+    """Get all tools or filtered tools"""
     try:
         category = request.args.get('category', '').lower()
         search = request.args.get('search', '').lower()
         sort_by = request.args.get('sort', 'name')
-        core_only = request.args.get('core_only', 'true').lower() == 'true'
+        core_only = request.args.get('core_only', 'false').lower() == 'true'  # Changed default to false
 
         if core_only:
             # Get one main tool per category
             tools_source = get_core_tools()
         else:
-            # Get all tools
+            # Get ALL tools by default
             tools_source = ALL_TOOLS
 
         # Transform to array format for frontend
@@ -107,7 +110,7 @@ def tools_endpoint():
                 'url': f'/{slug}',
                 'base_name': tool_data.get('base_name', ''),
                 'focus_keyword': tool_data.get('seo_data', {}).get('focus_keyword', ''),
-                'is_core_tool': core_only
+                'is_core_tool': slug in get_core_tools()
             }
             tools.append(tool)
 
@@ -132,18 +135,61 @@ def tools_endpoint():
             tools.sort(key=lambda x: x['name'])
 
         return jsonify({
-            'all_tools': tools_source,
+            'all_tools': dict(list(ALL_TOOLS.items())),  # Return all tools dictionary
             'tools_array': tools,
-            'total_count': len(tools_source),
-            'core_tools_count': len(get_core_tools()) if not core_only else len(tools_source),
-            'total_variants': len(ALL_TOOLS),
-            'categories': list(set(tool['category'] for tool in tools_source.values())),
+            'total_count': len(ALL_TOOLS),
+            'filtered_count': len(tools),
+            'core_tools_count': len(get_core_tools()),
+            'categories': list(set(tool['category'] for tool in ALL_TOOLS.values())),
             'is_core_only': core_only,
             'filters': {
                 'category': category,
                 'search': search,
                 'sort': sort_by,
                 'core_only': core_only
+            }
+        })
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@tools_bp.route('/tools/all', methods=['GET'])
+def get_all_tools():
+    """Get absolutely all tools without any filtering"""
+    try:
+        # Return ALL_TOOLS in multiple formats for flexibility
+        tools_array = []
+        for slug, tool_data in ALL_TOOLS.items():
+            title = tool_data.get('seo_data', {}).get('title', '')
+            if not title:
+                title = slug.replace('-', ' ').title()
+
+            tool = {
+                'slug': slug,
+                'name': title,
+                'description': tool_data.get('seo_data', {}).get('description', 'AI-powered analysis tool'),
+                'category': tool_data.get('category', 'other'),
+                'rpm': tool_data.get('rpm', 25),
+                'keywords': tool_data.get('seo_data', {}).get('keywords', ''),
+                'url': f'/{slug}',
+                'base_name': tool_data.get('base_name', ''),
+                'focus_keyword': tool_data.get('seo_data', {}).get('focus_keyword', ''),
+                'is_core_tool': slug in get_core_tools()
+            }
+            tools_array.append(tool)
+
+        # Sort by name by default
+        tools_array.sort(key=lambda x: x['name'])
+
+        return jsonify({
+            'all_tools_dict': ALL_TOOLS,
+            'all_tools_array': tools_array,
+            'total_count': len(ALL_TOOLS),
+            'categories': list(set(tool['category'] for tool in ALL_TOOLS.values())),
+            'category_counts': {
+                category: len([t for t in ALL_TOOLS.values() if t.get('category') == category])
+                for category in set(tool.get('category', 'other') for tool in ALL_TOOLS.values())
             }
         })
 
@@ -180,6 +226,8 @@ def get_tools_stats():
     """Get comprehensive statistics about tools"""
     try:
         stats = get_tool_statistics()
+        # Add ALL_TOOLS count to stats
+        stats['all_tools_count'] = len(ALL_TOOLS)
         return jsonify(stats)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -221,6 +269,7 @@ def search_tools_endpoint():
             'category': category,
             'results': results[:limit],
             'total_results': len(results),
+            'total_available': len(ALL_TOOLS),
             'suggestions': get_search_suggestions(query)
         })
 

@@ -102,7 +102,9 @@ def clean_user_data(user_data):
     return cleaned
 
 
-def build_prompt(tool_name, category, user_data, localization=None):
+def build_enhanced_prompt(tool_name, category, user_data, localization=None):
+    """Enhanced prompt that asks OpenAI to provide specific local recommendations"""
+
     if not localization:
         localization = {}
 
@@ -113,12 +115,21 @@ def build_prompt(tool_name, category, user_data, localization=None):
     if currency == 'u20ac':
         currency = 'EUR'
 
+    # Extract location details if available
+    location_info = ""
+    if 'locationData' in user_data and isinstance(user_data['locationData'], dict):
+        location_data = user_data['locationData']
+        city = location_data.get('city', '')
+        region = location_data.get('region', '')
+        postal_code = location_data.get('postal_code', '')
+
+        location_info = f"Specific location: {city}, {region}, {country} ({postal_code})"
+
+    # Build user context
     context_items = []
     for key, value in user_data.items():
-        if key == 'locationData' and isinstance(value, dict):
-            name = value.get('name', country)
-            if name:
-                context_items.append(f"Location: {name}")
+        if key == 'locationData':
+            continue  # Already handled above
         elif isinstance(value, (int, float)) and value > 0:
             if key in ['amount', 'budget', 'income', 'price', 'coverage_amount']:
                 context_items.append(f"{key.title()}: {currency} {value:,.0f}")
@@ -127,27 +138,54 @@ def build_prompt(tool_name, category, user_data, localization=None):
         elif isinstance(value, str) and value.strip():
             context_items.append(f"{key.title()}: {value}")
 
-    user_context = " | ".join(context_items[:6])
+    user_context = " | ".join(context_items[:8])
 
-    return f"""Calculate and analyze this {tool_name} request:
+    return f"""You are a local expert providing specific, actionable advice for {country} residents. Calculate and analyze this {tool_name} request with SPECIFIC LOCAL RECOMMENDATIONS.
 
 USER INPUT: {user_context}
+LOCATION: {location_info or country}
 CATEGORY: {category}
-COUNTRY: {country}
 CURRENCY: {currency}
 LANGUAGE: {language}
 
-Provide a clear, actionable analysis:
+CRITICAL: Provide SPECIFIC local companies, websites, phone numbers, and experts - NOT generic advice like "use comparison sites" or "contact an advisor."
 
-1. MAIN RESULT (calculate the key number/outcome)
-2. KEY INSIGHTS (3 important points)
-3. RECOMMENDATIONS (3 specific actions)
-4. NEXT STEPS (what to do immediately)
+Provide this structure:
 
-Be direct, practical, and valuable. Use {currency} for all money amounts. Respond in {language}."""
+1. **MAIN RESULT** 
+Calculate the key number/outcome with {currency} amounts
+
+2. **KEY INSIGHTS** (3 specific points)
+Local market insights specific to {country}
+
+3. **RECOMMENDED LOCAL PROVIDERS**
+- List 3-5 SPECIFIC companies available in {country} with:
+  * Company name
+  * Website 
+  * Phone number (if known)
+  * Why they're good for this situation
+
+4. **LOCAL COMPARISON RESOURCES**
+- SPECIFIC websites/portals used in {country} for comparing {category}
+- Government/regulatory websites for {country}
+- Consumer protection resources in {country}
+
+5. **LOCAL EXPERTS TO CONTACT**
+- Specific types of local professionals
+- Where to find them in {country}
+- Professional associations in {country}
+
+6. **IMMEDIATE ACTION STEPS**
+What to do RIGHT NOW with specific local resources
+
+Be EXTREMELY specific to {country}. Use real company names, actual websites, and local phone numbers when possible. Make this incredibly valuable and actionable for someone in {country}.
+
+Respond entirely in {language}."""
 
 
-def get_system_prompt(localization=None):
+def get_enhanced_system_prompt(localization=None):
+    """Enhanced system prompt for local expertise"""
+
     if not localization:
         localization = {}
 
@@ -158,32 +196,57 @@ def get_system_prompt(localization=None):
     if currency == 'u20ac':
         currency = 'EUR'
 
-    prompt = f"You are a practical analyst providing clear, actionable insights. Use {currency} currency. Focus on {country} context when relevant."
+    prompt = f"""You are a LOCAL EXPERT for {country} with deep knowledge of:
+
+- Local companies and service providers in {country}
+- Websites, phone numbers, and contact information
+- Government agencies and regulatory bodies in {country}  
+- Professional associations and expert networks
+- Local market conditions and pricing in {country}
+- Consumer protection resources specific to {country}
+- Cultural and regulatory context for {country}
+
+ALWAYS provide SPECIFIC, ACTIONABLE local information:
+✅ Real company names available in {country}
+✅ Actual websites and phone numbers
+✅ Specific local resources and portals
+✅ Government agency contact info
+✅ Professional association details
+✅ Local expert recommendations
+
+❌ NEVER give generic advice like "contact an advisor" or "use comparison sites"
+❌ Always be specific to {country} context and regulations
+
+Use {currency} for all amounts."""
 
     if language != 'English':
-        prompt += f" Respond entirely in {language}."
+        prompt += f" Respond entirely in {language} with local terminology."
 
     return prompt
 
 
-def generate_html_response(ai_analysis, user_data, tool_config, localization=None):
+def generate_enhanced_html_response(ai_analysis, user_data, tool_config, localization=None):
+    """Enhanced HTML with better styling for local recommendations"""
+
     if not localization:
         localization = {}
 
     language = localization.get('language', 'English')
     currency = localization.get('currency', 'USD')
+    country = localization.get('country_name', '')
 
     if currency == 'u20ac':
         currency = 'EUR'
 
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
 
-    formatted_content = format_content(ai_analysis)
+    # Enhanced content formatting for local recommendations
+    formatted_content = format_enhanced_content(ai_analysis, country, language)
 
     return f"""
 <style>
 .ai-results {{
-    max-width: 800px;
+    max-width: 900px;
     margin: 20px auto;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     line-height: 1.6;
@@ -196,6 +259,17 @@ def generate_html_response(ai_analysis, user_data, tool_config, localization=Non
     border-radius: 12px;
     margin-bottom: 20px;
     text-align: center;
+    position: relative;
+}}
+.country-badge {{
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: rgba(255,255,255,0.2);
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
 }}
 .result-title {{
     font-size: 1.8rem;
@@ -212,12 +286,69 @@ def generate_html_response(ai_analysis, user_data, tool_config, localization=Non
     border-radius: 12px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     margin-bottom: 20px;
+    border-left: 4px solid #667eea;
+}}
+.provider-card {{
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    border: 1px solid #cbd5e0;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 15px 0;
+    transition: transform 0.2s, box-shadow 0.2s;
+}}
+.provider-card:hover {{
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}}
+.provider-name {{
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2d3748;
+    margin-bottom: 8px;
+}}
+.provider-contact {{
+    background: #667eea;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 25px;
+    text-decoration: none;
+    display: inline-block;
+    margin: 5px 5px 5px 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: background 0.2s;
+}}
+.provider-contact:hover {{
+    background: #5a6fd8;
+    color: white;
+    text-decoration: none;
+}}
+.expert-box {{
+    background: linear-gradient(135deg, #fed7d7 0%, #fbb6ce 100%);
+    border: 1px solid #fc8181;
+    border-radius: 10px;
+    padding: 20px;
+    margin: 15px 0;
+}}
+.action-step {{
+    background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
+    border: 1px solid #68d391;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 10px 0;
+    border-left: 4px solid #38a169;
 }}
 .content-section h3 {{
     color: #2d3748;
-    font-size: 1.3rem;
+    font-size: 1.4rem;
     margin-bottom: 15px;
     font-weight: 600;
+    display: flex;
+    align-items: center;
+}}
+.section-icon {{
+    margin-right: 10px;
+    font-size: 1.2rem;
 }}
 .content-section h4 {{
     color: #4a5568;
@@ -229,47 +360,129 @@ def generate_html_response(ai_analysis, user_data, tool_config, localization=Non
     margin: 12px 0;
     color: #4a5568;
 }}
-.content-section ul {{
-    margin: 15px 0;
-    padding-left: 0;
-}}
-.content-section li {{
-    background: #f7fafc;
-    margin: 8px 0;
-    padding: 12px 16px;
-    border-left: 4px solid #667eea;
-    border-radius: 0 8px 8px 0;
-    list-style: none;
-}}
 .content-section strong {{
     color: #2d3748;
     font-weight: 600;
 }}
-@media (max-width: 768px) {{
-.ai-analysis {{
-    background: linear-gradient(135deg, var(--neutral-50), var(--primary-50));
-    border: 1px solid var(--primary-200);
+.local-badge {{
+    background: #38a169;
+    color: white;
+    padding: 2px 8px;
     border-radius: 12px;
-    padding: 0px;
-    margin: 1.5rem 0;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    font-size: 0.8rem;
+    font-weight: 500;
+    margin-left: 8px;
 }}
+@media (max-width: 768px) {{
     .ai-results {{ padding: 10px; }}
     .result-header, .content-section {{ padding: 20px; }}
     .result-title {{ font-size: 1.5rem; }}
+    .provider-card {{ padding: 15px; }}
+    .country-badge {{ position: static; margin-bottom: 10px; }}
 }}
 </style>
 
 <div class="ai-results">
     <div class="result-header">
+        <div class="country-badge">🌍 {country}</div>
         <div class="result-title">🎯 {tool_name}</div>
-        <div class="result-subtitle">{get_text('analysis_complete', language)}</div>
+        <div class="result-subtitle">{get_text('local_analysis_complete', language)}</div>
     </div>
 
     <div class="content-section">
         {formatted_content}
     </div>
 </div>
+"""
+
+
+def format_enhanced_content(ai_analysis, country, language):
+    """Enhanced content formatting with special styling for local recommendations"""
+
+    content = ai_analysis
+
+    # Add icons to section headers
+    content = re.sub(r'\*\*(.*?RESULT.*?)\*\*', r'<h3><span class="section-icon">📊</span>\1</h3>', content)
+    content = re.sub(r'\*\*(.*?INSIGHTS.*?)\*\*', r'<h3><span class="section-icon">💡</span>\1</h3>', content)
+    content = re.sub(r'\*\*(.*?PROVIDERS.*?)\*\*',
+                     r'<h3><span class="section-icon">🏢</span>\1<span class="local-badge">Local</span></h3>', content)
+    content = re.sub(r'\*\*(.*?COMPARISON.*?)\*\*', r'<h3><span class="section-icon">🔍</span>\1</h3>', content)
+    content = re.sub(r'\*\*(.*?EXPERTS.*?)\*\*', r'<h3><span class="section-icon">👨‍💼</span>\1</h3>', content)
+    content = re.sub(r'\*\*(.*?ACTION.*?)\*\*', r'<h3><span class="section-icon">🚀</span>\1</h3>', content)
+    content = re.sub(r'\*\*(.*?STEPS.*?)\*\*', r'<h3><span class="section-icon">✅</span>\1</h3>', content)
+
+    # Enhanced formatting for companies/providers
+    # Look for patterns like "Company Name (website.com, phone)"
+    content = re.sub(
+        r'([A-Z][a-zA-Z\s&]+?)\s*\(([^,)]+\.[a-z]{2,4})[^)]*\)',
+        r'<div class="provider-card"><div class="provider-name">\1</div><a href="https://\2" target="_blank" class="provider-contact">🌐 Visit Website</a></div>',
+        content
+    )
+
+    # Format website links
+    content = re.sub(
+        r'([a-zA-Z0-9-]+\.[a-z]{2,4})',
+        r'<a href="https://\1" target="_blank" class="provider-contact">🌐 \1</a>',
+        content
+    )
+
+    # Format phone numbers
+    content = re.sub(
+        r'(\+?[\d\s\-\(\)]{8,})',
+        r'<a href="tel:\1" class="provider-contact">📞 \1</a>',
+        content
+    )
+
+    # Enhanced action steps
+    content = re.sub(
+        r'(\d+\.\s*.*?)(?=\n|$)',
+        r'<div class="action-step">\1</div>',
+        content
+    )
+
+    # Convert markdown-style formatting
+    content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
+    content = re.sub(r'\*(.*?)\*', r'<em>\1</em>', content)
+
+    # Convert newlines to proper HTML
+    content = content.replace('\n\n', '</p><p>')
+    content = f'<p>{content}</p>'
+
+    return content
+
+
+def get_text(key, language):
+    """Get localized text"""
+    texts = {
+        'English': {
+            'analysis_complete': 'Local Analysis Complete',
+            'local_analysis_complete': 'Local Expert Analysis Complete'
+        },
+        'Norwegian': {
+            'analysis_complete': 'Lokal analyse fullført',
+            'local_analysis_complete': 'Lokal ekspertanalyse fullført'
+        },
+        'German': {
+            'analysis_complete': 'Lokale Analyse abgeschlossen',
+            'local_analysis_complete': 'Lokale Expertenanalyse abgeschlossen'
+        }
+    }
+
+    return texts.get(language, texts['English']).get(key, key)
+
+
+# Usage example:
+"""
+# Replace your existing functions with these enhanced versions:
+
+def build_prompt(tool_name, category, user_data, localization=None):
+    return build_enhanced_prompt(tool_name, category, user_data, localization)
+
+def get_system_prompt(localization=None):
+    return get_enhanced_system_prompt(localization)
+
+def generate_html_response(ai_analysis, user_data, tool_config, localization=None):
+    return generate_enhanced_html_response(ai_analysis, user_data, tool_config, localization)
 """
 
 
@@ -310,20 +523,6 @@ def format_content(content):
         html_lines.append('</ul>')
 
     return '\n'.join(html_lines)
-
-
-def get_text(key, language):
-    texts = {
-        'analysis_complete': {
-            'English': 'Analysis Complete',
-            'Spanish': 'Análisis Completo',
-            'French': 'Analyse Terminée',
-            'German': 'Analyse Abgeschlossen',
-            'Italian': 'Analisi Completa',
-            'Dutch': 'Analyse Voltooid'
-        }
-    }
-    return texts.get(key, {}).get(language, texts.get(key, {}).get('English', key))
 
 
 def create_simple_fallback(tool_config, user_data, localization=None):
