@@ -398,314 +398,226 @@ def generate_enhanced_html_response(ai_analysis, user_data, tool_config, localiz
 """
 
 
+import re
+import html
+
+
 def format_enhanced_content(ai_analysis, country, language):
-    """Enhanced content formatting with special styling for local recommendations"""
+    """Enhanced content formatting with modern material design UI/UX"""
 
-    content = ai_analysis
+    if not ai_analysis or not isinstance(ai_analysis, str):
+        return "<p>No analysis available.</p>"
 
-    # First, handle all markdown headers (###, ##, #) before other formatting
-    content = re.sub(r'^### (.*?)$', r'<h3>\1</h3>', content, flags=re.MULTILINE)
-    content = re.sub(r'^## (.*?)$', r'<h2>\1</h2>', content, flags=re.MULTILINE)
-    content = re.sub(r'^# (.*?)$', r'<h1>\1</h1>', content, flags=re.MULTILINE)
+    # Clean and prepare content
+    content = clean_ai_content(ai_analysis)
 
-    # Add icons to specific section headers (case-insensitive)
-    content = re.sub(r'<h3>(.*?RESULT.*?)</h3>', r'<h3><span class="section-icon">📊</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?INSIGHTS?.*?)</h3>', r'<h3><span class="section-icon">💡</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?PROVIDERS?.*?)</h3>',
-                     r'<h3><span class="section-icon">🏢</span>\1<span class="local-badge">Local</span></h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?COMPARISON.*?)</h3>', r'<h3><span class="section-icon">🔍</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?EXPERTS?.*?)</h3>', r'<h3><span class="section-icon">👨‍💼</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?ACTIONS?.*?)</h3>', r'<h3><span class="section-icon">🚀</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?STEPS?.*?)</h3>', r'<h3><span class="section-icon">✅</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?RECOMMEND.*?)</h3>', r'<h3><span class="section-icon">🎯</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?SUMMARY.*?)</h3>', r'<h3><span class="section-icon">📋</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?BENEFITS?.*?)</h3>', r'<h3><span class="section-icon">🌟</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?TIPS?.*?)</h3>', r'<h3><span class="section-icon">💡</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?COSTS?.*?)</h3>', r'<h3><span class="section-icon">💰</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
-    content = re.sub(r'<h3>(.*?FEES?.*?)</h3>', r'<h3><span class="section-icon">💰</span>\1</h3>', content,
-                     flags=re.IGNORECASE)
+    # Parse content into structured sections
+    sections = parse_ai_sections(content)
 
-    # Handle remaining bold headers that might not have been caught
-    content = re.sub(
-        r'\*\*(.*?(?:RESULT|INSIGHT|PROVIDER|COMPARISON|EXPERT|ACTION|STEP|RECOMMEND|SUMMARY|BENEFIT|TIP|COST|FEE).*?)\*\*',
-        r'<h3><span class="section-icon">📌</span>\1</h3>', content, flags=re.IGNORECASE)
-
-    # Convert markdown-style formatting BEFORE processing providers
-    content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
-    content = re.sub(r'\*(.*?)\*', r'<em>\1</em>', content)
-
-    # Enhanced formatting for companies/providers
-    # Pattern 1: Company Name (website.com, phone)
-    content = re.sub(
-        r'([A-Z][a-zA-Z\s&\-\'\.]+?)\s*\(([^,)]*\.[a-z]{2,4})[^)]*\)',
-        r'<div class="provider-card"><div class="provider-name">\1</div><a href="https://\2" target="_blank" class="provider-contact">🌐 Visit Website</a></div>',
-        content
-    )
-
-    # Pattern 2: Standalone website links
-    content = re.sub(
-        r'(?<!href="https://|href=")([a-zA-Z0-9-]+\.[a-z]{2,4})(?![^<]*>)',
-        r'<a href="https://\1" target="_blank" class="provider-contact">🌐 \1</a>',
-        content
-    )
-
-    # Pattern 3: Phone numbers (more precise pattern)
-    content = re.sub(
-        r'(?<!tel:)(\+?[\d\s\-\(\)]{10,})',
-        r'<a href="tel:\1" class="provider-contact">📞 \1</a>',
-        content
-    )
-
-    # Enhanced action steps (numbered lists)
-    content = re.sub(
-        r'^(\d+\.\s*.+?)$',
-        r'<div class="action-step"><span class="step-number">\1</span></div>',
-        content,
-        flags=re.MULTILINE
-    )
-
-    # Format bullet points
-    content = re.sub(r'^[-•]\s*(.+?)$', r'<div class="bullet-point">• \1</div>', content, flags=re.MULTILINE)
-
-    # Add special formatting for key-value pairs
-    content = re.sub(
-        r'^([A-Za-z\s]+?):\s*(.+?)$',
-        r'<div class="key-value"><span class="key">\1:</span> <span class="value">\2</span></div>',
-        content,
-        flags=re.MULTILINE
-    )
-
-    # Format important notes/warnings
-    content = re.sub(
-        r'(⚠️|❗|🚨|NOTE:|IMPORTANT:|WARNING:)(.*?)(?=\n|$)',
-        r'<div class="important-note"><span class="note-icon">\1</span>\2</div>',
-        content,
-        flags=re.IGNORECASE
-    )
-
-    # Clean up multiple line breaks and convert to proper HTML
-    content = re.sub(r'\n{3,}', '\n\n', content)
-    content = content.replace('\n\n', '</p><p>')
-    content = f'<div class="formatted-content"><p>{content}</p></div>'
-
-    # Clean up empty paragraphs
-    content = re.sub(r'<p>\s*</p>', '', content)
-    content = re.sub(r'<p>(\s*<(?:h[1-6]|div))', r'\1', content)
-    content = re.sub(r'(</(?:h[1-6]|div)>\s*)</p>', r'\1', content)
-
-    return content
-
-
-def format_enhanced_content_advanced(ai_analysis, country, language):
-    """More advanced version with better parsing"""
-
-    content = ai_analysis.strip()
-
-    # Step 1: Split content into sections for better processing
-    sections = []
-    current_section = ""
-
-    for line in content.split('\n'):
-        line = line.strip()
-        if not line:
-            if current_section:
-                current_section += '\n'
-            continue
-
-        # Check if it's a header
-        if (line.startswith('###') or line.startswith('##') or line.startswith('#') or
-                (line.startswith('**') and line.endswith('**') and len(line.split()) <= 5)):
-
-            if current_section:
-                sections.append(current_section.strip())
-                current_section = ""
-
-            # Process header
-            header_text = line.strip('#').strip('*').strip()
-
-            # Add appropriate icon
-            icon = get_section_icon(header_text)
-
-            if any(keyword in header_text.upper() for keyword in ['PROVIDER', 'COMPANY', 'BUSINESS']):
-                sections.append(
-                    f'<h3><span class="section-icon">{icon}</span>{header_text}<span class="local-badge">Local</span></h3>')
-            else:
-                sections.append(f'<h3><span class="section-icon">{icon}</span>{header_text}</h3>')
-        else:
-            current_section += line + '\n'
-
-    if current_section:
-        sections.append(current_section.strip())
-
-    # Step 2: Process each section
+    # Format each section
     formatted_sections = []
     for section in sections:
-        if section.startswith('<h3>'):
-            formatted_sections.append(section)
-        else:
-            formatted_sections.append(format_section_content(section))
+        formatted_section = format_section_by_type(section, country, language)
+        if formatted_section:
+            formatted_sections.append(formatted_section)
 
-    # Join all sections
-    final_content = '\n'.join(formatted_sections)
+    # Combine all sections
+    result = '\n'.join(formatted_sections)
 
-    return f'<div class="formatted-content">{final_content}</div>'
-
-
-def get_section_icon(header_text):
-    """Get appropriate icon for section header"""
-    header_upper = header_text.upper()
-
-    icon_map = {
-        'RESULT': '📊',
-        'INSIGHT': '💡',
-        'PROVIDER': '🏢',
-        'COMPANY': '🏢',
-        'BUSINESS': '🏢',
-        'COMPARISON': '🔍',
-        'EXPERT': '👨‍💼',
-        'ACTION': '🚀',
-        'STEP': '✅',
-        'RECOMMEND': '🎯',
-        'SUGGESTION': '🎯',
-        'SUMMARY': '📋',
-        'BENEFIT': '🌟',
-        'ADVANTAGE': '🌟',
-        'TIP': '💡',
-        'COST': '💰',
-        'PRICE': '💰',
-        'FEE': '💰',
-        'CONTACT': '📞',
-        'LOCATION': '📍',
-        'ADDRESS': '📍',
-        'REQUIREMENT': '📋',
-        'DOCUMENT': '📄',
-        'PROCESS': '⚙️',
-        'TIMELINE': '⏱️',
-        'WARNING': '⚠️',
-        'IMPORTANT': '❗',
-        'NOTE': '📝'
-    }
-
-    for keyword, icon in icon_map.items():
-        if keyword in header_upper:
-            return icon
-
-    return '📌'  # Default icon
+    return f'<div class="modern-ai-analysis">{result}</div>'
 
 
-def format_section_content(content):
-    """Format the content of a section"""
-    if not content.strip():
-        return ""
+def clean_ai_content(content):
+    """Clean and normalize AI content"""
+    # Remove HTML artifacts
+    content = re.sub(r'<[^>]+>', '', content)
 
-    # Convert markdown formatting
-    content = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', content)
-    content = re.sub(r'\*(.*?)\*', r'<em>\1</em>', content)
+    # Fix currency encoding
+    content = fix_currency_encoding(content)
 
-    # Format providers/companies
-    content = re.sub(
-        r'^([A-Z][a-zA-Z\s&\-\'\.]+?)\s*\(([^,)]*\.[a-z]{2,4})[^)]*\)',
-        r'<div class="provider-card"><div class="provider-name">\1</div><a href="https://\2" target="_blank" class="provider-contact">🌐 Visit Website</a></div>',
-        content,
-        flags=re.MULTILINE
-    )
-
-    # Format numbered lists
-    content = re.sub(
-        r'^(\d+)\.\s*(.+?)$',
-        r'<div class="action-step"><span class="step-number">\1.</span> <span class="step-content">\2</span></div>',
-        content,
-        flags=re.MULTILINE
-    )
-
-    # Format bullet points
-    content = re.sub(r'^[-•]\s*(.+?)$', r'<div class="bullet-point">• \1</div>', content, flags=re.MULTILINE)
-
-    # Format key-value pairs
-    content = re.sub(
-        r'^([A-Za-z\s]+?):\s*(.+?)$',
-        r'<div class="key-value"><span class="key">\1:</span> <span class="value">\2</span></div>',
-        content,
-        flags=re.MULTILINE
-    )
-
-    # Wrap in paragraphs if it's just plain text
-    if not any(tag in content for tag in ['<div', '<span', '<a']):
-        paragraphs = content.split('\n\n')
-        content = ''.join(f'<p>{p.strip()}</p>' for p in paragraphs if p.strip())
+    # Normalize whitespace
+    content = re.sub(r'\n\s*\n\s*\n+', '\n\n', content)
+    content = content.strip()
 
     return content
+
+
+def parse_ai_sections(content):
+    """Parse AI content into structured sections"""
+    sections = []
+
+    # Split by section headers (**, ###, numbered sections)
+    section_pattern = r'(?:^|\n)\s*(?:#{1,3}\s*|\*\*|(?:\d+\.?\s*)?)([A-Z][A-Z\s]*(?:RESULT|INSIGHT|PROVIDER|COMPARISON|RESOURCE|EXPERT|ACTION|STEP)[A-Z\s]*)\*?\*?\s*(?:\n|$)'
+
+    parts = re.split(section_pattern, content, flags=re.MULTILINE | re.IGNORECASE)
+
+    # Handle intro content (before first section)
+    if parts[0].strip():
+        sections.append({
+            'type': 'intro',
+            'title': 'Introduction',
+            'content': parts[0].strip()
+        })
+
+    # Process remaining sections
+    for i in range(1, len(parts), 2):
+        if i + 1 < len(parts):
+            title = parts[i].strip()
+            content_text = parts[i + 1].strip()
+
+            if title and content_text:
+                section_type = detect_section_type(title)
+                sections.append({
+                    'type': section_type,
+                    'title': title,
+                    'content': content_text
+                })
+
+    return sections
+
+
+def detect_section_type(title):
+    """Detect section type from title"""
+    title_upper = title.upper()
+
+    if any(word in title_upper for word in ['RESULT', 'CALCULATION', 'ESTIMATE']):
+        return 'result'
+    elif any(word in title_upper for word in ['INSIGHT', 'ANALYSIS', 'MARKET']):
+        return 'insights'
+    elif any(word in title_upper for word in ['PROVIDER', 'COMPANY', 'RECOMMEND']):
+        return 'providers'
+    elif any(word in title_upper for word in ['COMPARISON', 'RESOURCE', 'WEBSITE']):
+        return 'resources'
+    elif any(word in title_upper for word in ['EXPERT', 'CONTACT', 'PROFESSIONAL']):
+        return 'experts'
+    elif any(word in title_upper for word in ['ACTION', 'STEP', 'IMMEDIATE']):
+        return 'actions'
+    else:
+        return 'generic'
+
+
+def format_section_by_type(section, country, language):
+    """Format section based on its type"""
+    section_type = section['type']
+    title = section['title']
+    content = section['content']
+
+    if section_type == 'intro':
+        return format_intro_section(content)
+    elif section_type == 'result':
+        return format_result_section(title, content)
+    elif section_type == 'insights':
+        return format_insights_section(title, content)
+    elif section_type == 'providers':
+        return format_providers_section(title, content, country)
+    elif section_type == 'resources':
+        return format_resources_section(title, content)
+    elif section_type == 'experts':
+        return format_experts_section(title, content)
+    elif section_type == 'actions':
+        return format_action_steps_section(title, content)
+    else:
+        return format_generic_section(title, content)
 
 
 def format_intro_section(content):
-    """Format the introduction/main result section"""
-    if not content.strip():
-        return ""
-
-    # Clean up currency encoding issues
-    content = fix_currency_encoding(content)
-
-    # Convert to paragraphs
+    """Format introduction section"""
     paragraphs = [p.strip() for p in content.split('\n') if p.strip()]
     formatted_paragraphs = []
 
     for p in paragraphs:
         if p.startswith('**') and p.endswith('**'):
-            # This is a header
             header_text = p.strip('*')
             formatted_paragraphs.append(
                 f'<h3 class="section-header"><span class="header-icon">📊</span>{header_text}</h3>')
         else:
-            # Regular paragraph
             p = format_inline_styling(p)
             formatted_paragraphs.append(f'<p class="intro-text">{p}</p>')
 
     return f'<div class="intro-section">{" ".join(formatted_paragraphs)}</div>'
 
 
-def format_content_section(section, country):
-    """Format content sections with modern material design"""
-    if not section.strip():
-        return ""
+def format_result_section(title, content):
+    """Format main result section"""
+    formatted_content = format_inline_styling(content)
 
-    lines = [line.strip() for line in section.split('\n') if line.strip()]
-    if not lines:
-        return ""
+    return f'''
+    <div class="content-section generic-section">
+        <h3 class="section-title">
+            <span class="section-icon">📊</span>
+            <span class="title-text">{title}</span>
+        </h3>
+        <div class="section-content">
+            <p>{formatted_content}</p>
+        </div>
+    </div>
+    '''
 
-    # Get section title from first line
-    section_title = lines[0].upper().strip('*')
-    section_content = lines[1:] if len(lines) > 1 else []
 
-    # Determine section type and format accordingly
-    if 'PROVIDER' in section_title or 'COMPANY' in section_title:
-        return format_providers_section(section_title, section_content, country)
-    elif 'COMPARISON' in section_title or 'RESOURCE' in section_title:
-        return format_resources_section(section_title, section_content)
-    elif 'EXPERT' in section_title or 'CONTACT' in section_title:
-        return format_experts_section(section_title, section_content)
-    elif 'ACTION' in section_title or 'STEP' in section_title:
-        return format_action_steps_section(section_title, section_content)
-    elif 'INSIGHT' in section_title:
-        return format_insights_section(section_title, section_content)
-    else:
-        return format_generic_section(section_title, section_content)
+def format_insights_section(title, content):
+    """Format insights with modern info cards"""
+    insights = parse_insights_content(content)
+
+    if not insights:
+        # If no structured insights found, show as simple content
+        formatted_content = format_inline_styling(content)
+        return f'''
+        <div class="content-section insights-section">
+            <h3 class="section-title">
+                <span class="section-icon">💡</span>
+                <span class="title-text">{title}</span>
+            </h3>
+            <div class="section-content">
+                <p>{formatted_content}</p>
+            </div>
+        </div>
+        '''
+
+    insight_cards = []
+    for insight in insights:
+        card_html = f'''
+        <div class="insight-card">
+            <div class="insight-icon">💡</div>
+            <div class="insight-content">
+                <div class="insight-title">{insight['title']}</div>
+                <div class="insight-text">{insight['content']}</div>
+            </div>
+        </div>
+        '''
+        insight_cards.append(card_html)
+
+    return f'''
+    <div class="content-section insights-section">
+        <h3 class="section-title">
+            <span class="section-icon">💡</span>
+            <span class="title-text">{title}</span>
+        </h3>
+        <div class="insights-grid">
+            {"".join(insight_cards)}
+        </div>
+    </div>
+    '''
 
 
 def format_providers_section(title, content, country):
     """Format providers with modern card design"""
-    providers = parse_providers(content)
+    providers = parse_providers_content(content)
+
+    if not providers:
+        # If no structured providers found, show as simple content
+        formatted_content = format_inline_styling(content)
+        return f'''
+        <div class="content-section providers-section">
+            <h3 class="section-title">
+                <span class="section-icon">🏢</span>
+                <span class="title-text">{title}</span>
+                <span class="country-flag">{get_country_flag(country)}</span>
+            </h3>
+            <div class="section-content">
+                <p>{formatted_content}</p>
+            </div>
+        </div>
+        '''
 
     cards_html = []
     for provider in providers:
@@ -732,7 +644,7 @@ def format_providers_section(title, content, country):
     <div class="content-section providers-section">
         <h3 class="section-title">
             <span class="section-icon">🏢</span>
-            <span class="title-text">Recommended Local Providers</span>
+            <span class="title-text">{title}</span>
             <span class="country-flag">{get_country_flag(country)}</span>
         </h3>
         <div class="providers-grid">
@@ -744,7 +656,22 @@ def format_providers_section(title, content, country):
 
 def format_resources_section(title, content):
     """Format comparison resources with modern design"""
-    resources = parse_resources(content)
+    resources = parse_resources_content(content)
+
+    if not resources:
+        # If no structured resources found, show as simple content
+        formatted_content = format_inline_styling(content)
+        return f'''
+        <div class="content-section resources-section">
+            <h3 class="section-title">
+                <span class="section-icon">🔍</span>
+                <span class="title-text">{title}</span>
+            </h3>
+            <div class="section-content">
+                <p>{formatted_content}</p>
+            </div>
+        </div>
+        '''
 
     resource_cards = []
     for resource in resources:
@@ -767,7 +694,7 @@ def format_resources_section(title, content):
     <div class="content-section resources-section">
         <h3 class="section-title">
             <span class="section-icon">🔍</span>
-            <span class="title-text">Comparison Resources</span>
+            <span class="title-text">{title}</span>
         </h3>
         <div class="resources-grid">
             {"".join(resource_cards)}
@@ -778,7 +705,22 @@ def format_resources_section(title, content):
 
 def format_experts_section(title, content):
     """Format experts section with professional design"""
-    experts = parse_experts(content)
+    experts = parse_experts_content(content)
+
+    if not experts:
+        # If no structured experts found, show as simple content
+        formatted_content = format_inline_styling(content)
+        return f'''
+        <div class="content-section experts-section">
+            <h3 class="section-title">
+                <span class="section-icon">👨‍💼</span>
+                <span class="title-text">{title}</span>
+            </h3>
+            <div class="section-content">
+                <p>{formatted_content}</p>
+            </div>
+        </div>
+        '''
 
     expert_cards = []
     for expert in experts:
@@ -799,7 +741,7 @@ def format_experts_section(title, content):
     <div class="content-section experts-section">
         <h3 class="section-title">
             <span class="section-icon">👨‍💼</span>
-            <span class="title-text">Local Experts</span>
+            <span class="title-text">{title}</span>
         </h3>
         <div class="experts-grid">
             {"".join(expert_cards)}
@@ -810,7 +752,22 @@ def format_experts_section(title, content):
 
 def format_action_steps_section(title, content):
     """Format action steps with modern checklist design"""
-    steps = parse_action_steps(content)
+    steps = parse_action_steps_content(content)
+
+    if not steps:
+        # If no structured steps found, show as simple content
+        formatted_content = format_inline_styling(content)
+        return f'''
+        <div class="content-section action-section">
+            <h3 class="section-title">
+                <span class="section-icon">🚀</span>
+                <span class="title-text">{title}</span>
+            </h3>
+            <div class="section-content">
+                <p>{formatted_content}</p>
+            </div>
+        </div>
+        '''
 
     step_items = []
     for i, step in enumerate(steps, 1):
@@ -829,7 +786,7 @@ def format_action_steps_section(title, content):
     <div class="content-section action-section">
         <h3 class="section-title">
             <span class="section-icon">🚀</span>
-            <span class="title-text">Action Steps</span>
+            <span class="title-text">{title}</span>
         </h3>
         <div class="action-steps">
             {"".join(step_items)}
@@ -838,175 +795,354 @@ def format_action_steps_section(title, content):
     '''
 
 
-def format_insights_section(title, content):
-    """Format insights with modern info cards"""
-    insights = parse_insights(content)
-
-    insight_cards = []
-    for insight in insights:
-        card_html = f'''
-        <div class="insight-card">
-            <div class="insight-icon">💡</div>
-            <div class="insight-content">
-                <div class="insight-title">{insight['title']}</div>
-                <div class="insight-text">{insight['content']}</div>
-            </div>
-        </div>
-        '''
-        insight_cards.append(card_html)
+def format_generic_section(title, content):
+    """Format generic sections"""
+    formatted_content = format_inline_styling(content)
 
     return f'''
-    <div class="content-section insights-section">
+    <div class="content-section generic-section">
         <h3 class="section-title">
-            <span class="section-icon">💡</span>
-            <span class="title-text">Key Insights</span>
+            <span class="section-icon">📋</span>
+            <span class="title-text">{title}</span>
         </h3>
-        <div class="insights-grid">
-            {"".join(insight_cards)}
+        <div class="section-content">
+            <p>{formatted_content}</p>
         </div>
     </div>
     '''
 
 
-def parse_providers(content):
-    """Parse provider information from content"""
+def parse_insights_content(content):
+    """Parse insights from content"""
+    insights = []
+
+    # Look for numbered or bulleted insights
+    lines = content.split('\n')
+    current_insight = None
+
+    for line in lines:
+        line = line.strip()
+        if not line:
+            continue
+
+        # Check for insight headers (numbered, bulleted, or bold)
+        if (line.startswith(('1.', '2.', '3.', '4.', '5.')) or
+                line.startswith(('-', '•', '*')) or
+                (line.startswith('**') and ':' in line)):
+
+            # Save previous insight
+            if current_insight:
+                insights.append(current_insight)
+
+            # Start new insight
+            if line.startswith('**') and line.endswith('**') and ':' in line:
+                parts = line.strip('*').split(':', 1)
+                title = parts[0].strip()
+                content_text = parts[1].strip() if len(parts) > 1 else ''
+            else:
+                # Remove numbering/bullets
+                clean_line = re.sub(r'^[\d\.\-\•\*\s]+', '', line)
+                if ':' in clean_line:
+                    parts = clean_line.split(':', 1)
+                    title = parts[0].strip()
+                    content_text = parts[1].strip() if len(parts) > 1 else ''
+                else:
+                    title = clean_line
+                    content_text = ''
+
+            current_insight = {
+                'title': title,
+                'content': content_text
+            }
+        elif current_insight:
+            # Continue previous insight
+            current_insight['content'] += ' ' + line
+
+    # Add last insight
+    if current_insight:
+        insights.append(current_insight)
+
+    return insights
+
+
+def parse_providers_content(content):
+    """Parse provider information with enhanced link detection"""
     providers = []
+    lines = content.split('\n')
     current_provider = {}
 
-    for line in content:
+    for line in lines:
         line = line.strip()
-        if not line or line.startswith('-'):
+        if not line:
+            # End of provider section
             if current_provider and current_provider.get('name'):
                 providers.append(current_provider)
                 current_provider = {}
             continue
 
-        if line.startswith('**') and line.endswith('**'):
-            # Provider name
-            current_provider['name'] = line.strip('*')
-        elif 'website' in line.lower():
-            # Extract website URL
-            url_match = re.search(r'https?://[^\s\]]+|www\.[^\s\]]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b', line)
-            if url_match:
-                url = url_match.group()
-                if not url.startswith('http'):
-                    url = 'https://' + url
-                current_provider['website'] = url
-        elif 'phone' in line.lower():
-            # Extract phone number
-            phone_match = re.search(r'[\d\s\-\(\)]{8,}', line)
-            if phone_match:
-                current_provider['phone'] = phone_match.group().strip()
-        elif 'why' in line.lower():
-            # Description
-            current_provider['description'] = line.split(':', 1)[-1].strip()
+        # Provider name (usually starts with -, *, or **)
+        if (line.startswith(('-', '•', '*')) and not any(keyword in line.lower()
+                                                         for keyword in ['website', 'phone', 'why', 'email'])):
+            # Save previous provider
+            if current_provider and current_provider.get('name'):
+                providers.append(current_provider)
+                current_provider = {}
 
-    # Add the last provider
+            # Extract provider name
+            name = re.sub(r'^[\-\•\*\s]+', '', line).strip('*')
+            current_provider['name'] = name
+
+        # Website detection - enhanced for various formats
+        elif any(keyword in line.lower() for keyword in ['website', 'site', 'web']):
+            website = extract_website_from_line(line)
+            if website:
+                current_provider['website'] = website
+
+        # Phone detection
+        elif any(keyword in line.lower() for keyword in ['phone', 'tel', 'call']):
+            phone = extract_phone_from_line(line)
+            if phone:
+                current_provider['phone'] = phone
+
+        # Email detection
+        elif any(keyword in line.lower() for keyword in ['email', 'mail']):
+            email = extract_email_from_line(line)
+            if email:
+                current_provider['email'] = email
+
+        # Description (usually starts with "Why" or contains explanation)
+        elif any(keyword in line.lower() for keyword in ['why', 'good', 'known', 'offers']):
+            description = line.split(':', 1)[-1].strip()
+            if description:
+                current_provider['description'] = description
+
+        # If line contains a URL, try to extract it
+        elif 'http' in line or any(tld in line for tld in ['.com', '.co.uk', '.org', '.net']):
+            website = extract_website_from_line(line)
+            if website and not current_provider.get('website'):
+                current_provider['website'] = website
+
+    # Add last provider
     if current_provider and current_provider.get('name'):
         providers.append(current_provider)
 
     return providers
 
 
-def parse_resources(content):
+def extract_website_from_line(line):
+    """Extract website URL from line with enhanced markdown link support"""
+    # First, try to extract from markdown link format: [Text](URL)
+    markdown_match = re.search(r'\[([^\]]+)\]\(([^)]+)\)', line)
+    if markdown_match:
+        return clean_url(markdown_match.group(2))
+
+    # Try to extract from format: **Website:** [Company](URL)
+    markdown_match2 = re.search(r'\*\*[^*]+\*\*\s*\[([^\]]+)\]\(([^)]+)\)', line)
+    if markdown_match2:
+        return clean_url(markdown_match2.group(2))
+
+    # Extract direct URLs
+    url_match = re.search(r'https?://[^\s\])+]+', line)
+    if url_match:
+        return clean_url(url_match.group())
+
+    # Extract domain patterns
+    domain_match = re.search(r'\b(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,})\b', line)
+    if domain_match:
+        domain = domain_match.group()
+        if not domain.startswith('http'):
+            domain = 'https://' + domain
+        return clean_url(domain)
+
+    return None
+
+
+def extract_phone_from_line(line):
+    """Extract phone number from line"""
+    # Remove common prefixes
+    clean_line = re.sub(r'.*(?:phone|tel|call).*?:?\s*', '', line, flags=re.IGNORECASE)
+
+    # Look for phone patterns
+    phone_match = re.search(r'[\+]?[\d\s\-\(\)]{8,}', clean_line)
+    if phone_match:
+        return phone_match.group().strip()
+
+    return None
+
+
+def extract_email_from_line(line):
+    """Extract email from line"""
+    email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', line)
+    if email_match:
+        return email_match.group()
+
+    return None
+
+
+def clean_url(url):
+    """Clean and validate URL"""
+    if not url:
+        return None
+
+    # Remove surrounding characters
+    url = url.strip('.,;()[]{}"\' ')
+
+    # Add protocol if missing
+    if not url.startswith(('http://', 'https://')):
+        url = 'https://' + url
+
+    # Basic validation
+    if len(url) > 10 and '.' in url:
+        return url
+
+    return None
+
+
+def parse_resources_content(content):
     """Parse resource information"""
     resources = []
+    lines = content.split('\n')
 
-    for line in content:
-        line = line.strip('- ')
-        if ':' in line:
+    for line in lines:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+
+        # Remove bullet points
+        line = re.sub(r'^[\-\•\*\s]+', '', line)
+
+        # Parse different formats
+        resource = None
+
+        # Format: **Name:** [Link](URL) - Description
+        markdown_match = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*)
+                                   , line)
+        if markdown_match:
+            name = markdown_match.group(1).strip()
+            url = clean_url(markdown_match.group(3))
+            description = markdown_match.group(4).strip(' -')
+            resource = {'name': name, 'url': url, 'description': description}
+
+        # Format: Name: URL - Description
+        elif ':' in line:
             parts = line.split(':', 1)
             name = parts[0].strip('*')
-            url_part = parts[1] if len(parts) > 1 else ''
+            rest = parts[1].strip()
 
-            # Extract URL
-            url_match = re.search(r'https?://[^\s\]]+|www\.[^\s\]]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b', url_part)
-            url = url_match.group() if url_match else '#'
-            if not url.startswith('http'):
-                url = 'https://' + url
+            # Extract URL and description
+            url = extract_website_from_line(rest)
+            description = re.sub(r'https?://[^\s]+|www\.[^\s]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b', '', rest).strip(' -')
 
-            # Extract description
-            description = re.sub(r'\[.*?\]|\(.*?\)|https?://\S+|www\.\S+', '', url_part).strip('- ')
+            if url:
+                resource = {
+                    'name': name,
+                    'url': url,
+                    'description': description or 'Comparison and review platform'
+                }
 
-            resources.append({
-                'name': name,
-                'url': url,
-                'description': description or 'Comparison and review platform'
-            })
+        if resource:
+            resources.append(resource)
 
     return resources
 
 
-def parse_experts(content):
+def parse_experts_content(content):
     """Parse expert information"""
     experts = []
+    lines = content.split('\n')
+    current_expert = {}
 
-    for line in content:
-        line = line.strip('- ')
-        if line:
-            # Simple parsing for experts
-            if ':' in line:
-                parts = line.split(':', 1)
-                name = parts[0].strip('*')
-                description = parts[1].strip() if len(parts) > 1 else ''
+    for line in lines:
+        line = line.strip()
+        if not line:
+            if current_expert and current_expert.get('name'):
+                experts.append(current_expert)
+                current_expert = {}
+            continue
+
+        # Expert name (usually starts with -, *, or **)
+        if (line.startswith(('-', '•', '*')) and not any(keyword in line.lower()
+                                                         for keyword in ['website', 'phone', 'contact'])):
+            # Save previous expert
+            if current_expert and current_expert.get('name'):
+                experts.append(current_expert)
+                current_expert = {}
+
+            # Extract expert name
+            name = re.sub(r'^[\-\•\*\s]+', '', line).strip('*')
+
+            # Check if it's a description line instead
+            if ':' in name:
+                parts = name.split(':', 1)
+                current_expert['name'] = parts[0].strip()
+                current_expert['description'] = parts[1].strip()
             else:
-                name = line.strip('*')
-                description = 'Professional advisor'
+                current_expert['name'] = name
 
-            experts.append({
-                'name': name,
-                'description': description,
-                'specialty': 'Financial Expert'
-            })
+        # Website or contact info
+        elif any(keyword in line.lower() for keyword in ['website', 'contact', '.com', '.org']):
+            website = extract_website_from_line(line)
+            if website:
+                current_expert['website'] = website
+            else:
+                # Use as description if no URL found
+                if 'description' not in current_expert:
+                    current_expert['description'] = line
+
+        # Description line
+        elif current_expert and 'description' not in current_expert:
+            current_expert['description'] = line
+
+    # Add last expert
+    if current_expert and current_expert.get('name'):
+        experts.append(current_expert)
 
     return experts
 
 
-def parse_action_steps(content):
+def parse_action_steps_content(content):
     """Parse action steps"""
     steps = []
+    lines = content.split('\n')
 
-    for line in content:
+    for line in lines:
         line = line.strip()
-        if line and not line.startswith('By following'):
-            # Remove numbering and bullet points
-            step = re.sub(r'^\d+\.\s*|^-\s*', '', line)
-            if step:
-                steps.append(step)
+        if not line or line.lower().startswith('by following'):
+            continue
+
+        # Remove numbering and bullet points
+        step = re.sub(r'^\d+\.\s*|^[\-\•\*]\s*', '', line)
+        step = step.strip('*')  # Remove markdown bold
+
+        if step and len(step) > 10:  # Only include substantial steps
+            # Format inline styling
+            step = format_inline_styling(step)
+            steps.append(step)
 
     return steps
 
 
-def parse_insights(content):
-    """Parse insights"""
-    insights = []
-
-    for line in content:
-        line = line.strip()
-        if line and ':' in line and line.startswith('**'):
-            parts = line.split(':', 1)
-            title = parts[0].strip('*')
-            content_text = parts[1].strip() if len(parts) > 1 else ''
-
-            insights.append({
-                'title': title,
-                'content': content_text
-            })
-
-    return insights
-
-
 def format_provider_contacts(provider):
-    """Format provider contact information"""
+    """Format provider contact information with enhanced support"""
     contacts = []
 
     if provider.get('website'):
         contacts.append(
-            f'<a href="{provider["website"]}" target="_blank" class="contact-btn website-btn"><span class="btn-icon">🌐</span>Visit Website</a>')
+            f'<a href="{provider["website"]}" target="_blank" class="contact-btn website-btn">'
+            f'<span class="btn-icon">🌐</span>Visit Website</a>'
+        )
 
     if provider.get('phone'):
         contacts.append(
-            f'<a href="tel:{provider["phone"]}" class="contact-btn phone-btn"><span class="btn-icon">📞</span>Call Now</a>')
+            f'<a href="tel:{provider["phone"]}" class="contact-btn phone-btn">'
+            f'<span class="btn-icon">📞</span>Call Now</a>'
+        )
+
+    if provider.get('email'):
+        contacts.append(
+            f'<a href="mailto:{provider["email"]}" class="contact-btn email-btn">'
+            f'<span class="btn-icon">✉️</span>Email</a>'
+        )
 
     return ''.join(contacts)
 
@@ -1020,40 +1156,59 @@ def format_expert_contacts(expert):
 
 def fix_currency_encoding(text):
     """Fix currency encoding issues"""
-    # Fix common currency encoding problems
-    text = re.sub(r'u00a3', '£', text)
-    text = re.sub(r'u20ac', '€', text)
-    text = re.sub(r'&pound;', '£', text)
-    text = re.sub(r'&euro;', '€', text)
-    text = re.sub(r'&#8364;', '€', text)
+    replacements = {
+        'u00a3': '£',
+        'u20ac': '€',
+        '&pound;': '£',
+        '&euro;': '€',
+        '&#8364;': '€',
+        '&#163;': '£'
+    }
+
+    for old, new in replacements.items():
+        text = text.replace(old, new)
+
     return text
 
 
 def format_inline_styling(text):
-    """Format inline styling like bold and italic"""
+    """Format inline styling like bold and italic with link support"""
+    # Handle markdown links first: [text](url)
+    text = re.sub(
+        r'\[([^\]]+)\]\(([^)]+)\)',
+        r'<a href="\2" target="_blank">\1</a>',
+        text
+    )
+
+    # Handle bold text
     text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)
-    text = re.sub(r'\*(.*?)\*', r'<em>\1</em>', text)
-    return fix_currency_encoding(text)
+
+    # Handle italic text (single asterisk, but not part of bold)
+    text = re.sub(r'(?<!\*)\*([^*]+)\*(?!\*)', r'<em>\1</em>', text)
+
+    # Fix currency encoding
+    text = fix_currency_encoding(text)
+
+    return text
 
 
 def get_country_flag(country):
     """Get country flag emoji"""
+    if not country:
+        return '🌍'
+
     flags = {
-        'united kingdom': '🇬🇧',
-        'uk': '🇬🇧',
-        'united states': '🇺🇸',
-        'usa': '🇺🇸',
-        'canada': '🇨🇦',
-        'australia': '🇦🇺',
-        'germany': '🇩🇪',
-        'france': '🇫🇷',
-        'spain': '🇪🇸',
-        'italy': '🇮🇹',
-        'netherlands': '🇳🇱',
-        'sweden': '🇸🇪',
-        'norway': '🇳🇴',
-        'denmark': '🇩🇰'
+        'united kingdom': '🇬🇧', 'uk': '🇬🇧', 'britain': '🇬🇧', 'england': '🇬🇧',
+        'united states': '🇺🇸', 'usa': '🇺🇸', 'america': '🇺🇸',
+        'canada': '🇨🇦', 'australia': '🇦🇺', 'germany': '🇩🇪', 'deutschland': '🇩🇪',
+        'france': '🇫🇷', 'spain': '🇪🇸', 'italy': '🇮🇹', 'netherlands': '🇳🇱',
+        'sweden': '🇸🇪', 'norway': '🇳🇴', 'denmark': '🇩🇰', 'finland': '🇫🇮',
+        'ireland': '🇮🇪', 'belgium': '🇧🇪', 'switzerland': '🇨🇭', 'austria': '🇦🇹',
+        'portugal': '🇵🇹', 'poland': '🇵🇱', 'czech republic': '🇨🇿',
+        'japan': '🇯🇵', 'south korea': '🇰🇷', 'china': '🇨🇳', 'india': '🇮🇳',
+        'brazil': '🇧🇷', 'mexico': '🇲🇽', 'argentina': '🇦🇷'
     }
+
     return flags.get(country.lower(), '🌍')
 
 
