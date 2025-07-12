@@ -892,14 +892,14 @@ def parse_resources_content(content):
         resource = {'name': name, 'url': url, 'description': description}
 
         # Format: Name: URL - Description
-        elif ':' in line:
-        parts = line.split(':', 1)
-        name = parts[0].strip('*')
-        rest = parts[1].strip()
+        if ':' in line:
+            parts = line.split(':', 1)
+            name = parts[0].strip('*')
+            rest = parts[1].strip()
 
-        # Extract URL and description
-        url = extract_website_from_line(rest)
-        description = re.sub(r'https?://[^\s]+|www\.[^\s]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b', '', rest).strip(' -')
+            # Extract URL and description
+            url = extract_website_from_line(rest)
+            description = re.sub(r'https?://[^\s]+|www\.[^\s]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b', '', rest).strip(' -')
 
         if url:
             resource = {
