@@ -801,6 +801,7 @@ def extract_website_from_line(line):
     """Extract website URL from line with enhanced markdown link support"""
     # First, try to extract from markdown link format: [Text](URL)
     markdown_match = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*)', line)
+
     if markdown_match:
         return clean_url(markdown_match.group(2))
 
