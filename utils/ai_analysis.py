@@ -148,7 +148,6 @@ USER PROFILE & DATA:
 HYPER-SPECIFIC LOCATION TARGETING:
 📍 Exact Location: {location_info['detailed_location']}
 🏘️ Service Area: {location_info['service_context']}
-🌍 Market Context: {location_info['market_info']}
 
 LANGUAGE & CURRENCY:
 🗣️ Response Language: {language}
