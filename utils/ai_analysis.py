@@ -800,12 +800,12 @@ def parse_providers_content(content):
 def extract_website_from_line(line):
     """Extract website URL from line with enhanced markdown link support"""
     # First, try to extract from markdown link format: [Text](URL)
-    markdown_match = re.search(r'\[([^\]]+)\]\(([^)]+)\)', line)
+    markdown_match = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*)', line)
     if markdown_match:
         return clean_url(markdown_match.group(2))
 
     # Try to extract from format: **Website:** [Company](URL)
-    markdown_match2 = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*)', line)
+    markdown_match2 = re.search(r'\*\*[^*]+\*\*\s*\[([^\]]+)\]\(([^)]+)\)', line)
     if markdown_match2:
         return clean_url(markdown_match2.group(2))
 
