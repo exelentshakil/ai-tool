@@ -798,32 +798,32 @@ def parse_providers_content(content):
 
 
 def extract_website_from_line(line):
-    """Extract website URL from line with enhanced markdown link support"""
-    # First, try to extract from markdown link format: [Text](URL)
-    markdown_match = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^\)]+)\)(.*)', line)
+   """Extract website URL from line with enhanced markdown link support"""
+   # First, try to extract from markdown link format: [Text](URL)
+   markdown_match = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*)', line)
 
-    if markdown_match:
-        return clean_url(markdown_match.group(2))
+   if markdown_match:
+       return clean_url(markdown_match.group(3))
 
-    # Try to extract from format: **Website:** [Company](URL)
-    markdown_match2 = re.search(r'\*\*[^*]+\*\*\s*\[([^\]]+)\]\(([^)]+)\)', line)
-    if markdown_match2:
-        return clean_url(markdown_match2.group(2))
+   # Try to extract from format: **Website:** [Company](URL)
+   markdown_match2 = re.search(r'\*\*[^*]+\*\*\s*\[([^\]]+)\]\(([^)]+)\)', line)
+   if markdown_match2:
+       return clean_url(markdown_match2.group(2))
 
-    # Extract direct URLs
-    url_match = re.search(r'https?://[^\s\])+]+', line)
-    if url_match:
-        return clean_url(url_match.group())
+   # Extract direct URLs
+   url_match = re.search(r'https?://[^\s\])+]+', line)
+   if url_match:
+       return clean_url(url_match.group())
 
-    # Extract domain patterns
-    domain_match = re.search(r'\b(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,})\b', line)
-    if domain_match:
-        domain = domain_match.group()
-        if not domain.startswith('http'):
-            domain = 'https://' + domain
-        return clean_url(domain)
+   # Extract domain patterns
+   domain_match = re.search(r'\b(?:www\.)?([a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*\.[a-zA-Z]{2,})\b', line)
+   if domain_match:
+       domain = domain_match.group()
+       if not domain.startswith('http'):
+           domain = 'https://' + domain
+       return clean_url(domain)
 
-    return None
+   return None
 
 
 def extract_phone_from_line(line):
