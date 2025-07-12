@@ -249,17 +249,12 @@ def extract_hyper_local_details(user_data, country, localization):
     # Enhanced location context
     detailed_location = f"User Location Input: '{user_location}' | Country: {country} | Service Area: {service_context}"
 
-    # Market information
-    rpm = location_data.get('rpm', country_data.get('rpm', 0))
-    market_info = f"High-value market (RPM: {rpm}) with significant earning potential"
-
     return {
         'display_location': display_location,
         'specific_area': specific_area,
         'service_area': service_context,
         'detailed_location': detailed_location,
         'service_context': service_context,
-        'market_info': market_info,
         'user_input': user_location
     }
 
