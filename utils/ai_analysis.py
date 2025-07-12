@@ -64,7 +64,8 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         else:
             print(f"⚠️ Cost logging failed for {tool_name}")
 
-        return generate_html_response(ai_analysis, cleaned_data, tool_config, localization)
+        # UPDATED: Use the new enhanced formatting
+        return generate_enhanced_html_response(ai_analysis, cleaned_data, tool_config, localization)
 
     except Exception as e:
         # Calculate error response time
@@ -83,6 +84,9 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
             )
         except:
             pass  # Don't fail on error logging
+
+        #return create_simple_fallback(tool_config, cleaned_data, localization)
+
 
 def clean_user_data(user_data):
     cleaned = {}
@@ -161,7 +165,7 @@ Local market insights specific to {country}
 3. **RECOMMENDED LOCAL PROVIDERS**
 - List 3-5 SPECIFIC companies available in {country} with:
   * Company name
-  * Website 
+  * Website: [Company Name](https://website.com)
   * Phone number (if known)
   * Why they're good for this situation
 
@@ -225,8 +229,9 @@ Use {currency} for all amounts."""
     return prompt
 
 
+# UPDATED: New enhanced HTML response function
 def generate_enhanced_html_response(ai_analysis, user_data, tool_config, localization=None):
-    """Enhanced HTML with better styling for local recommendations"""
+    """Enhanced HTML with modern material design UI/UX"""
 
     if not localization:
         localization = {}
@@ -240,147 +245,11 @@ def generate_enhanced_html_response(ai_analysis, user_data, tool_config, localiz
 
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
 
-    # Enhanced content formatting for local recommendations
+    # UPDATED: Use the new enhanced content formatting
     formatted_content = format_enhanced_content(ai_analysis, country, language)
 
     return f"""
-<style>
-.ai-results {{
-    max-width: 900px;
-    margin: 20px auto;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    line-height: 1.6;
-    color: #333;
-}}
-.result-header {{
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 30px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-    text-align: center;
-    position: relative;
-}}
-.country-badge {{
-    position: absolute;
-    top: 15px;
-    right: 20px;
-    background: rgba(255,255,255,0.2);
-    padding: 5px 12px;
-    border-radius: 20px;
-    font-size: 0.9rem;
-    font-weight: 500;
-}}
-.result-title {{
-    font-size: 1.8rem;
-    font-weight: 700;
-    margin-bottom: 8px;
-}}
-.result-subtitle {{
-    opacity: 0.9;
-    font-size: 1rem;
-}}
-.content-section {{
-    background: white;
-    padding: 30px;
-    border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    margin-bottom: 20px;
-    border-left: 4px solid #667eea;
-}}
-.provider-card {{
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    border: 1px solid #cbd5e0;
-    border-radius: 10px;
-    padding: 20px;
-    margin: 15px 0;
-    transition: transform 0.2s, box-shadow 0.2s;
-}}
-.provider-card:hover {{
-    transform: translateY(-2px);
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-}}
-.provider-name {{
-    font-size: 1.2rem;
-    font-weight: 600;
-    color: #2d3748;
-    margin-bottom: 8px;
-}}
-.provider-contact {{
-    background: #667eea;
-    color: white;
-    padding: 8px 16px;
-    border-radius: 25px;
-    text-decoration: none;
-    display: inline-block;
-    margin: 5px 5px 5px 0;
-    font-size: 0.9rem;
-    font-weight: 500;
-    transition: background 0.2s;
-}}
-.provider-contact:hover {{
-    background: #5a6fd8;
-    color: white;
-    text-decoration: none;
-}}
-.expert-box {{
-    background: linear-gradient(135deg, #fed7d7 0%, #fbb6ce 100%);
-    border: 1px solid #fc8181;
-    border-radius: 10px;
-    padding: 20px;
-    margin: 15px 0;
-}}
-.action-step {{
-    background: linear-gradient(135deg, #c6f6d5 0%, #9ae6b4 100%);
-    border: 1px solid #68d391;
-    border-radius: 8px;
-    padding: 15px;
-    margin: 10px 0;
-    border-left: 4px solid #38a169;
-}}
-.content-section h3 {{
-    color: #2d3748;
-    font-size: 1.4rem;
-    margin-bottom: 15px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-}}
-.section-icon {{
-    margin-right: 10px;
-    font-size: 1.2rem;
-}}
-.content-section h4 {{
-    color: #4a5568;
-    font-size: 1.1rem;
-    margin: 20px 0 10px 0;
-    font-weight: 600;
-}}
-.content-section p {{
-    margin: 12px 0;
-    color: #4a5568;
-}}
-.content-section strong {{
-    color: #2d3748;
-    font-weight: 600;
-}}
-.local-badge {{
-    background: #38a169;
-    color: white;
-    padding: 2px 8px;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 500;
-    margin-left: 8px;
-}}
-@media (max-width: 768px) {{
-    .ai-results {{ padding: 10px; }}
-    .result-header, .content-section {{ padding: 20px; }}
-    .result-title {{ font-size: 1.5rem; }}
-    .provider-card {{ padding: 15px; }}
-    .country-badge {{ position: static; margin-bottom: 10px; }}
-}}
-</style>
+{get_modern_css()}
 
 <div class="ai-results">
     <div class="result-header">
@@ -396,9 +265,9 @@ def generate_enhanced_html_response(ai_analysis, user_data, tool_config, localiz
 """
 
 
-import re
-import html
-
+# ============================================================================
+# NEW: ENHANCED FORMATTING FUNCTIONS FROM THE ARTIFACT
+# ============================================================================
 
 def format_enhanced_content(ai_analysis, country, language):
     """Enhanced content formatting with modern material design UI/UX"""
@@ -422,7 +291,7 @@ def format_enhanced_content(ai_analysis, country, language):
     # Combine all sections
     result = '\n'.join(formatted_sections)
 
-    return f'<div class="modern-ai-analysis">{result}</div>'
+    return result
 
 
 def clean_ai_content(content):
@@ -810,6 +679,7 @@ def format_generic_section(title, content):
     '''
 
 
+# Add all the parsing functions from the artifact...
 def parse_insights_content(content):
     """Parse insights from content"""
     insights = []
@@ -1013,30 +883,29 @@ def parse_resources_content(content):
         resource = None
 
         # Format: **Name:** [Link](URL) - Description
-        markdown_match = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*)'
-                                   , line)
+        markdown_match = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*), line)
         if markdown_match:
             name = markdown_match.group(1).strip()
-            url = clean_url(markdown_match.group(3))
-            description = markdown_match.group(4).strip(' -')
-            resource = {'name': name, 'url': url, 'description': description}
+        url = clean_url(markdown_match.group(3))
+        description = markdown_match.group(4).strip(' -')
+        resource = {'name': name, 'url': url, 'description': description}
 
         # Format: Name: URL - Description
         elif ':' in line:
-            parts = line.split(':', 1)
-            name = parts[0].strip('*')
-            rest = parts[1].strip()
+        parts = line.split(':', 1)
+        name = parts[0].strip('*')
+        rest = parts[1].strip()
 
-            # Extract URL and description
-            url = extract_website_from_line(rest)
-            description = re.sub(r'https?://[^\s]+|www\.[^\s]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b', '', rest).strip(' -')
+        # Extract URL and description
+        url = extract_website_from_line(rest)
+        description = re.sub(r'https?://[^\s]+|www\.[^\s]+|\b[a-zA-Z0-9-]+\.[a-zA-Z]{2,}\b', '', rest).strip(' -')
 
-            if url:
-                resource = {
-                    'name': name,
-                    'url': url,
-                    'description': description or 'Comparison and review platform'
-                }
+        if url:
+            resource = {
+                'name': name,
+                'url': url,
+                'description': description or 'Comparison and review platform'
+            }
 
         if resource:
             resources.append(resource)
@@ -1211,481 +1080,28 @@ def get_country_flag(country):
 
 
 def get_modern_css():
-    """Return modern CSS styles"""
+    """Return the modern Material Design CSS"""
+    # You can either:
+    # 1. Include the full CSS here as a string (copy from the CSS artifact)
+    # 2. Link to an external CSS file
+    # 3. Return a reference to the CSS artifact
+
     return '''
-<style>
-.modern-ai-analysis {
-    max-width: 1200px;
-    margin: 0 auto;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    line-height: 1.6;
-    color: #2d3748;
-}
-
-.intro-section {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 40px;
-    border-radius: 16px;
-    margin-bottom: 32px;
-    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
-}
-
-.intro-text {
-    font-size: 1.1rem;
-    margin: 16px 0;
-    opacity: 0.95;
-}
-
-.content-section {
-    background: #ffffff;
-    border-radius: 16px;
-    padding: 32px;
-    margin-bottom: 24px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    border: 1px solid #e2e8f0;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
-}
-
-.content-section:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-}
-
-.section-title {
-    display: flex;
-    align-items: center;
-    font-size: 1.5rem;
-    font-weight: 700;
-    margin-bottom: 24px;
-    color: #1a202c;
-    gap: 12px;
-}
-
-.section-icon {
-    font-size: 1.8rem;
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
-}
-
-.title-text {
-    flex: 1;
-}
-
-.country-flag {
-    font-size: 1.5rem;
-}
-
-/* Provider Cards */
-.providers-grid {
-    display: grid;
-    gap: 24px;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-}
-
-.provider-card {
-    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    border: 1px solid #cbd5e0;
-    border-radius: 12px;
-    padding: 24px;
-    transition: all 0.3s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.provider-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 4px;
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-}
-
-.provider-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 32px rgba(102, 126, 234, 0.2);
-    border-color: #667eea;
-}
-
-.provider-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 16px;
-}
-
-.provider-name {
-    font-size: 1.3rem;
-    font-weight: 700;
-    color: #1a202c;
-    line-height: 1.3;
-}
-
-.provider-rating {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
-}
-
-.rating-stars {
-    font-size: 0.9rem;
-    opacity: 0.8;
-}
-
-.local-badge {
-    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
-    color: white;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    box-shadow: 0 2px 8px rgba(56, 161, 105, 0.3);
-}
-
-.provider-description {
-    color: #4a5568;
-    margin-bottom: 20px;
-    line-height: 1.6;
-}
-
-.provider-actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.contact-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 10px 16px;
-    border-radius: 8px;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-    transition: all 0.2s ease;
-    border: none;
-    cursor: pointer;
-}
-
-.website-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-}
-
-.website-btn:hover {
-    background: linear-gradient(135deg, #5a6fd8 0%, #6b4490 100%);
-    transform: translateY(-1px);
-    color: white;
-    text-decoration: none;
-}
-
-.phone-btn {
-    background: linear-gradient(135deg, #38a169 0%, #2f855a 100%);
-    color: white;
-}
-
-.phone-btn:hover {
-    background: linear-gradient(135deg, #2f855a 0%, #276749 100%);
-    transform: translateY(-1px);
-    color: white;
-    text-decoration: none;
-}
-
-.btn-icon {
-    font-size: 1rem;
-}
-
-/* Resource Cards */
-.resources-grid {
-    display: grid;
-    gap: 20px;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-}
-
-.resource-card {
-    display: flex;
-    align-items: center;
-    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%);
-    border: 1px solid #fdba74;
-    border-radius: 12px;
-    padding: 20px;
-    transition: all 0.3s ease;
-}
-
-.resource-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(251, 146, 60, 0.2);
-}
-
-.resource-icon {
-    font-size: 2rem;
-    margin-right: 16px;
-    opacity: 0.8;
-}
-
-.resource-content {
-    flex: 1;
-}
-
-.resource-name {
-    font-weight: 700;
-    color: #9a3412;
-    margin-bottom: 4px;
-}
-
-.resource-description {
-    color: #7c2d12;
-    font-size: 0.9rem;
-    margin-bottom: 8px;
-}
-
-.resource-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: #ea580c;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.resource-link:hover {
-    color: #c2410c;
-    text-decoration: none;
-}
-
-/* Expert Cards */
-.experts-grid {
-    display: grid;
-    gap: 20px;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-}
-
-.expert-card {
-    display: flex;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 1px solid #fbbf24;
-    border-radius: 12px;
-    padding: 20px;
-    transition: all 0.3s ease;
-}
-
-.expert-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(251, 191, 36, 0.2);
-}
-
-.expert-icon {
-    font-size: 2.5rem;
-    margin-right: 16px;
-    opacity: 0.8;
-}
-
-.expert-info {
-    flex: 1;
-}
-
-.expert-name {
-    font-weight: 700;
-    color: #92400e;
-    margin-bottom: 4px;
-    font-size: 1.1rem;
-}
-
-.expert-specialty {
-    color: #b45309;
-    font-size: 0.9rem;
-    font-weight: 600;
-    margin-bottom: 8px;
-}
-
-.expert-description {
-    color: #78350f;
-    font-size: 0.9rem;
-    margin-bottom: 12px;
-}
-
-.expert-contact {
-    display: inline-block;
-    color: #d97706;
-    text-decoration: none;
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-/* Action Steps */
-.action-steps {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.action-step {
-    display: flex;
-    align-items: center;
-    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
-    border: 1px solid #86efac;
-    border-radius: 12px;
-    padding: 20px;
-    transition: all 0.3s ease;
-}
-
-.action-step:hover {
-    transform: translateX(4px);
-    box-shadow: 0 4px 16px rgba(34, 197, 94, 0.2);
-}
-
-.step-number {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-    color: white;
-    border-radius: 50%;
-    font-weight: 700;
-    font-size: 1.1rem;
-    margin-right: 20px;
-    box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-}
-
-.step-content {
-    flex: 1;
-}
-
-.step-text {
-    color: #166534;
-    font-weight: 500;
-    line-height: 1.5;
-}
-
-.step-check {
-    font-size: 1.5rem;
-    color: #22c55e;
-    opacity: 0.7;
-    margin-left: 12px;
-}
-
-/* Insights */
-.insights-grid {
-    display: grid;
-    gap: 20px;
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-}
-
-.insight-card {
-    display: flex;
-    background: linear-gradient(135deg, #ede9fe 0%, #ddd6fe 100%);
-    border: 1px solid #c4b5fd;
-    border-radius: 12px;
-    padding: 20px;
-    transition: all 0.3s ease;
-}
-
-.insight-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(139, 92, 246, 0.2);
-}
-
-.insight-icon {
-    font-size: 2rem;
-    margin-right: 16px;
-    opacity: 0.8;
-}
-
-.insight-content {
-    flex: 1;
-}
-
-.insight-title {
-    font-weight: 700;
-    color: #581c87;
-    margin-bottom: 8px;
-    font-size: 1.1rem;
-}
-
-.insight-text {
-    color: #6b21a8;
-    line-height: 1.5;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-    .modern-ai-analysis {
-        padding: 16px;
+    <link rel="stylesheet" href="/static/css/modern-material-design.css">
+    <style>
+    /* Additional inline styles if needed */
+    .ai-results {
+        max-width: 1200px;
+        margin: 20px auto;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
+    </style>
+    '''
 
-    .content-section {
-        padding: 24px 20px;
-        margin-bottom: 16px;
-    }
 
-    .providers-grid,
-    .resources-grid,
-    .experts-grid,
-    .insights-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .provider-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 12px;
-    }
-
-    .provider-rating {
-        align-items: flex-start;
-    }
-
-    .provider-actions {
-        flex-direction: column;
-    }
-
-    .contact-btn {
-        width: 100%;
-        justify-content: center;
-    }
-
-    .section-title {
-        font-size: 1.3rem;
-        flex-wrap: wrap;
-    }
-}
-
-@media (max-width: 480px) {
-    .intro-section {
-        padding: 24px 20px;
-    }
-
-    .resource-card,
-    .expert-card {
-        flex-direction: column;
-        text-align: center;
-    }
-
-    .resource-icon,
-    .expert-icon {
-        margin-right: 0;
-        margin-bottom: 12px;
-    }
-
-    .action-step {
-        flex-direction: column;
-        text-align: center;
-        gap: 12px;
-    }
-
-    .step-number {
-        margin-right: 0;
-    }
-}
-</style>
-'''
-
+# ============================================================================
+# EXISTING FUNCTIONS (KEPT FOR BACKWARD COMPATIBILITY)
+# ============================================================================
 
 def get_text(key, language):
     """Get localized text"""
@@ -1706,16 +1122,20 @@ def get_text(key, language):
 
     return texts.get(language, texts['English']).get(key, key)
 
+
 def build_prompt(tool_name, category, user_data, localization=None):
     return build_enhanced_prompt(tool_name, category, user_data, localization)
 
+
 def get_system_prompt(localization=None):
     return get_enhanced_system_prompt(localization)
+
 
 def generate_html_response(ai_analysis, user_data, tool_config, localization=None):
     return generate_enhanced_html_response(ai_analysis, user_data, tool_config, localization)
 
 
+# Legacy function - kept for compatibility
 def format_content(content):
     if not content:
         return '<p>No analysis available.</p>'
@@ -1753,3 +1173,93 @@ def format_content(content):
         html_lines.append('</ul>')
 
     return '\n'.join(html_lines)
+
+
+def create_simple_fallback(tool_config, user_data, localization=None):
+    """Simple fallback with just donation message"""
+    if not localization:
+        localization = {}
+
+    language = localization.get('language', 'English')
+    tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
+
+    return f"""
+<style>
+.simple-fallback {{
+    max-width: 600px;
+    margin: 20px auto;
+    text-align: center;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    padding: 20px;
+}}
+.fallback-header {{
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    padding: 30px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}}
+.fallback-title {{
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+}}
+.fallback-subtitle {{
+    opacity: 0.9;
+    font-size: 1rem;
+}}
+.donation-section {{
+    background: #f7fafc;
+    padding: 30px;
+    border-radius: 12px;
+    margin: 20px 0;
+}}
+.donation-section h3 {{
+    color: #2d3748;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}}
+.donation-section p {{
+    color: #4a5568;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}}
+.donation-button {{
+    display: inline-block;
+    margin: 20px 0;
+}}
+.limit-message {{
+    background: #fff3cd;
+    color: #856404;
+    padding: 15px;
+    border-radius: 8px;
+    margin: 20px 0;
+    border: 1px solid #ffeaa7;
+}}
+</style>
+
+<div class="simple-fallback">
+    <div class="fallback-header">
+        <div class="fallback-title">⚡ {tool_name}</div>
+        <div class="fallback-subtitle">AI analysis temporarily unavailable</div>
+    </div>
+
+    <div class="limit-message">
+        <strong>Daily AI limit reached</strong><br>
+        Free AI analysis resets at midnight UTC
+    </div>
+
+    <div class="donation-section">
+        <h3>🚀 Support Our Platform</h3>
+        <p>Your support helps us provide advanced AI analysis and keep improving our tools for everyone.</p>
+
+        <div class="donation-button">
+            <a href="https://www.buymeacoffee.com/shakdiesel" target="_blank">
+                <img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Support Us" style="height: 50px;">
+            </a>
+        </div>
+
+        <p><small>Thank you for using our platform! 🙏</small></p>
+    </div>
+</div>
+"""
