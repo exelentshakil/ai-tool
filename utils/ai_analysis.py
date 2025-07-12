@@ -821,9 +821,9 @@ def fix_currency_encoding(text):
         '&euro;': '€',
         '&#8364;': '€',
         '&#163;': '£',
-        'USD': ',
-               'EUR': '€',
-    'GBP': '£'
+        'USD': '$',
+         'EUR': '€',
+        'GBP': '£'
     }
 
     for old, new in replacements.items():
