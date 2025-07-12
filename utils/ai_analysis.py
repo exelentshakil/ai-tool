@@ -805,7 +805,7 @@ def extract_website_from_line(line):
         return clean_url(markdown_match.group(2))
 
     # Try to extract from format: **Website:** [Company](URL)
-    markdown_match2 = re.search(r'\*\*[^*]+\*\*\s*\[([^\]]+)\]\(([^)]+)\)', line)
+    markdown_match2 = re.search(r'\*\*([^*]+)\*\*:?\s*\[([^\]]+)\]\(([^)]+)\)(.*)', line)
     if markdown_match2:
         return clean_url(markdown_match2.group(2))
 
