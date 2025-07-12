@@ -821,7 +821,7 @@ def fix_currency_encoding(text):
         '&euro;': '€',
         '&#8364;': '€',
         '&#163;': '£',
-        'USD': '$',
+        'USD': '',
          'EUR': '€',
         'GBP': '£'
     }
@@ -869,7 +869,7 @@ def format_ultra_value_response(ai_analysis, user_data, tool_config, localizatio
     elif currency == 'u00a3':
         currency_symbol = '£'
     else:
-        currency_symbol = '
+        currency_symbol = ''
 
     # Clean and enhance the AI response
     cleaned_content = clean_ai_response(ai_analysis)
