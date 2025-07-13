@@ -152,7 +152,6 @@ USER DATA:
 LOCATION CONTEXT:
 Exact Location: {location_info['detailed_location']}
 Service Area: {location_info['service_context']}
-Market: {location_info['market_info']}
 
 REQUIREMENTS:
 - Reference exact location ({location_info['display_location']}) in calculations
@@ -253,8 +252,8 @@ def extract_location_details(user_data, country, localization):
     detailed_location = f"User Location Input: '{user_location}' | Country: {country} | Service Area: {service_context}"
 
     # Market information
-    rpm = location_data.get('rpm', country_data.get('rpm', 0))
-    market_info = f"High-value market (RPM: {rpm}) with significant earning potential"
+    #rpm = location_data.get('rpm', country_data.get('rpm', 0))
+    #market_info = f"High-value market (RPM: {rpm}) with significant earning potential"
 
     return {
         'display_location': display_location,
@@ -262,7 +261,7 @@ def extract_location_details(user_data, country, localization):
         'service_area': service_context,
         'detailed_location': detailed_location,
         'service_context': service_context,
-        'market_info': market_info,
+        #'market_info': market_info,
         'user_input': user_location
     }
 
