@@ -18,72 +18,157 @@ import re
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ---------- PROMPTS ----------
+def get_outfit_system_prompt(language="English"):
+    return f"""You are an AI STYLE COACH.
+SCOPE: Analyze ONLY clothing choices, colors, layering, proportions, patterns, footwear, accessories, and photo composition.
+DO NOT analyze faces, identity, bodies, attractiveness, age, ethnicity, or health.
+TONE: Friendly, playful, practical. Give clear, doable fixes users can apply today.
+FORMAT: Use clear SECTION HEADERS. Keep results useful even if the photo is imperfect.
+Respond in {language}."""
+
+
+def build_outfit_rater_prompt(tool_name, user_data, localization=None):
+    language = (localization or {}).get("language", "English")
+    has_img2 = bool(user_data.get("photo_url_2"))
+
+    return f"""
+You are an AI Style Coach. You will receive one or two OUTFIT photos.
+Evaluate ONLY wardrobe/style and photo composition (no faces/bodies/identity).
+
+Return ALL sections:
+
+OUTFIT SCORE (0–100)
+- Overall score + one-line verdict.
+- Sub-scores (0–10): Color Harmony, Proportion/Balance, Cohesion, Creativity, Dress-Code Fit.
+
+COLOR & CONTRAST
+- Palette coherence and contrast (low/medium/high).
+- 2 fast color fixes.
+
+SILHOUETTE & PROPORTIONS
+- Layer lengths, hem balance, vertical lines.
+- 2–3 proportion tweaks (tuck/roll/cuff/layer/length).
+
+LAYERING & COHESION
+- Do pieces support one idea? Note any mismatch.
+- 2 cohesion upgrades (unify metals, match leather tones, reduce visual noise).
+
+PATTERN MIXING (IF ANY)
+- Pattern scale compatibility and clash risk.
+- One safer pairing + one bolder pairing.
+
+DRESS-CODE MATCH
+- Likely category (casual / smart casual / business casual / business / evening / streetwear).
+- What to change to match a chosen code.
+
+ACCESSORIES & FOOTWEAR
+- 2 accessory ideas and 1 footwear adjustment.
+
+PHOTO COMPOSITION
+- Background, framing, clarity tips to show the outfit better.
+- 2 quick photo tweaks (distance, angle, crop, neutral background).
+
+{"A VS B OUTFIT BATTLE\n- Winner: A or B (3 bullets why)\n- When each works best (context note)" if has_img2 else ""}
+
+SHOP THE LOOK (LOW COST)
+- 3 budget-friendly upgrade ideas (generic; no brand names).
+
+RETAKE CHECKLIST
+- 4 bullets (light at 45°, full-length with shoes, neutral backdrop, lens clean).
+
+SHARE CAPTION
+- One short, playful caption for socials.
+
+CONSTRAINTS
+- Style-only, no face/body/identity/health analysis.
+- Be friendly, specific, actionable.
+- Respond in {language}.
+"""
+
+
+
 def build_multimodal_user_message(prompt_text, img1=None, img2=None):
     content = [{"type": "text", "text": prompt_text}]
     if img1: content.append({"type": "image_url", "image_url": {"url": img1}})
     if img2: content.append({"type": "image_url", "image_url": {"url": img2}})
     return {"role": "user", "content": content}
 
-def get_face_system_prompt_safe(language="English"):
-    return f"""You are an AI photo critique assistant.
-You MAY describe and critique photos of people.
-Hard rules:
-- Do NOT infer or evaluate sensitive attributes: age, attractiveness/beauty, identity, ethnicity, race, gender, health, or personality.
-- Do NOT provide celebrity lookalikes or identify real people.
-- Keep tone friendly, constructive, and non-medical.
-Focus on photography quality (lighting, sharpness, framing, background), pose coaching, style suggestions, and a retake checklist.
-Respond in {language}."""
+def get_face_system_prompt(language="English"):
+    return f"""You are an AI portrait-aesthetics assistant.
+You CAN analyze attached images (URL or base64).
+STRICT RULES:
+- Do NOT identify real people or compare to named celebrities.
+- Do NOT infer sensitive attributes (ethnicity, health, beliefs).
+- Focus on PHOTO/STYLE aspects: lighting, composition, framing, color, pose, expression cues, grooming, wardrobe, “style twin” archetypes.
+- “Perceived age band” must be framed as entertainment-only.
+- Be kind, playful, and non-medical. Respond in {language}."""
 
-def build_face_photography_prompt(tool_name, user_data, localization=None):
+def build_face_mega_prompt(tool_name, user_data, localization=None):
     language = (localization or {}).get("language", "English")
-    has_img2 = bool((user_data or {}).get("photo_url_2"))
-
+    has_img2 = bool(user_data.get("photo_url_2"))
     return f"""
-You are a friendly photo coach. Use the attached face photo(s) to give a non-judgmental photography critique.
+You are a portrait aesthetics coach. Give a structured, playful, non-medical report.
 
-STRICT BOUNDS
-- Do NOT guess age, attractiveness/beauty, gender, ethnicity, health, identity, or personality.
-- Do NOT provide celebrity lookalikes or identify real people.
-- Avoid medical claims. This is for fun photo improvement only.
-
-FORMAT: Use these section headers exactly.
+SECTIONS (USE THESE TITLES):
 
 PHOTO AESTHETICS SCORE (0–100)
-- Overall score and 1-line summary
-- Sub-scores (0–10 each): Lighting, Sharpness, Framing, Background, Color Harmony
+- Overall score
+- Sub-scores: Lighting, Sharpness, Framing, Background, Color Harmony
+- One-liner summary
 
 LIGHTING
-- Current lighting quality and direction
-- 2 quick fixes (e.g., 45° key light, diffuser, window light)
+- What’s working
+- Quick fixes (2–3)
 
 SHARPNESS & CLEANLINESS
-- Focus/clarity observations
-- 2 fixes (steady support, lens clean, higher shutter)
+- Focus/clarity note
+- Simple fixes (tripod, lens clean, shutter)
 
 FRAMING & POSE
-- Crop and headroom notes
-- Neutral pose coaching (chin, shoulders, eye line)
+- Crop/headroom feedback
+- 2 pose cues (chin/shoulders/angle)
 
 BACKGROUND & COLOR
-- Clutter/contrast status
-- 2 styling suggestions (simplify backdrop, outfit contrast)
+- Distraction/contrast assessment
+- 2 improvements
 
 STYLE SUGGESTIONS
-- Hair/grooming idea
-- Eyewear or accessory idea
-- Clothing palette tip based on background contrast (no skin-tone labeling)
+- Hairstyle or grooming idea (non-gendered where possible)
+- Eyewear/accessory suggestion
+- Clothing/palette prompt
 
-{("SIDE-BY-SIDE PHOTO COMPARISON\n- Compare Photo A vs Photo B on: Lighting, Sharpness, Framing, Background, Color Harmony\n- 3 bullet differences and a 1-line practical verdict (no compatibility or attractiveness claims)" ) if has_img2 else ""}
+STYLE TWIN (VIBE MATCH, NON-IDENTIFYING)
+- 2–3 broad archetypes (e.g., “clean-cut studio vibe”, “editorial street-style vibe”)
+- One reason each (jawline emphasis, soft lighting, etc.)
+
+PERCEIVED AGE BAND (ENTERTAINMENT)
+- A broad range (e.g., “mid 20s–early 30s”)
+- 2 factors making them read younger/older
+
+SMILE RATING (1–10)
+- What helps the smile
+- 1 quick tip
+
+FACE BALANCE (NON-BIOMETRIC)
+- Symmetry/balance impression (qualitative)
+- What improves perceived balance (lighting, angle, hair part)
+
+{("SIDE-BY-SIDE (A vs B)\n- Compare aesthetics scores\n- Differences in lighting/pose/expression\n- Fun compatibility % (style-only)" if has_img2 else "")}
 
 RETAKE CHECKLIST
-- 4 concise bullets people can apply immediately
+- 3–5 specific actions (lighting angle, background, pose)
 
-CONFIDENCE & LIMITS
-- Confidence: high/medium/low
-- Note any image limitations and a retake tip
+QUALITY & LIMITS
+- Confidence (high/medium/low)
+- Any limitations in the image
+- Reminder: no identity/sensitive-attribute analysis
 
-Respond in {language} with short, punchy sentences and friendly tone.
+SHARE CAPTION
+- A short playful caption for social
+
+Make it concise, friendly, and formatted with the section titles above. Respond in {language}.
 """
+
 
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
@@ -104,11 +189,20 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
 
     cleaned_data = clean_user_data(user_data)
 
-    # Use the SAFE system + prompt for face tools
-    if category_lower in ["appearance", "face", "photo", "image"]:
+    # Use the SAFE system + prompt for style/outfit tools
+    if category_lower in ["fashion", "style"] or "outfit" in (tool_slug or "").lower() or "style-coach" in (
+            tool_slug or "").lower():
         language = (localization or {}).get("language", "English")
-        system_prompt = get_face_system_prompt_safe(language)
-        prompt = build_face_photography_prompt(tool_name, cleaned_data, localization)
+        system_prompt = get_outfit_system_prompt(language)
+        prompt = build_outfit_rater_prompt(tool_name, cleaned_data, localization)
+
+    # Use the SAFE system + prompt for face tools
+    elif category_lower in ["appearance", "face", "photo", "image"]:
+        language = (localization or {}).get("language", "English")
+        system_prompt = get_face_system_prompt(language)
+        prompt = build_face_mega_prompt(tool_name, cleaned_data, localization)
+
+    # Everything else (your existing expert prompt)
     else:
         system_prompt = get_expert_system_prompt(localization)
         prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned_data, localization)
@@ -175,69 +269,6 @@ def looks_like_refusal(text: str) -> bool:
         ]
     )
 
-def build_face_mega_prompt(tool_name, user_data, localization=None):
-    language = (localization or {}).get("language", "English")
-    has_img2 = bool(user_data.get("photo_url_2"))
-
-    return f"""
-You are an AI face and personality analyzer. Your role is to give users
-a fun but highly detailed, non-medical report from one or two face photos.
-
-Always return information in clear, structured SECTIONS with headers.
-Keep tone playful but professional. Avoid medical claims.
-
-INPUT: One or two face photos.
-TASK: Provide ALL of these sections:
-
-FACE SYMMETRY
-- Symmetry score (0–100)
-- 2–3 observations about balance or asymmetry
-- What symmetry usually means for attractiveness
-
-BEAUTY SCORE
-- Beauty score (0–100)
-- Male vs female differences if relevant
-- Top 3 factors that raised/lowered the score
-
-AGE GUESS
-- Estimated age range
-- Features that make them look younger
-- Features that make them look older
-
-CELEBRITY LOOKALIKE
-- Top 3 lookalikes with similarity %
-- Short reason why (jawline, eyes, hairstyle, etc.)
-
-SMILE RATING
-- Smile score (1–10)
-- Strengths of the smile
-- One improvement tip
-
-FACE SHAPE
-- Identify shape (oval, round, square, heart, diamond)
-- 2 hairstyle tips
-- 1 accessory suggestion (e.g., glasses style)
-
-SKIN & EYES
-- Undertone (warm/cool/neutral)
-- Visible eye color details
-- Contrast level (high/medium/low)
-{"SIDE BY SIDE COMPARISON\n- Compare A vs B on beauty, age, and smile\n- Give differences in bullet points\n- End with a compatibility % and short playful verdict" if has_img2 else ""}
-
-PRACTICAL TIPS
-- 3 short actionable tips anyone can apply right away
-
-QUALITY NOTES
-- Confidence: high/medium/low
-- Any image quality issues
-- Retake advice for clearer results
-
-SHARE PROMPT
-- A one-line playful caption for sharing results on social media
-
-Respond in {language}. Keep format clean with clear section titles.
-"""
-
 def clean_user_data(user_data):
     """Enhanced data cleaning with comprehensive location processing"""
     cleaned = {}
@@ -265,10 +296,13 @@ def build_enhanced_prompt(tool_name, category, tool_slug, user_data, localizatio
     # NEW: Simple category check for personality tools
 
     category_lower = category.lower()
+    # --- NEW: Outfit Rater route ---
+    if category_lower in ["appearance", "fashion", "style"] or "outfit" in slug_lower or "style-coach" in slug_lower:
+        return build_outfit_rater_prompt(tool_name, user_data, localization)
 
     # --- NEW: Route for face mega analyzer ---
     if category_lower in ["appearance", "face", "photo", "image"]:
-        return build_face_prompt_safe(tool_name, user_data, localization)
+        return build_face_mega_prompt(tool_name, user_data, localization)
     # High-value personality categories get specialized treatment
     if category_lower in ['psychology', 'personality', 'intelligence']:
         return build_psychology_prompt(tool_name, user_data, localization)

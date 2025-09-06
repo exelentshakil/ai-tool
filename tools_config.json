@@ -21602,6 +21602,22 @@
       "h1": "AI Face Analyzer – Beauty, Age, Symmetry & More",
       "focus_keyword": "AI face analyzer"
     }
+  },
+  "ai-outfit-rater-style-coach": {
+    "slug": "ai-outfit-rater-style-coach",
+    "category": "Style",
+    "base_name": "AI Outfit Rater & Style Coach",
+    "variation": "outfit-style-coach",
+    "rpm": 7.2,
+    "openai_prompt_template": "You are an AI Style Coach. You will receive one or two OUTFIT photos (no face/bio analysis). Evaluate ONLY wardrobe/style and photo composition. Return ALL sections:\n\nOUTFIT SCORE (0–100)\n- Overall score + one-line verdict.\n- Sub-scores (0–10): Color Harmony, Proportion/Balance, Cohesion, Creativity, Dress-Code Fit.\n\nCOLOR & CONTRAST\n- Palette coherence + contrast (low/medium/high).\n- 2 fast color fixes.\n\nSILHOUETTE & PROPORTIONS\n- Layer lengths, hem balance, vertical lines.\n- 2–3 proportion tweaks (tuck/roll/cuff/layer/length).\n\nLAYERING & COHESION\n- Do pieces support one idea? Note mismatches.\n- 2 cohesion upgrades (unify metals, match leather tones, reduce visual noise).\n\nPATTERN MIXING (IF ANY)\n- Pattern scale compatibility + clash risk.\n- 1 safer pairing + 1 bolder pairing.\n\nDRESS-CODE MATCH\n- Likely category (casual / smart casual / business casual / business / evening / streetwear).\n- What to change to match a chosen code.\n\nACCESSORIES & FOOTWEAR\n- 2 accessory ideas + 1 footwear adjustment.\n\nPHOTO COMPOSITION\n- Background, framing, clarity tips to show the outfit better.\n- 2 quick photo tweaks (distance, angle, crop, neutral background).\n\nOPTIONAL A VS B OUTFIT BATTLE (if two photos provided)\n- Winner: A or B (3 bullets why).\n- When each works best (context note).\n\nSHOP THE LOOK (LOW COST)\n- 3 budget-friendly upgrade ideas (generic; no brands).\n\nRETAKE CHECKLIST\n- 4 bullets (45° light, full-length with shoes, neutral backdrop, lens clean).\n\nSHARE CAPTION\n- One short, playful social caption.\n\nCONSTRAINTS\n- Style-only, no face/body/identity/health analysis.\n- Friendly, specific, actionable. Non-judgmental.\n- Output must use clear section titles.",
+    "form_fields": ["photo_url", "photo_url_2"],
+    "seo_data": {
+      "title": "AI Outfit Rater – Free Style Coach 2025",
+      "description": "Upload one or two outfit photos and get instant AI style feedback: color harmony, proportions, dress-code fit, layering, accessories, footwear and photo tips. Optional A vs B outfit battle.",
+      "keywords": "outfit rater,AI style coach,outfit analyzer,color analysis,dress code checker,fashion AI,rate my outfit,OOTD rate",
+      "h1": "AI Outfit Rater & Style Coach",
+      "focus_keyword": "outfit rater"
+    }
   }
 
 
