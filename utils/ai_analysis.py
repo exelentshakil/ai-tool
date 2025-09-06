@@ -250,7 +250,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
             prompt = build_face_mega_prompt(tool_name, cleaned_data, localization)
 
         # Build multimodal user message (direct image URLs)
-        content = [{"type": "input_text", "text": prompt}]
+        content = [{"type": "text", "text": prompt}]
         if img1:
             content.append({"type": "input_image", "image_url": img1})
         if img2:
