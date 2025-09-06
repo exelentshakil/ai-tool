@@ -9,8 +9,28 @@ import json
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
+def get_face_system_prompt(language="English"):
+    return f"""You are an AI face analysis assistant.
+You CAN analyze base64 or URL images attached in the message.
+Use them to describe beauty, symmetry, age guess, smile, face shape, lookalikes, skin and eyes, and optional A vs B comparison.
+Be clear, fun, and non-medical. Respond in {language}."""
+
+def build_multimodal_user_message(prompt_text, img1=None, img2=None):
+    """Build a user message that mixes text and optional images for GPT-4o."""
+    # Always include the prompt as text
+    content = [{"type": "text", "text": prompt_text}]
+    # Add images only if present
+    if img1:
+        content.append({"type": "image_url", "image_url": {"url": img1}})
+    if img2:
+        content.append({"type": "image_url", "image_url": {"url": img2}})
+    # If no images, return plain text (OpenAI also accepts string for content)
+    if len(content) == 1:
+        return {"role": "user", "content": prompt_text}
+    return {"role": "user", "content": content}
+
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
-    """Ultra-enhanced AI analysis with hyper-local specificity and maximum value"""
+    """Ultra enhanced AI analysis with correct image handling for appearance tools."""
     start_time = time.time()
 
     # Budget check
@@ -24,39 +44,33 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     if get_openai_cost_today() >= daily_budget or get_openai_cost_month() >= monthly_budget:
         return create_simple_fallback(tool_config, user_data, localization)
 
-    # Extract comprehensive tool information
-    category = tool_config.get("category", "general")
+    # Tool info
+    category = tool_config.get("category", "general") or "general"
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
     tool_slug = tool_config.get("slug", "")
-
     category_lower = category.lower()
 
+    # Choose system prompt
     if category_lower in ["appearance", "face", "photo", "image"]:
-        system_prompt = get_face_system_prompt(localization.get("language", "English"))
+        language = (localization or {}).get("language", "English")
+        system_prompt = get_face_system_prompt(language)
     else:
         system_prompt = get_expert_system_prompt(localization)
 
-    # Clean and prepare data with enhanced location handling
+    # Clean user data
     cleaned_data = clean_user_data(user_data)
 
-    # Build the massive, super-detailed prompt
+    # Build prompt text
     prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned_data, localization)
 
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {
-            "role": "user",
-            "content": [
-                {"type": "text", "text": prompt},
-                {"type": "image_url", "image_url": {"url": user_data["photo_url"]}}
-            ]
-        }
-    ]
-
-    if user_data.get("photo_url_2"):
-        messages[1]["content"].append(
-            {"type": "image_url", "image_url": {"url": user_data["photo_url_2"]}}
-        )
+    # Build messages
+    messages = [{"role": "system", "content": system_prompt}]
+    if category_lower in ["appearance", "face", "photo", "image"]:
+        img1 = cleaned_data.get("photo_url") or None
+        img2 = cleaned_data.get("photo_url_2") or None
+        messages.append(build_multimodal_user_message(prompt, img1, img2))
+    else:
+        messages.append({"role": "user", "content": prompt})
 
     try:
         model_name = "gpt-4o"
@@ -68,16 +82,16 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         )
 
         ai_analysis = response.choices[0].message.content
-        pt, ct = response.usage.prompt_tokens, response.usage.completion_tokens
-        total_tokens = pt + ct
 
-        # Correct gpt-4o cost calculation
-        cost = (pt * 2.50 + ct * 10.00) / 1000000
+        # Usage and cost
+        pt = getattr(response.usage, "prompt_tokens", 0) or 0
+        ct = getattr(response.usage, "completion_tokens", 0) or 0
+        total_tokens = pt + ct
+        cost = (pt * 2.50 + ct * 10.00) / 1_000_000
 
         response_time = int((time.time() - start_time) * 1000)
 
-        # Enhanced logging
-        success = log_openai_cost_enhanced(
+        log_openai_cost_enhanced(
             cost=cost,
             tokens=total_tokens,
             model=model_name,
@@ -86,24 +100,17 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
             response_time=response_time
         )
 
-        if success:
-            print(f"✅ Ultra-analysis completed: {tool_name} took {response_time}ms, cost: ${cost:.4f}")
-        else:
-            print(f"⚠️ Cost logging failed for {tool_name}")
-
-        # Format with maximum value presentation
         return format_response(ai_analysis, cleaned_data, tool_config, localization)
 
     except Exception as e:
         response_time = int((time.time() - start_time) * 1000)
         print(f"❌ AI analysis failed after {response_time}ms: {str(e)}")
-
         try:
             log_openai_cost_enhanced(cost=0, tokens=0, model="error", ip=ip, tools_slug=tool_name)
         except:
             pass
-
         return create_simple_fallback(tool_config, cleaned_data, localization)
+
 
 
 def clean_user_data(user_data):
@@ -252,12 +259,6 @@ SUCCESS FACTORS
 Use REAL company names, actual phone numbers, and specific websites. Make this worth hundreds of {currency_symbol} in professional consultation value.
 
 Respond in {language} with local terminology for {country}."""
-
-def get_face_system_prompt(language="English"):
-    return f"""You are an AI face analysis assistant. 
-You CAN analyze base64-encoded face images provided as user input.
-Use them to describe appearance, beauty score, symmetry, smile, age guess, and comparisons.
-Do NOT refuse. Be clear, fun, non-medical. Respond in {language}."""
 
 def build_face_mega_prompt(tool_name, user_data, localization=None):
     language = (localization or {}).get("language", "English")
