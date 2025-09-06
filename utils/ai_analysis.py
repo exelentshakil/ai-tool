@@ -28,6 +28,116 @@ def get_face_system_prompt(language="English"):
         f"Respond in {language}."
     )
 
+def build_multimodal_user_message(prompt_text: str, img1: str = None, img2: str = None):
+    """
+    Build a user message for chat.completions with optional images.
+    Uses the correct schema: type 'text' and 'image_url' with image_url={'url': ...}
+    """
+    # Always include the prompt text
+    parts = [{"type": "text", "text": prompt_text}]
+    # Attach images if provided (URL or base64 data URL both work)
+    if img1:
+        parts.append({"type": "image_url", "image_url": {"url": img1}})
+    if img2:
+        parts.append({"type": "image_url", "image_url": {"url": img2}})
+
+    # If only text: you can send a string, but the array form is also valid—keep array for consistency
+    return {"role": "user", "content": parts}
+
+def generate_ai_analysis(tool_config, user_data, ip, localization=None):
+    """Ultra enhanced AI analysis with correct image handling for appearance tools."""
+    start_time = time.time()
+
+    # ---- Budget guard ----
+    try:
+        daily_budget = float(DAILY_OPENAI_BUDGET)
+        monthly_budget = float(MONTHLY_OPENAI_BUDGET)
+    except (ValueError, TypeError):
+        daily_budget, monthly_budget = 10.0, 100.0
+
+    if get_openai_cost_today() >= daily_budget or get_openai_cost_month() >= monthly_budget:
+        return create_simple_fallback(tool_config, user_data, localization)
+
+    # ---- Tool meta ----
+    category = (tool_config.get("category") or "general").strip()
+    tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
+    tool_slug = tool_config.get("slug", "")
+    category_lower = category.lower()
+
+    # ---- System prompt ----
+    if category_lower in ["appearance", "face", "photo", "image"]:
+        language = (localization or {}).get("language", "English")
+        system_prompt = get_face_system_prompt(language)
+    else:
+        system_prompt = get_expert_system_prompt(localization)
+
+    # ---- Clean data & build user prompt ----
+    cleaned_data = clean_user_data(user_data)
+
+    # Use the mega face prompt if this tool is the face analyzer
+    if (tool_slug and "face-analyzer-mega" in tool_slug) or category_lower in ["appearance", "face", "photo", "image"]:
+        prompt = build_face_mega_prompt(tool_name, cleaned_data, localization)
+    else:
+        prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned_data, localization)
+
+    # ---- Messages ----
+    messages = [{"role": "system", "content": system_prompt}]
+
+    if category_lower in ["appearance", "face", "photo", "image"]:
+        # Accept direct URL or base64 data URL
+        img1 = (cleaned_data.get("photo_url") or "").strip()
+        img2 = (cleaned_data.get("photo_url_2") or "").strip()
+
+        # Quick debug
+        if img1: print(f"[AI] img1 detected -> {img1[:120]}")
+        if img2: print(f"[AI] img2 detected -> {img2[:120]}")
+
+        # Build a proper multimodal user message (chat.completions schema)
+        messages.append(build_multimodal_user_message(prompt, img1 if img1 else None, img2 if img2 else None))
+    else:
+        messages.append({"role": "user", "content": prompt})
+
+    # ---- Call OpenAI ----
+    try:
+        model_name = "gpt-4o"
+        resp = client.chat.completions.create(
+            model=model_name,
+            messages=messages,
+            max_tokens=2000,   # adjust as you like
+            temperature=0.9
+        )
+
+        ai_analysis = resp.choices[0].message.content
+
+        # ---- Usage + cost (token-only estimate; images are accounted in prompt tokens by API) ----
+        pt = getattr(resp.usage, "prompt_tokens", 0) or 0
+        ct = getattr(resp.usage, "completion_tokens", 0) or 0
+        total_tokens = pt + ct
+        cost = (pt * 2.50 + ct * 10.00) / 1_000_000
+
+        response_time = int((time.time() - start_time) * 1000)
+
+        log_openai_cost_enhanced(
+            cost=cost,
+            tokens=total_tokens,
+            model=model_name,
+            ip=ip,
+            tools_slug=tool_name,
+            response_time=response_time
+        )
+
+        return format_response(ai_analysis, cleaned_data, tool_config, localization)
+
+    except Exception as e:
+        response_time = int((time.time() - start_time) * 1000)
+        print(f"❌ AI analysis failed after {response_time}ms: {str(e)}")
+        try:
+            log_openai_cost_enhanced(cost=0, tokens=0, model="error", ip=ip, tools_slug=tool_name)
+        except:
+            pass
+        return create_simple_fallback(tool_config, cleaned_data, localization)
+
+
 def build_face_mega_prompt(tool_name, user_data, localization=None):
     language = (localization or {}).get("language", "English")
     has_img2 = bool(user_data.get("photo_url_2"))
