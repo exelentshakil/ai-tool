@@ -21540,5 +21540,29 @@
       "h1": "AI-Powered Intelligence Type Analyzer",
       "focus_keyword": "intelligence test"
     }
+  },
+  "ai-relationship-compatibility-analyzer": {
+    "category": "Relationships",
+    "base_name": "AI Relationship Compatibility Analyzer",
+    "variation": "compatibility-analysis",
+    "rpm": 6.8,
+    "openai_prompt_template": "As an expert Relationships advisor specializing in AI-powered compatibility assessment that analyzes communication styles, values alignment, and relationship dynamics to provide personalized insights for stronger connections. for global residents., provide comprehensive analysis and actionable recommendations.",
+    "form_fields": [
+      "location",
+      "your_age",
+      "partner_age",
+      "relationship_length",
+      "communication_style",
+      "conflict_resolution",
+      "shared_goals",
+      "intimacy_preferences"
+    ],
+    "seo_data": {
+      "title": "#1 AI Relationship Compatibility Test - Free Analysis 2025",
+      "description": "Advanced AI analyzes your relationship dynamics, communication patterns, and compatibility factors to provide personalized insights for stronger, healthier relationships.",
+      "keywords": "relationship compatibility test,couple compatibility quiz,relationship analysis,love compatibility test,relationship assessment",
+      "h1": "AI-Powered Relationship Compatibility Analyzer",
+      "focus_keyword": "relationship compatibility test"
+    }
   }
 }
