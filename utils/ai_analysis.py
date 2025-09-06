@@ -106,13 +106,13 @@ def build_multimodal_user_message(prompt_text, img1=None, img2=None):
 
     if _is_present_image_ref(img1):
         content.append({
-            "type": "input_image",
+            "type": "image_url",
             "image_url": img1   # <-- just the string URL here
         })
 
     if _is_present_image_ref(img2):
         content.append({
-            "type": "input_image",
+            "type": "image_url",
             "image_url": img2
         })
 
