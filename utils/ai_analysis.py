@@ -115,7 +115,7 @@ def build_enhanced_prompt(tool_name, category, tool_slug, user_data, localizatio
     category_lower = category.lower()
 
     # --- NEW: Route for face mega analyzer ---
-    if "face-analyzer-mega" in category_lower or "ai-face-analyzer-mega" in category_lower:
+    if category_lower in ['appearance']:
         return build_face_mega_prompt(tool_name, user_data, localization)
     # High-value personality categories get specialized treatment
     if category_lower in ['psychology', 'personality', 'intelligence']:
