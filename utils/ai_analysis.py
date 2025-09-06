@@ -185,6 +185,18 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
             pass
         return create_simple_fallback(tool_config, cleaned, localization)
 
+def looks_like_refusal(text: str) -> bool:
+    if not text:
+        return True
+    t = text.lower()
+    # common refusal patterns
+    return any(
+        p in t for p in [
+            "i can't help with", "i cannot help with", "i’m unable to help",
+            "i'm unable to help", "i can’t analyze", "i cannot analyze",
+            "i can’t assist with", "i cannot assist with"
+        ]
+    )
 
 def build_face_mega_prompt(tool_name, user_data, localization=None):
     language = (localization or {}).get("language", "English")
