@@ -43,14 +43,16 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
                 {"role": "system", "content": get_expert_system_prompt(localization)},
                 {"role": "user", "content": prompt}
             ],
-            max_tokens=2500,
-            temperature=0.85
+            max_tokens=3000,
+            temperature=0.9
         )
 
         ai_analysis = response.choices[0].message.content
         pt, ct = response.usage.prompt_tokens, response.usage.completion_tokens
         total_tokens = pt + ct
-        cost = (pt * 0.00015 + ct * 0.0006) / 1000
+
+        # Correct gpt-4o cost calculation
+        cost = (pt * 2.50 + ct * 10.00) / 1000000
 
         response_time = int((time.time() - start_time) * 1000)
 
@@ -65,7 +67,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         )
 
         if success:
-            print(f"✅ Ultra-analysis completed: {tool_name} took {response_time}ms")
+            print(f"✅ Ultra-analysis completed: {tool_name} took {response_time}ms, cost: ${cost:.4f}")
         else:
             print(f"⚠️ Cost logging failed for {tool_name}")
 
