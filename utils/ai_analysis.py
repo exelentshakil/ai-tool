@@ -36,50 +36,87 @@ def build_face_prompt_safe(tool_name, user_data, localization=None):
     has_img2 = bool(user_data.get("photo_url_2"))
 
     return f"""
-Analyze the attached portrait photo(s) using only photo-aesthetics criteria.
-Do NOT infer identity, age, gender, race/ethnicity, beauty/attractiveness, or personality.
-No medical statements.
+You are an AI Face Analyzer. Your job is to provide a **fun, structured, non-medical report** 
+from one or two face photos. Make it feel comprehensive like a professional "AI face scan" landing page. 
+Be playful, clear, and always return **ALL sections below**. Do NOT infer health, race, or identity.  
 
-RETURN THESE SECTIONS (use short sentences, bullets, and numbers):
+INPUT: One or two face photos.  
+TASK: Return every section listed below in clean formatting.
 
-PHOTO AESTHETICS SCORE (0–100)
+========================
+OUTPUT STRUCTURE
+========================
+
+🎯 HEADER
+- Tool name: {tool_name}
+- Timestamp
+- Global note: "AI Powered • Professional Grade Results"
+
+📋 PHOTO AESTHETICS SCORE (0–100)
 - Overall score (0–100)
 - Sub-scores (0–10 each): Lighting, Sharpness, Framing, Background, Color Harmony
 
-LIGHTING
-- Direction/softness & exposure
-- 2 quick fixes (e.g., window at 45°, diffuser, avoid overhead spots)
+📋 FACE SYMMETRY
+- Symmetry score (0–100)
+- 2–3 quick notes on balance or asymmetry
+- Why symmetry matters in visual aesthetics
 
-SHARPNESS & CLEANLINESS
-- Perceived focus and motion blur (brief)
-- 2 fixes (steady support, higher shutter, clean lens)
+📋 BEAUTY IMPRESSION (fun/playful, not medical)
+- Beauty score (0–100)
+- 3 key factors that improved score
+- 3 that reduced score
+- Note differences for male vs female styling if relevant
 
-FRAMING & POSE
-- Crop & headroom notes (no identity claims)
-- 2 pose tweaks (camera height, chin angle, distance)
+📋 AGE GUESS (entertainment only)
+- Estimated age range
+- Features making them look younger
+- Features making them look older
 
-BACKGROUND & COLOR
-- Clutter level (low/med/high) and color harmony
-- 2 clean-up ideas (simplify background, complementary top)
+📋 SMILE RATING
+- Smile score (1–10)
+- What works about the smile
+- One improvement tip
 
-GROOMING & STYLE
-- Hair tidying / beard line / brow neatness (if visible)
-- Eyewear/frame shape suggestion (if relevant)
-- Palette tip for tops or backdrops (neutrals vs bold)
+📋 FACE SHAPE
+- Identified shape (oval, round, square, heart, diamond)
+- 2 hairstyle tips
+- 1 accessory suggestion (glasses, earrings, hat)
 
-{"SIDE-BY-SIDE QUALITY CHECK\n- Compare A vs B: Lighting, Sharpness, Framing, Background, Color Harmony (each: A/B/win)\n- Which photo is more share-ready and one-line why" if has_img2 else ""}
+📋 CELEBRITY LOOKALIKES
+- Top 3 lookalikes with similarity %
+- 1 short note for each (e.g., similar jawline, eyes, or hairstyle)
 
-RETAKE CHECKLIST
-- 4 numbered, actionable tips (distance, light angle, backdrop, stabilizing)
+📋 SKIN & EYES
+- Undertone: warm / cool / neutral
+- Visible eye color
+- Contrast level (high / medium / low)
+- Quick tip: best clothing or background color that matches
 
-CONFIDENCE & LIMITS
-- Confidence: high/medium/low
-- Any issues (filters, low res, occlusions)
+{"📋 SIDE-BY-SIDE COMPARISON\n- Compare A vs B on: Symmetry, Beauty, Smile, Photo Aesthetics\n- Give differences in bullets\n- End with Compatibility % and playful verdict (e.g., '80% Perfect Match')" if has_img2 else ""}
 
-KEEP IT PRACTICAL, POSITIVE, AND POLICY-SAFE. Respond in {language}.
+📋 STYLE & GROOMING
+- Hair neatness / beard line / brows
+- Eyewear suggestions
+- Outfit / color palette suggestions for camera
+
+📋 RETAKE CHECKLIST
+- 4 practical retake tips (lighting, framing, expression, background)
+
+📋 CONFIDENCE & LIMITS
+- Confidence: high / medium / low
+- Any image issues (filters, low resolution, occlusion)
+- Clear disclaimer: "For fun & style only, not medical or diagnostic."
+
+📋 SHARE PROMPT
+- One playful one-liner people would post on social media (e.g., "My AI face scan gave me 92/100 🔥")
+
+========================
+RESPONSE STYLE
+========================
+- Use clear headers and emojis.
+- Keep tone fun but professional.
+- Write in {language}.
 """
-
-
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     start_time = time.time()
