@@ -36,7 +36,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned_data, localization)
 
     try:
-        model_name = "gpt-4o-mini"
+        model_name = "gpt-4o"
         response = client.chat.completions.create(
             model=model_name,
             messages=[
@@ -109,6 +109,11 @@ def clean_user_data(user_data):
 
 def build_enhanced_prompt(tool_name, category, tool_slug, user_data, localization=None):
     """Build the most comprehensive, value-packed prompt with clean formatting"""
+    # NEW: Simple category check for personality tools
+
+    if category.lower() in ['psychology', 'personality', 'career', 'relationships', 'intelligence',
+                            'personal development']:
+        return build_personality_prompt(tool_name, category, user_data, localization)
 
     if not localization:
         localization = {}
@@ -216,6 +221,63 @@ Use REAL company names, actual phone numbers, and specific websites. Make this w
 
 Respond in {language} with local terminology for {country}."""
 
+
+def build_personality_prompt(tool_name, category, user_data, localization=None):
+    """Specialized prompt for personality/psychology tools"""
+
+    if not localization:
+        localization = {}
+
+    language = localization.get('language', 'English')
+    location = user_data.get('location', 'your area')
+
+    # Build simple user context for personality tools
+    user_context = []
+    for key, value in user_data.items():
+        if key != 'location' and value:
+            user_context.append(f"{key.replace('_', ' ').title()}: {value}")
+
+    context_str = " | ".join(user_context) if user_context else "Basic personality analysis"
+
+    return f"""You are an expert personality analyst providing engaging, personalized insights.
+
+ANALYSIS REQUEST: {tool_name}
+CATEGORY: {category}
+USER PROFILE: {context_str}
+LOCATION: {location}
+
+MISSION: Create compelling personality analysis that users want to share.
+
+REQUIREMENTS:
+- Provide specific, detailed insights (avoid generic statements)
+- Include actionable recommendations for personal growth
+- Reference local resources in {location} when relevant
+- Use positive, empowering language throughout
+- Make insights feel personally meaningful
+- Include percentage breakdowns or scores where appropriate
+
+RESPONSE FORMAT:
+
+PERSONALITY ANALYSIS
+[3-4 paragraphs of detailed, specific personality insights based on their input]
+
+KEY STRENGTHS
+- [Specific strength with real-world application]
+- [Another strength with practical benefit]
+- [Third strength with growth potential]
+
+DEVELOPMENT OPPORTUNITIES
+[2-3 areas for growth with specific, actionable steps they can take]
+
+LOCAL RESOURCES
+[Relevant coaches, courses, or opportunities available in {location}]
+
+PERSONALIZED RECOMMENDATIONS
+[3-5 specific next steps based on their unique profile]
+
+Make this analysis insightful and engaging while remaining accurate. Focus on empowering the user with actionable insights they can immediately apply.
+
+Respond in {language}."""
 
 def extract_location_details(user_data, country, localization):
     """Extract the most specific location information possible"""
