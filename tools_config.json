@@ -21517,5 +21517,28 @@
       "h1": "🧮 AI-Powered BMI Calculator with Health Insights",
       "focus_keyword": "bmi calculator"
     }
+  },
+  "ai-intelligence-type-analyzer": {
+    "category": "Psychology",
+    "base_name": "AI Intelligence Type Analyzer",
+    "variation": "intelligence-analysis",
+    "rpm": 7.2,
+    "openai_prompt_template": "As an expert Psychology advisor specializing in AI-powered intelligence assessment that identifies cognitive strengths, learning preferences, and intellectual talents with personalized development recommendations. for global residents., provide comprehensive analysis and actionable recommendations.",
+    "form_fields": [
+      "location",
+      "age",
+      "education_level",
+      "problem_solving_style",
+      "learning_preference",
+      "creative_activities",
+      "analytical_tasks"
+    ],
+    "seo_data": {
+      "title": "#1 AI Intelligence Type Test - Discover Your Cognitive Strengths 2025",
+      "description": "Advanced AI analyzes your thinking patterns, problem-solving style, and learning preferences to reveal your unique intelligence type and cognitive strengths.",
+      "keywords": "intelligence test,cognitive assessment,intelligence type,thinking style test,cognitive strengths",
+      "h1": "AI-Powered Intelligence Type Analyzer",
+      "focus_keyword": "intelligence test"
+    }
   }
 }
