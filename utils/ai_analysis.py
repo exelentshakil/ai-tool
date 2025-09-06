@@ -108,7 +108,6 @@ def clean_user_data(user_data):
 
     return cleaned
 
-
 def build_enhanced_prompt(tool_name, category, tool_slug, user_data, localization=None):
     """Build the most comprehensive, value-packed prompt with clean formatting"""
     # NEW: Simple category check for personality tools
@@ -231,7 +230,6 @@ Use REAL company names, actual phone numbers, and specific websites. Make this w
 
 Respond in {language} with local terminology for {country}."""
 
-
 def build_psychology_prompt(tool_name, user_data, localization=None):
     """Ultra-comprehensive psychology prompt for GPT-4o"""
 
@@ -332,7 +330,6 @@ QUALITY STANDARDS:
 Generate analysis that demonstrates deep psychological expertise while remaining accessible and immediately useful for personal development.
 
 Respond in {language} with the authority of a leading research psychologist."""
-
 
 def build_career_prompt(tool_name, user_data, localization=None):
     """Professional career analysis prompt optimized for GPT-4o"""
@@ -442,7 +439,6 @@ Remote Work Considerations: [Virtual opportunity assessment]
 Generate career guidance that combines strategic thinking with tactical execution, ensuring every recommendation is actionable and market-informed.
 
 Respond in {language} with the expertise of a senior executive search consultant."""
-
 
 def build_relationship_prompt(tool_name, user_data, localization=None):
     """Comprehensive relationship analysis prompt for GPT-4o"""
@@ -554,7 +550,6 @@ This assessment provides general relationship insights based on established psyc
 Create analysis that empowers healthy relationship development while maintaining appropriate clinical boundaries and ethical standards.
 
 Respond in {language} with the compassionate expertise of a seasoned relationship therapist."""
-
 
 def build_development_prompt(tool_name, user_data, localization=None):
     """Comprehensive personal development prompt for GPT-4o"""
@@ -722,7 +717,6 @@ def extract_location_details(user_data, country, localization):
         'user_input': user_location
     }
 
-
 def build_user_context(user_data, currency, tool_slug):
     """Build the most comprehensive user context possible"""
 
@@ -788,7 +782,6 @@ def build_user_context(user_data, currency, tool_slug):
     context_sections.append(tool_context)
 
     return "\n".join(context_sections)
-
 
 def detect_tool_intent(tool_slug, category, tool_name):
     """Detect the business intent and purpose of the tool from its characteristics"""

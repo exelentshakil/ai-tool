@@ -21564,5 +21564,31 @@
       "h1": "AI-Powered Relationship Compatibility Analyzer",
       "focus_keyword": "relationship compatibility test"
     }
+  },
+  "attachment-style-pair-analyzer": {
+    "category": "Relationships",
+    "base_name": "Attachment Style Pair Analyzer",
+    "variation": "attachment-pair",
+    "rpm": 7.9,
+    "openai_prompt_template": "As an expert relationship advisor using attachment theory and communication science, analyze how two attachment styles interact and provide clear, practical guidance. Keep it supportive and non-clinical. Global audience.",
+    "form_fields": [
+      "location",
+      "your_attachment",
+      "partner_attachment",
+      "relationship_length",
+      "communication_style",
+      "conflict_resolution",
+      "top_trigger"
+    ],
+    "seo_data": {
+      "title": "#1 Attachment Style Pair Analyzer – Free 2025",
+      "description": "Quickly analyze how your two attachment styles interact. Get clear tips, phrases to try, and a 7-day plan to reduce friction and connect better.",
+      "keywords": "attachment style test,attachment pair analyzer,anxious avoidant,secure attachment tips,relationship advice",
+      "h1": "Attachment Style Pair Analyzer",
+      "focus_keyword": "attachment style test"
+    }
   }
+
+
+
 }
