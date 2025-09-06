@@ -51,7 +51,7 @@ class AIPersonalityAnalyzer:
 
             # Call OpenAI API
             response = openai_client.chat.completions.create(
-                model="gpt-4o-mini",
+                model="gpt-4o",
                 messages=[
                     {
                         "role": "system",
@@ -78,10 +78,8 @@ class AIPersonalityAnalyzer:
             completion_tokens = usage.completion_tokens
             total_tokens = prompt_tokens + completion_tokens
 
-            # Calculate cost (gpt-4o-mini pricing)
-            # Input: $0.00015 per 1K tokens, Output: $0.0006 per 1K tokens
-            cost = (prompt_tokens * 0.00015 + completion_tokens * 0.0006) / 1000
-
+            # Correct gpt-4o cost calculation
+            cost = (prompt_tokens * 2.50 + completion_tokens * 10.00) / 1000000
             logger.info(
                 f"OpenAI API usage - Tokens: {total_tokens}, Cost: ${cost:.6f}, Response time: {response_time}ms")
 
@@ -90,7 +88,7 @@ class AIPersonalityAnalyzer:
                 log_success = log_openai_cost_enhanced(
                     cost=cost,
                     tokens=total_tokens,
-                    model="gpt-4o-mini",
+                    model="gpt-4o",
                     ip=ip,
                     tools_slug="face_analysis_ai",
                     response_time=response_time
