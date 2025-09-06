@@ -20,56 +20,65 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # ---------- PROMPTS ----------
 
 def get_face_system_prompt_safe(language="English"):
-    # Policy-safe system prompt: no identity, age, gender, or personality inference.
     return (
-        "You are a photo-aesthetics assistant. "
-        "You CAN analyze human face photos (provided as URLs or base64 data URLs) for non-biometric, non-sensitive, "
-        "non-medical observations like lighting, framing, expression, pose, background, image quality, grooming, "
-        "and general style suggestions. "
-        "DO NOT identify the person, DO NOT guess age, gender, race, ethnicity, or personality. "
-        "DO NOT make medical claims. "
-        "Offer practical, respectful tips. "
-        f"Respond in {language}."
+        "You are a photo-aesthetics assistant for portraits. "
+        "You MAY analyze human face photos for non-biometric, non-sensitive, non-medical aspects only. "
+        "Allowed: lighting, sharpness, framing/cropping, background clutter, color harmony, pose/expression description, "
+        "grooming & style suggestions, and general retake tips. "
+        "Forbidden: identity, age, gender, race/ethnicity, attractiveness/beauty judgments, personality, medical claims. "
+        "If asked for forbidden content, politely steer back to photo quality and styling. "
+        f"Respond in {language} with concise sections and clear scores."
     )
+
 
 def build_face_prompt_safe(tool_name, user_data, localization=None):
     language = (localization or {}).get("language", "English")
     has_img2 = bool(user_data.get("photo_url_2"))
-    # Aesthetics + tips (avoid age/identity/personality). Keep it rich and fun.
+
     return f"""
-You are a friendly photo-aesthetics coach. Analyze the attached face photo(s) and return clear SECTIONS.
-Avoid identity, age, gender, race, ethnicity, or personality inferences. No medical advice.
+Analyze the attached portrait photo(s) using only photo-aesthetics criteria.
+Do NOT infer identity, age, gender, race/ethnicity, beauty/attractiveness, or personality.
+No medical statements.
 
-SECTIONS TO RETURN:
+RETURN THESE SECTIONS (use short sentences, bullets, and numbers):
 
-IMAGE QUALITY & FRAMING
-- Note lighting (direction, softness), exposure, sharpness, background distractions
-- Simple fixes (e.g., move near window, diffuse light, clean lens)
+PHOTO AESTHETICS SCORE (0–100)
+- Overall score (0–100)
+- Sub-scores (0–10 each): Lighting, Sharpness, Framing, Background, Color Harmony
 
-EXPRESSION & POSE
-- Describe visible expression (e.g., neutral, smiling) without judging identity
-- 2 pose tweaks (head angle, camera height, distance)
+LIGHTING
+- Direction/softness & exposure
+- 2 quick fixes (e.g., window at 45°, diffuser, avoid overhead spots)
 
-FACE BALANCE (Non-biometric)
-- Observational notes on overall visual balance (left/right lighting, hair part, glasses reflection)
-- Small styling adjustments (hair tidying, glare reduction)
+SHARPNESS & CLEANLINESS
+- Perceived focus and motion blur (brief)
+- 2 fixes (steady support, higher shutter, clean lens)
 
-STYLE SUGGESTIONS
-- Hair & grooming ideas (e.g., fringe, side part, beard trim lines, brow tidying)
-- Eyewear/frame shape that tends to complement the observed outline
-- Color/contrast ideas for tops or backgrounds
+FRAMING & POSE
+- Crop & headroom notes (no identity claims)
+- 2 pose tweaks (camera height, chin angle, distance)
 
-{"SIDE-BY-SIDE PHOTO CHECK\n- Compare A vs B on lighting, framing, background neatness, expression clarity\n- Say which image is more share-ready and why" if has_img2 else ""}
+BACKGROUND & COLOR
+- Clutter level (low/med/high) and color harmony
+- 2 clean-up ideas (simplify background, complementary top)
 
-SHOOTING CHECKLIST
-- 4 short, actionable tips to retake a cleaner, more flattering photo
+GROOMING & STYLE
+- Hair tidying / beard line / brow neatness (if visible)
+- Eyewear/frame shape suggestion (if relevant)
+- Palette tip for tops or backdrops (neutrals vs bold)
+
+{"SIDE-BY-SIDE QUALITY CHECK\n- Compare A vs B: Lighting, Sharpness, Framing, Background, Color Harmony (each: A/B/win)\n- Which photo is more share-ready and one-line why" if has_img2 else ""}
+
+RETAKE CHECKLIST
+- 4 numbered, actionable tips (distance, light angle, backdrop, stabilizing)
 
 CONFIDENCE & LIMITS
 - Confidence: high/medium/low
-- Any issues (low resolution, heavy filters, occlusion)
+- Any issues (filters, low res, occlusions)
 
-Keep it short, positive, and practical. Respond in {language}.
+KEEP IT PRACTICAL, POSITIVE, AND POLICY-SAFE. Respond in {language}.
 """
+
 
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
