@@ -20,216 +20,142 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 # ---------- PROMPTS ----------
 
 def get_face_system_prompt_safe(language="English"):
-    return (
-        "You are a photo-aesthetics assistant for portraits. "
-        "You MAY analyze human face photos for non-biometric, non-sensitive, non-medical aspects only. "
-        "Allowed: lighting, sharpness, framing/cropping, background clutter, color harmony, pose/expression description, "
-        "grooming & style suggestions, and general retake tips. "
-        "Forbidden: identity, age, gender, race/ethnicity, attractiveness/beauty judgments, personality, medical claims. "
-        "If asked for forbidden content, politely steer back to photo quality and styling. "
-        f"Respond in {language} with concise sections and clear scores."
-    )
-
+    return f"""You are an AI photo critique assistant.
+You MAY describe and critique photos of people.
+Hard rules:
+- Do NOT infer or evaluate sensitive attributes: age, attractiveness/beauty, identity, ethnicity, race, gender, health, or personality.
+- Do NOT provide celebrity lookalikes or identify real people.
+- Keep tone friendly, constructive, and non-medical.
+Focus on photography quality (lighting, sharpness, framing, background), pose coaching, style suggestions, and a retake checklist.
+Respond in {language}."""
 
 def build_face_prompt_safe(tool_name, user_data, localization=None):
     language = (localization or {}).get("language", "English")
-    has_img2 = bool(user_data.get("photo_url_2"))
+    has_img2 = bool((user_data or {}).get("photo_url_2"))
 
     return f"""
-You are an AI Face Analyzer. Your job is to provide a **fun, structured, non-medical report** 
-from one or two face photos. Make it feel comprehensive like a professional "AI face scan" landing page. 
-Be playful, clear, and always return **ALL sections below**. Do NOT infer health, race, or identity.  
+You are a friendly photo coach. Use the attached face photo(s) to give a non-judgmental photography critique.
 
-INPUT: One or two face photos.  
-TASK: Return every section listed below in clean formatting.
+STRICT BOUNDS
+- Do NOT guess age, attractiveness/beauty, gender, ethnicity, health, identity, or personality.
+- Do NOT provide celebrity lookalikes or identify real people.
+- Avoid medical claims. This is for fun photo improvement only.
 
-========================
-OUTPUT STRUCTURE
-========================
+FORMAT: Use these section headers exactly.
 
-🎯 HEADER
-- Tool name: {tool_name}
-- Timestamp
-- Global note: "AI Powered • Professional Grade Results"
-
-📋 PHOTO AESTHETICS SCORE (0–100)
-- Overall score (0–100)
+PHOTO AESTHETICS SCORE (0–100)
+- Overall score and 1-line summary
 - Sub-scores (0–10 each): Lighting, Sharpness, Framing, Background, Color Harmony
 
-📋 FACE SYMMETRY
-- Symmetry score (0–100)
-- 2–3 quick notes on balance or asymmetry
-- Why symmetry matters in visual aesthetics
+LIGHTING
+- Current lighting quality and direction
+- 2 quick fixes (e.g., 45° key light, diffuser, window light)
 
-📋 BEAUTY IMPRESSION (fun/playful, not medical)
-- Beauty score (0–100)
-- 3 key factors that improved score
-- 3 that reduced score
-- Note differences for male vs female styling if relevant
+SHARPNESS & CLEANLINESS
+- Focus/clarity observations
+- 2 fixes (steady support, lens clean, higher shutter)
 
-📋 AGE GUESS (entertainment only)
-- Estimated age range
-- Features making them look younger
-- Features making them look older
+FRAMING & POSE
+- Crop and headroom notes
+- Neutral pose coaching (chin, shoulders, eye line)
 
-📋 SMILE RATING
-- Smile score (1–10)
-- What works about the smile
-- One improvement tip
+BACKGROUND & COLOR
+- Clutter/contrast status
+- 2 styling suggestions (simplify backdrop, outfit contrast)
 
-📋 FACE SHAPE
-- Identified shape (oval, round, square, heart, diamond)
-- 2 hairstyle tips
-- 1 accessory suggestion (glasses, earrings, hat)
+STYLE SUGGESTIONS
+- Hair/grooming idea
+- Eyewear or accessory idea
+- Clothing palette tip based on background contrast (no skin-tone labeling)
 
-📋 CELEBRITY LOOKALIKES
-- Top 3 lookalikes with similarity %
-- 1 short note for each (e.g., similar jawline, eyes, or hairstyle)
+{("SIDE-BY-SIDE PHOTO COMPARISON\n- Compare Photo A vs Photo B on: Lighting, Sharpness, Framing, Background, Color Harmony\n- 3 bullet differences and a 1-line practical verdict (no compatibility or attractiveness claims)" ) if has_img2 else ""}
 
-📋 SKIN & EYES
-- Undertone: warm / cool / neutral
-- Visible eye color
-- Contrast level (high / medium / low)
-- Quick tip: best clothing or background color that matches
+RETAKE CHECKLIST
+- 4 concise bullets people can apply immediately
 
-{"📋 SIDE-BY-SIDE COMPARISON\n- Compare A vs B on: Symmetry, Beauty, Smile, Photo Aesthetics\n- Give differences in bullets\n- End with Compatibility % and playful verdict (e.g., '80% Perfect Match')" if has_img2 else ""}
+CONFIDENCE & LIMITS
+- Confidence: high/medium/low
+- Note any image limitations and a retake tip
 
-📋 STYLE & GROOMING
-- Hair neatness / beard line / brows
-- Eyewear suggestions
-- Outfit / color palette suggestions for camera
-
-📋 RETAKE CHECKLIST
-- 4 practical retake tips (lighting, framing, expression, background)
-
-📋 CONFIDENCE & LIMITS
-- Confidence: high / medium / low
-- Any image issues (filters, low resolution, occlusion)
-- Clear disclaimer: "For fun & style only, not medical or diagnostic."
-
-📋 SHARE PROMPT
-- One playful one-liner people would post on social media (e.g., "My AI face scan gave me 92/100 🔥")
-
-========================
-RESPONSE STYLE
-========================
-- Use clear headers and emojis.
-- Keep tone fun but professional.
-- Write in {language}.
+Respond in {language} with short, punchy sentences and friendly tone.
 """
+
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     start_time = time.time()
 
-    # ---- Budget guard ----
+    # budgets...
     try:
-        daily_budget = float(DAILY_OPENAI_BUDGET)
-        monthly_budget = float(MONTHLY_OPENAI_BUDGET)
+        daily_budget = float(DAILY_OPENAI_BUDGET); monthly_budget = float(MONTHLY_OPENAI_BUDGET)
     except (ValueError, TypeError):
         daily_budget, monthly_budget = 10.0, 100.0
-
     if get_openai_cost_today() >= daily_budget or get_openai_cost_month() >= monthly_budget:
         return create_simple_fallback(tool_config, user_data, localization)
 
-    # ---- Tool meta ----
     category = (tool_config.get("category") or "general").strip()
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
     tool_slug = tool_config.get("slug", "")
     category_lower = category.lower()
 
-    # ---- Clean data & choose prompts ----
-    cleaned = clean_user_data(user_data)
+    cleaned_data = clean_user_data(user_data)
 
-    appearance_mode = category_lower in ["appearance", "face", "photo", "image"] or \
-                      (tool_slug and "face" in tool_slug)
-
-    if appearance_mode:
+    # Use the SAFE system + prompt for face tools
+    if category_lower in ["appearance", "face", "photo", "image"]:
         language = (localization or {}).get("language", "English")
         system_prompt = get_face_system_prompt_safe(language)
-        # Use the safe prompt version to avoid refusals
-        prompt = build_face_prompt_safe(tool_name, cleaned, localization)
-        img1 = (cleaned.get("photo_url") or "").strip() or None
-        img2 = (cleaned.get("photo_url_2") or "").strip() or None
-
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {   # correct chat.completions multimodal shape
-                "role": "user",
-                "content": (
-                    [{"type": "text", "text": prompt}] +
-                    ([{"type": "image_url", "image_url": {"url": img1}}] if img1 else []) +
-                    ([{"type": "image_url", "image_url": {"url": img2}}] if img2 else [])
-                )
-            }
-        ]
+        prompt = build_face_photography_prompt(tool_name, cleaned_data, localization)
     else:
         system_prompt = get_expert_system_prompt(localization)
-        prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned, localization)
-        messages = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt}
-        ]
+        prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned_data, localization)
 
-    # ---- Call OpenAI ----
+    # Build multimodal messages
+    messages = [{"role": "system", "content": system_prompt}]
+    if category_lower in ["appearance", "face", "photo", "image"]:
+        img1 = cleaned_data.get("photo_url") or None
+        img2 = cleaned_data.get("photo_url_2") or None
+        messages.append(build_multimodal_user_message(prompt, img1, img2))
+    else:
+        messages.append({"role": "user", "content": prompt})
+
     try:
         model_name = "gpt-4o"
         resp = client.chat.completions.create(
             model=model_name,
             messages=messages,
-            max_tokens=2000,
-            temperature=0.9
+            max_tokens=2200,
+            temperature=0.7
         )
-        text = resp.choices[0].message.content or ""
+        out = resp.choices[0].message.content or ""
 
-        # If it still refused (rare), do a single safe retry with an even softer prompt
-        if appearance_mode and looks_like_refusal(text):
-            soft_prompt = (
-                "Please ignore identity, age, gender, race, ethnicity, and personality. "
-                "Only describe lighting, framing, background, expression (non-identifying), "
-                "pose, and practical photography & grooming tips. "
-                "Keep it friendly and concise."
-            )
-            retry_messages = [
-                {"role": "system", "content": system_prompt},
-                {
-                    "role": "user",
-                    "content": (
-                        [{"type": "text", "text": soft_prompt}] +
-                        ([{"type": "image_url", "image_url": {"url": img1}}] if img1 else []) +
-                        ([{"type": "image_url", "image_url": {"url": img2}}] if img2 else [])
-                    )
-                }
-            ]
-            resp = client.chat.completions.create(
-                model=model_name,
-                messages=retry_messages,
-                max_tokens=1200,
-                temperature=0.7
-            )
-            text = resp.choices[0].message.content or ""
+        # If the model still refuses, auto-retry with the safest prompt
+        if "i can’t assist with that" in out.lower() or "i can't assist with that" in out.lower():
+            if category_lower in ["appearance", "face", "photo", "image"]:
+                safe_prompt = build_face_photography_prompt(tool_name, cleaned_data, localization)
+                messages[1] = build_multimodal_user_message(safe_prompt, cleaned_data.get("photo_url"), cleaned_data.get("photo_url_2"))
+                resp = client.chat.completions.create(
+                    model=model_name,
+                    messages=messages,
+                    max_tokens=2200,
+                    temperature=0.7
+                )
+                out = resp.choices[0].message.content or ""
 
-        # ---- Log usage/cost (token-based; images are included in prompt tokens by API) ----
+        # cost logging (text-token approximation)
         pt = getattr(resp.usage, "prompt_tokens", 0) or 0
         ct = getattr(resp.usage, "completion_tokens", 0) or 0
-        total_tokens = pt + ct
         cost = (pt * 2.50 + ct * 10.00) / 1_000_000
         response_time = int((time.time() - start_time) * 1000)
+        log_openai_cost_enhanced(cost=cost, tokens=pt+ct, model=model_name, ip=ip, tools_slug=tool_name, response_time=response_time)
 
-        log_openai_cost_enhanced(
-            cost=cost, tokens=total_tokens, model=model_name, ip=ip,
-            tools_slug=tool_name, response_time=response_time
-        )
-
-        return format_response(text, cleaned, tool_config, localization)
+        return format_response(out, cleaned_data, tool_config, localization)
 
     except Exception as e:
         response_time = int((time.time() - start_time) * 1000)
         print(f"❌ AI analysis failed after {response_time}ms: {str(e)}")
-        try:
-            log_openai_cost_enhanced(cost=0, tokens=0, model="error", ip=ip, tools_slug=tool_name)
-        except:
-            pass
-        return create_simple_fallback(tool_config, cleaned, localization)
+        try: log_openai_cost_enhanced(cost=0, tokens=0, model="error", ip=ip, tools_slug=tool_name)
+        except: pass
+        return create_simple_fallback(tool_config, cleaned_data, localization)
+
 
 def looks_like_refusal(text: str) -> bool:
     if not text:
