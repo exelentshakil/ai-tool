@@ -252,9 +252,9 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         # Build multimodal user message (direct image URLs)
         content = [{"type": "text", "text": prompt}]
         if img1:
-            content.append({"type": "input_image", "image_url": img1})
+            content.append({"type": "image_url", "image_url": img1})
         if img2:
-            content.append({"type": "input_image", "image_url": img2})
+            content.append({"type": "image_url", "image_url": img2})
 
         messages.append({"role": "user", "content": content})
     else:
