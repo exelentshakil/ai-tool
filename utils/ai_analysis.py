@@ -28,6 +28,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     category = tool_config.get("category", "general")
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
     tool_slug = tool_config.get("slug", "")
+
     category_lower = category.lower()
 
     if category_lower in ["appearance", "face", "photo", "image"]:
