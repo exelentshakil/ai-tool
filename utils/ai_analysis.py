@@ -82,6 +82,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
 
     # ---- Messages ----
     messages = [{"role": "system", "content": system_prompt}]
+    print(f"[ALL] -> {user_data}")
 
     if category_lower in ["appearance", "face", "photo", "image"]:
         # Accept direct URL or base64 data URL
