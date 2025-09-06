@@ -21495,5 +21495,27 @@
       "h1": "🧮 AI-Powered Slimme Vitamine Verzekering Calculator",
       "focus_keyword": "Insurance Calculator nl"
     }
+  },
+  "ai-bmi-calculator-health-insights": {
+    "category": "Health",
+    "base_name": "AI BMI Calculator with Health Insights",
+    "variation": "health-insights",
+    "rpm": 6.5,
+    "openai_prompt_template": "As an expert Health advisor specializing in Advanced AI-powered BMI analysis with personalized health recommendations, local healthcare provider suggestions, and actionable improvement plans based on individual health profiles. for global residents., provide comprehensive analysis and actionable recommendations.",
+    "form_fields": [
+      "location",
+      "height",
+      "weight",
+      "age",
+      "gender",
+      "activity_level"
+    ],
+    "seo_data": {
+      "title": "#1 AI BMI Calculator with Health Insights - Free 2025",
+      "description": "Advanced AI-powered BMI analysis with personalized health recommendations, local healthcare provider suggestions, and actionable improvement plans based on individual health profiles. Free instant results.",
+      "keywords": "bmi calculator,body mass index calculator,ai bmi calculator,health insights,personalized health recommendations",
+      "h1": "🧮 AI-Powered BMI Calculator with Health Insights",
+      "focus_keyword": "bmi calculator"
+    }
   }
 }
