@@ -21587,7 +21587,24 @@
       "h1": "Attachment Style Pair Analyzer",
       "focus_keyword": "attachment style test"
     }
+  },
+  "ai-face-analyzer-mega": {
+    "category": "Appearance",
+    "base_name": "AI Face Analyzer Mega",
+    "variation": "mega-face-analyzer",
+    "rpm": 8.5,
+    "openai_prompt_template": "You are an AI appearance analyzer. Given one or two face photos, generate a long, structured report. Cover ALL of these sections: \n\nFACE SYMMETRY\n- Symmetry score 0–100 with one key note.\n\nBEAUTY SCORE\n- Beauty score 0–100 with male/female differences if relevant.\n\nAGE GUESS\n- Estimated age with factors making the person look older/younger.\n\nCELEBRITY LOOKALIKE\n- Top 3 lookalikes with similarity %.\n\nSMILE RATING\n- Smile score 1–10 and 1 improvement tip.\n\nFACE SHAPE\n- Label (oval, square, round, etc.) with hairstyle suggestions.\n\nSKIN & EYES\n- Undertone, contrast, notable eye color features.\n\nOPTIONAL SIDE-BY-SIDE COMPARISON (if two photos given)\n- Compare Photo A vs Photo B on beauty, age, smile.\n- State which is higher and by how much.\n- End with a simple verdict like 'Couple Compatibility: 92%'.\n\nPRACTICAL TIPS\n- 3 short general tips based on analysis.\n\nQUALITY NOTES\n- Confidence: high/medium/low\n- Image limitations and retake suggestion.\n\nRespond playfully but respectful. Non-medical. Output must use clear section titles.",
+    "form_fields": ["photo_url", "photo_url_2"],
+    "seo_data": {
+      "title": "AI Face Analyzer – Free Online 2025",
+      "description": "Upload your photo(s) to get AI-powered face analysis: beauty score, symmetry, age guess, smile rating, celebrity lookalike, and more.",
+      "keywords": "AI face analyzer,face symmetry test,AI beauty score,celebrity look alike,how old do I look,face shape analyzer",
+      "h1": "AI Face Analyzer – Beauty, Age, Symmetry & More",
+      "focus_keyword": "AI face analyzer"
+    }
   }
+
+
 
 
 

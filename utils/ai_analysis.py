@@ -114,6 +114,9 @@ def build_enhanced_prompt(tool_name, category, tool_slug, user_data, localizatio
 
     category_lower = category.lower()
 
+    # --- NEW: Route for face mega analyzer ---
+    if "face-analyzer-mega" in category_lower or "ai-face-analyzer-mega" in category_lower:
+        return build_face_mega_prompt(tool_name, user_data, localization)
     # High-value personality categories get specialized treatment
     if category_lower in ['psychology', 'personality', 'intelligence']:
         return build_psychology_prompt(tool_name, user_data, localization)
@@ -229,6 +232,71 @@ SUCCESS FACTORS
 Use REAL company names, actual phone numbers, and specific websites. Make this worth hundreds of {currency_symbol} in professional consultation value.
 
 Respond in {language} with local terminology for {country}."""
+
+def build_face_mega_prompt(tool_name, user_data, localization=None):
+    language = (localization or {}).get("language", "English")
+    has_img2 = bool(user_data.get("photo_url_2"))
+
+    return f"""
+You are an AI face and personality analyzer. Your role is to give users
+a fun but highly detailed, non-medical report from one or two face photos.
+
+Always return information in clear, structured SECTIONS with headers.
+Keep tone playful but professional. Avoid medical claims.
+
+INPUT: One or two face photos.
+TASK: Provide ALL of these sections:
+
+FACE SYMMETRY
+- Symmetry score (0–100)
+- 2–3 observations about balance or asymmetry
+- What symmetry usually means for attractiveness
+
+BEAUTY SCORE
+- Beauty score (0–100)
+- Male vs female differences if relevant
+- Top 3 factors that raised/lowered the score
+
+AGE GUESS
+- Estimated age range
+- Features that make them look younger
+- Features that make them look older
+
+CELEBRITY LOOKALIKE
+- Top 3 lookalikes with similarity %
+- Short reason why (jawline, eyes, hairstyle, etc.)
+
+SMILE RATING
+- Smile score (1–10)
+- Strengths of the smile
+- One improvement tip
+
+FACE SHAPE
+- Identify shape (oval, round, square, heart, diamond)
+- 2 hairstyle tips
+- 1 accessory suggestion (e.g., glasses style)
+
+SKIN & EYES
+- Undertone (warm/cool/neutral)
+- Visible eye color details
+- Contrast level (high/medium/low)
+
+{"SIDE BY SIDE COMPARISON\n- Compare A vs B on beauty, age, and smile\n- Give differences in bullet points\n- End with a compatibility % and short playful verdict" if has_img2 else ""}
+
+PRACTICAL TIPS
+- 3 short actionable tips anyone can apply right away
+
+QUALITY NOTES
+- Confidence: high/medium/low
+- Any image quality issues
+- Retake advice for clearer results
+
+SHARE PROMPT
+- A one-line playful caption for sharing results on social media
+
+Respond in {language}. Keep format clean with clear section titles.
+"""
+
 
 def build_psychology_prompt(tool_name, user_data, localization=None):
     """Ultra-comprehensive psychology prompt for GPT-4o"""
