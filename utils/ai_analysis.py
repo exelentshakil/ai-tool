@@ -91,38 +91,6 @@ SHARE PROMPT
 Respond in {language}. Keep format clean with clear section titles.
 """
 
-# ---------- MESSAGE BUILDERS ----------
-
-def _is_present_image_ref(s: str) -> bool:
-    """Accept https://… or data:image/...;base64,...."""
-    if not s or not isinstance(s, str):
-        return False
-    s = s.strip()
-    return (s.startswith("http://") or s.startswith("https://")
-            or s.startswith("data:image/"))
-
-def build_multimodal_user_message(prompt_text, img1=None, img2=None):
-    content = [{"type": "input_text", "text": prompt_text}]
-
-    if _is_present_image_ref(img1):
-        content.append({
-            "type": "image_url",
-            "image_url": img1   # <-- just the string URL here
-        })
-
-    if _is_present_image_ref(img2):
-        content.append({
-            "type": "image_url",
-            "image_url": img2
-        })
-
-    if len(content) == 1:
-        return {"role": "user", "content": prompt_text}
-
-    return {"role": "user", "content": content}
-
-# ---------- MAIN ENTRY ----------
-
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     """Ultra enhanced AI analysis with correct image handling for appearance tools."""
     start_time = time.time()
@@ -160,17 +128,25 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     if category_lower in ["appearance", "face", "photo", "image"]:
         img1 = cleaned_data.get("photo_url") or ""
         img2 = cleaned_data.get("photo_url_2") or ""
-        # Quick debug prints (won't expose full base64 in logs)
-        safe1 = (img1[:60] + "...") if img1.startswith("data:image") else img1
-        safe2 = (img2[:60] + "...") if img2.startswith("data:image") else img2
-        print(f"[AI] Face tool: img1 present? {bool(_is_present_image_ref(img1))} -> {safe1}")
-        print(f"[AI] Face tool: img2 present? {bool(_is_present_image_ref(img2))} -> {safe2}")
 
-        # IMPORTANT: If this is the face mega tool, use the specific prompt builder
+        # Debug (shortened)
+        if img1:
+            print(f"[AI] img1 -> {img1}")
+        if img2:
+            print(f"[AI] img2 -> {img2}")
+
+        # Use face mega prompt if relevant
         if tool_slug and "face-analyzer-mega" in tool_slug:
             prompt = build_face_mega_prompt(tool_name, cleaned_data, localization)
 
-        messages.append(build_multimodal_user_message(prompt, img1, img2))
+        # Build multimodal user message (direct image URLs)
+        content = [{"type": "input_text", "text": prompt}]
+        if img1:
+            content.append({"type": "input_image", "image_url": img1})
+        if img2:
+            content.append({"type": "input_image", "image_url": img2})
+
+        messages.append({"role": "user", "content": content})
     else:
         messages.append({"role": "user", "content": prompt})
 
@@ -180,17 +156,16 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         resp = client.chat.completions.create(
             model=model_name,
             messages=messages,
-            max_tokens=2000,   # You can raise to 3000; 2000 is usually enough and cheaper
+            max_tokens=2000,
             temperature=0.9
         )
 
         ai_analysis = resp.choices[0].message.content
 
-        # ---- Cost tracking (text-token based; image cost is baked into prompt tokens by API) ----
+        # ---- Usage + cost ----
         pt = getattr(resp.usage, "prompt_tokens", 0) or 0
         ct = getattr(resp.usage, "completion_tokens", 0) or 0
         total_tokens = pt + ct
-        # Your original $2.50 / $10 CPM calc:
         cost = (pt * 2.50 + ct * 10.00) / 1_000_000
 
         response_time = int((time.time() - start_time) * 1000)
@@ -214,6 +189,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         except:
             pass
         return create_simple_fallback(tool_config, cleaned_data, localization)
+
 
 
 
