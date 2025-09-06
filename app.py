@@ -176,7 +176,8 @@ def process_tool():
 
         # Validate inputs
         category = tool_config.get("category", "general")
-        validated_data = validate_tool_inputs(user_data, category)
+        #validated_data = validate_tool_inputs(user_data, category)
+        validated_data = user_data
 
         # Log usage to database for tracking
         log_tool_usage(tool_slug, ip, validated_data)
