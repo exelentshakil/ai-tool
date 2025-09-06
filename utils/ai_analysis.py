@@ -102,26 +102,23 @@ def _is_present_image_ref(s: str) -> bool:
             or s.startswith("data:image/"))
 
 def build_multimodal_user_message(prompt_text, img1=None, img2=None):
-    """
-    Build a user message that mixes text and optional images for GPT-4o.
-    Uses input_text + input_image blocks (robust shape).
-    """
     content = [{"type": "input_text", "text": prompt_text}]
 
     if _is_present_image_ref(img1):
         content.append({
             "type": "input_image",
-            "image_url": {"url": img1}
+            "image_url": img1   # <-- just the string URL here
         })
+
     if _is_present_image_ref(img2):
         content.append({
             "type": "input_image",
-            "image_url": {"url": img2}
+            "image_url": img2
         })
 
-    # If no images made it in, fall back to plain text (keeps other tools working)
     if len(content) == 1:
         return {"role": "user", "content": prompt_text}
+
     return {"role": "user", "content": content}
 
 # ---------- MAIN ENTRY ----------
