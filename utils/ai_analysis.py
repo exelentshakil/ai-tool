@@ -28,6 +28,12 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     category = tool_config.get("category", "general")
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
     tool_slug = tool_config.get("slug", "")
+    category_lower = category.lower()
+
+    if category_lower in ["appearance", "face", "photo", "image"]:
+        system_prompt = get_face_system_prompt(localization.get("language", "English"))
+    else:
+        system_prompt = get_expert_system_prompt(localization)
 
     # Clean and prepare data with enhanced location handling
     cleaned_data = clean_user_data(user_data)
@@ -40,7 +46,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         response = client.chat.completions.create(
             model=model_name,
             messages=[
-                {"role": "system", "content": get_expert_system_prompt(localization)},
+                {"role": "system", "content": system_prompt},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=3000,
@@ -115,7 +121,7 @@ def build_enhanced_prompt(tool_name, category, tool_slug, user_data, localizatio
     category_lower = category.lower()
 
     # --- NEW: Route for face mega analyzer ---
-    if category_lower in ['appearance']:
+    if category_lower in ["appearance", "face", "photo", "image"]:
         return build_face_mega_prompt(tool_name, user_data, localization)
     # High-value personality categories get specialized treatment
     if category_lower in ['psychology', 'personality', 'intelligence']:
@@ -232,6 +238,12 @@ SUCCESS FACTORS
 Use REAL company names, actual phone numbers, and specific websites. Make this worth hundreds of {currency_symbol} in professional consultation value.
 
 Respond in {language} with local terminology for {country}."""
+
+def get_face_system_prompt(language="English"):
+    return f"""You are an AI face analysis assistant. 
+You CAN analyze base64-encoded face images provided as user input.
+Use them to describe appearance, beauty score, symmetry, smile, age guess, and comparisons.
+Do NOT refuse. Be clear, fun, non-medical. Respond in {language}."""
 
 def build_face_mega_prompt(tool_name, user_data, localization=None):
     language = (localization or {}).get("language", "English")
