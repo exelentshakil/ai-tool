@@ -29,7 +29,7 @@ Hard rules:
 Focus on photography quality (lighting, sharpness, framing, background), pose coaching, style suggestions, and a retake checklist.
 Respond in {language}."""
 
-def build_face_prompt_safe(tool_name, user_data, localization=None):
+def build_face_photography_prompt(tool_name, user_data, localization=None):
     language = (localization or {}).get("language", "English")
     has_img2 = bool((user_data or {}).get("photo_url_2"))
 
