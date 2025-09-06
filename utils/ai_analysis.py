@@ -42,14 +42,27 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     # Build the massive, super-detailed prompt
     prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned_data, localization)
 
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": user_data["photo_url"]}}
+            ]
+        }
+    ]
+
+    if user_data.get("photo_url_2"):
+        messages[1]["content"].append(
+            {"type": "image_url", "image_url": {"url": user_data["photo_url_2"]}}
+        )
+
     try:
         model_name = "gpt-4o"
         response = client.chat.completions.create(
             model=model_name,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": prompt}
-            ],
+            messages=messages,
             max_tokens=3000,
             temperature=0.9
         )
