@@ -19,33 +19,60 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ---------- PROMPTS ----------
 
-def get_face_system_prompt(language="English"):
+def get_face_system_prompt_safe(language="English"):
+    # Policy-safe system prompt: no identity, age, gender, or personality inference.
     return (
-        "You are an AI face analysis assistant.\n"
-        "You CAN analyze base64 or URL images attached in the message.\n"
-        "Use them to describe beauty, symmetry, age guess, smile, face shape, lookalikes, skin and eyes, "
-        "and optional A vs B comparison. Be clear, fun, and non-medical. "
+        "You are a photo-aesthetics assistant. "
+        "You CAN analyze human face photos (provided as URLs or base64 data URLs) for non-biometric, non-sensitive, "
+        "non-medical observations like lighting, framing, expression, pose, background, image quality, grooming, "
+        "and general style suggestions. "
+        "DO NOT identify the person, DO NOT guess age, gender, race, ethnicity, or personality. "
+        "DO NOT make medical claims. "
+        "Offer practical, respectful tips. "
         f"Respond in {language}."
     )
 
-def build_multimodal_user_message(prompt_text: str, img1: str = None, img2: str = None):
-    """
-    Build a user message for chat.completions with optional images.
-    Uses the correct schema: type 'text' and 'image_url' with image_url={'url': ...}
-    """
-    # Always include the prompt text
-    parts = [{"type": "text", "text": prompt_text}]
-    # Attach images if provided (URL or base64 data URL both work)
-    if img1:
-        parts.append({"type": "image_url", "image_url": {"url": img1}})
-    if img2:
-        parts.append({"type": "image_url", "image_url": {"url": img2}})
+def build_face_prompt_safe(tool_name, user_data, localization=None):
+    language = (localization or {}).get("language", "English")
+    has_img2 = bool(user_data.get("photo_url_2"))
+    # Aesthetics + tips (avoid age/identity/personality). Keep it rich and fun.
+    return f"""
+You are a friendly photo-aesthetics coach. Analyze the attached face photo(s) and return clear SECTIONS.
+Avoid identity, age, gender, race, ethnicity, or personality inferences. No medical advice.
 
-    # If only text: you can send a string, but the array form is also valid—keep array for consistency
-    return {"role": "user", "content": parts}
+SECTIONS TO RETURN:
+
+IMAGE QUALITY & FRAMING
+- Note lighting (direction, softness), exposure, sharpness, background distractions
+- Simple fixes (e.g., move near window, diffuse light, clean lens)
+
+EXPRESSION & POSE
+- Describe visible expression (e.g., neutral, smiling) without judging identity
+- 2 pose tweaks (head angle, camera height, distance)
+
+FACE BALANCE (Non-biometric)
+- Observational notes on overall visual balance (left/right lighting, hair part, glasses reflection)
+- Small styling adjustments (hair tidying, glare reduction)
+
+STYLE SUGGESTIONS
+- Hair & grooming ideas (e.g., fringe, side part, beard trim lines, brow tidying)
+- Eyewear/frame shape that tends to complement the observed outline
+- Color/contrast ideas for tops or backgrounds
+
+{"SIDE-BY-SIDE PHOTO CHECK\n- Compare A vs B on lighting, framing, background neatness, expression clarity\n- Say which image is more share-ready and why" if has_img2 else ""}
+
+SHOOTING CHECKLIST
+- 4 short, actionable tips to retake a cleaner, more flattering photo
+
+CONFIDENCE & LIMITS
+- Confidence: high/medium/low
+- Any issues (low resolution, heavy filters, occlusion)
+
+Keep it short, positive, and practical. Respond in {language}.
+"""
+
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
-    """Ultra enhanced AI analysis with correct image handling for appearance tools."""
     start_time = time.time()
 
     # ---- Budget guard ----
@@ -64,39 +91,38 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     tool_slug = tool_config.get("slug", "")
     category_lower = category.lower()
 
-    # ---- System prompt ----
-    if category_lower in ["appearance", "face", "photo", "image"]:
+    # ---- Clean data & choose prompts ----
+    cleaned = clean_user_data(user_data)
+
+    appearance_mode = category_lower in ["appearance", "face", "photo", "image"] or \
+                      (tool_slug and "face" in tool_slug)
+
+    if appearance_mode:
         language = (localization or {}).get("language", "English")
-        system_prompt = get_face_system_prompt(language)
+        system_prompt = get_face_system_prompt_safe(language)
+        # Use the safe prompt version to avoid refusals
+        prompt = build_face_prompt_safe(tool_name, cleaned, localization)
+        img1 = (cleaned.get("photo_url") or "").strip() or None
+        img2 = (cleaned.get("photo_url_2") or "").strip() or None
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {   # correct chat.completions multimodal shape
+                "role": "user",
+                "content": (
+                    [{"type": "text", "text": prompt}] +
+                    ([{"type": "image_url", "image_url": {"url": img1}}] if img1 else []) +
+                    ([{"type": "image_url", "image_url": {"url": img2}}] if img2 else [])
+                )
+            }
+        ]
     else:
         system_prompt = get_expert_system_prompt(localization)
-
-    # ---- Clean data & build user prompt ----
-    cleaned_data = clean_user_data(user_data)
-
-    # Use the mega face prompt if this tool is the face analyzer
-    if (tool_slug and "face-analyzer-mega" in tool_slug) or category_lower in ["appearance", "face", "photo", "image"]:
-        prompt = build_face_mega_prompt(tool_name, cleaned_data, localization)
-    else:
-        prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned_data, localization)
-
-    # ---- Messages ----
-    messages = [{"role": "system", "content": system_prompt}]
-    print(f"[ALL] -> {user_data}")
-
-    if category_lower in ["appearance", "face", "photo", "image"]:
-        # Accept direct URL or base64 data URL
-        img1 = (user_data.get("photo_url") or "").strip()
-        img2 = (user_data.get("photo_url_2") or "").strip()
-
-        # Quick debug
-        if img1: print(f"[AI] img1 detected -> {img1[:120]}")
-        if img2: print(f"[AI] img2 detected -> {img2[:120]}")
-
-        # Build a proper multimodal user message (chat.completions schema)
-        messages.append(build_multimodal_user_message(prompt, img1 if img1 else None, img2 if img2 else None))
-    else:
-        messages.append({"role": "user", "content": prompt})
+        prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned, localization)
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ]
 
     # ---- Call OpenAI ----
     try:
@@ -104,30 +130,51 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         resp = client.chat.completions.create(
             model=model_name,
             messages=messages,
-            max_tokens=2000,   # adjust as you like
+            max_tokens=2000,
             temperature=0.9
         )
+        text = resp.choices[0].message.content or ""
 
-        ai_analysis = resp.choices[0].message.content
+        # If it still refused (rare), do a single safe retry with an even softer prompt
+        if appearance_mode and looks_like_refusal(text):
+            soft_prompt = (
+                "Please ignore identity, age, gender, race, ethnicity, and personality. "
+                "Only describe lighting, framing, background, expression (non-identifying), "
+                "pose, and practical photography & grooming tips. "
+                "Keep it friendly and concise."
+            )
+            retry_messages = [
+                {"role": "system", "content": system_prompt},
+                {
+                    "role": "user",
+                    "content": (
+                        [{"type": "text", "text": soft_prompt}] +
+                        ([{"type": "image_url", "image_url": {"url": img1}}] if img1 else []) +
+                        ([{"type": "image_url", "image_url": {"url": img2}}] if img2 else [])
+                    )
+                }
+            ]
+            resp = client.chat.completions.create(
+                model=model_name,
+                messages=retry_messages,
+                max_tokens=1200,
+                temperature=0.7
+            )
+            text = resp.choices[0].message.content or ""
 
-        # ---- Usage + cost (token-only estimate; images are accounted in prompt tokens by API) ----
+        # ---- Log usage/cost (token-based; images are included in prompt tokens by API) ----
         pt = getattr(resp.usage, "prompt_tokens", 0) or 0
         ct = getattr(resp.usage, "completion_tokens", 0) or 0
         total_tokens = pt + ct
         cost = (pt * 2.50 + ct * 10.00) / 1_000_000
-
         response_time = int((time.time() - start_time) * 1000)
 
         log_openai_cost_enhanced(
-            cost=cost,
-            tokens=total_tokens,
-            model=model_name,
-            ip=ip,
-            tools_slug=tool_name,
-            response_time=response_time
+            cost=cost, tokens=total_tokens, model=model_name, ip=ip,
+            tools_slug=tool_name, response_time=response_time
         )
 
-        return format_response(ai_analysis, cleaned_data, tool_config, localization)
+        return format_response(text, cleaned, tool_config, localization)
 
     except Exception as e:
         response_time = int((time.time() - start_time) * 1000)
@@ -136,7 +183,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
             log_openai_cost_enhanced(cost=0, tokens=0, model="error", ip=ip, tools_slug=tool_name)
         except:
             pass
-        return create_simple_fallback(tool_config, cleaned_data, localization)
+        return create_simple_fallback(tool_config, cleaned, localization)
 
 
 def build_face_mega_prompt(tool_name, user_data, localization=None):
@@ -232,7 +279,7 @@ def build_enhanced_prompt(tool_name, category, tool_slug, user_data, localizatio
 
     # --- NEW: Route for face mega analyzer ---
     if category_lower in ["appearance", "face", "photo", "image"]:
-        return build_face_mega_prompt(tool_name, user_data, localization)
+        return build_face_prompt_safe(tool_name, user_data, localization)
     # High-value personality categories get specialized treatment
     if category_lower in ['psychology', 'personality', 'intelligence']:
         return build_psychology_prompt(tool_name, user_data, localization)
