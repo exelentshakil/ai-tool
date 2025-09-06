@@ -9,84 +9,191 @@ import json
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
+from openai import OpenAI
+from utils.database import get_openai_cost_today, get_openai_cost_month, log_openai_cost_enhanced
+from config.settings import OPENAI_API_KEY, DAILY_OPENAI_BUDGET, MONTHLY_OPENAI_BUDGET
+import time
+import re
+
+client = OpenAI(api_key=OPENAI_API_KEY)
+
+# ---------- PROMPTS ----------
+
 def get_face_system_prompt(language="English"):
-    return f"""You are an AI face analysis assistant.
-You CAN analyze base64 or URL images attached in the message.
-Use them to describe beauty, symmetry, age guess, smile, face shape, lookalikes, skin and eyes, and optional A vs B comparison.
-Be clear, fun, and non-medical. Respond in {language}."""
+    return (
+        "You are an AI face analysis assistant.\n"
+        "You CAN analyze base64 or URL images attached in the message.\n"
+        "Use them to describe beauty, symmetry, age guess, smile, face shape, lookalikes, skin and eyes, "
+        "and optional A vs B comparison. Be clear, fun, and non-medical. "
+        f"Respond in {language}."
+    )
+
+def build_face_mega_prompt(tool_name, user_data, localization=None):
+    language = (localization or {}).get("language", "English")
+    has_img2 = bool(user_data.get("photo_url_2"))
+
+    return f"""
+You are an AI face and personality analyzer. Your role is to give users
+a fun but highly detailed, non-medical report from one or two face photos.
+
+Always return information in clear, structured SECTIONS with headers.
+Keep tone playful but professional. Avoid medical claims.
+
+INPUT: One or two face photos.
+TASK: Provide ALL of these sections:
+
+FACE SYMMETRY
+- Symmetry score (0–100)
+- 2–3 observations about balance or asymmetry
+- What symmetry usually means for attractiveness
+
+BEAUTY SCORE
+- Beauty score (0–100)
+- Male vs female differences if relevant
+- Top 3 factors that raised/lowered the score
+
+AGE GUESS
+- Estimated age range
+- Features that make them look younger
+- Features that make them look older
+
+CELEBRITY LOOKALIKE
+- Top 3 lookalikes with similarity %
+- Short reason why (jawline, eyes, hairstyle, etc.)
+
+SMILE RATING
+- Smile score (1–10)
+- Strengths of the smile
+- One improvement tip
+
+FACE SHAPE
+- Identify shape (oval, round, square, heart, diamond)
+- 2 hairstyle tips
+- 1 accessory suggestion (e.g., glasses style)
+
+SKIN & EYES
+- Undertone (warm/cool/neutral)
+- Visible eye color details
+- Contrast level (high/medium/low)
+{"SIDE BY SIDE COMPARISON\n- Compare A vs B on beauty, age, and smile\n- Give differences in bullet points\n- End with a compatibility % and short playful verdict" if has_img2 else ""}
+
+PRACTICAL TIPS
+- 3 short actionable tips anyone can apply right away
+
+QUALITY NOTES
+- Confidence: high/medium/low
+- Any image quality issues
+- Retake advice for clearer results
+
+SHARE PROMPT
+- A one-line playful caption for sharing results on social media
+
+Respond in {language}. Keep format clean with clear section titles.
+"""
+
+# ---------- MESSAGE BUILDERS ----------
+
+def _is_present_image_ref(s: str) -> bool:
+    """Accept https://… or data:image/...;base64,...."""
+    if not s or not isinstance(s, str):
+        return False
+    s = s.strip()
+    return (s.startswith("http://") or s.startswith("https://")
+            or s.startswith("data:image/"))
 
 def build_multimodal_user_message(prompt_text, img1=None, img2=None):
-    """Build a user message that mixes text and optional images for GPT-4o."""
-    # Always include the prompt as text
-    content = [{"type": "text", "text": prompt_text}]
-    # Add images only if present
-    if img1:
-        content.append({"type": "image_url", "image_url": {"url": img1}})
-    if img2:
-        content.append({"type": "image_url", "image_url": {"url": img2}})
-    # If no images, return plain text (OpenAI also accepts string for content)
+    """
+    Build a user message that mixes text and optional images for GPT-4o.
+    Uses input_text + input_image blocks (robust shape).
+    """
+    content = [{"type": "input_text", "text": prompt_text}]
+
+    if _is_present_image_ref(img1):
+        content.append({
+            "type": "input_image",
+            "image_url": {"url": img1}
+        })
+    if _is_present_image_ref(img2):
+        content.append({
+            "type": "input_image",
+            "image_url": {"url": img2}
+        })
+
+    # If no images made it in, fall back to plain text (keeps other tools working)
     if len(content) == 1:
         return {"role": "user", "content": prompt_text}
     return {"role": "user", "content": content}
+
+# ---------- MAIN ENTRY ----------
 
 def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     """Ultra enhanced AI analysis with correct image handling for appearance tools."""
     start_time = time.time()
 
-    # Budget check
+    # ---- Budget guard ----
     try:
         daily_budget = float(DAILY_OPENAI_BUDGET)
         monthly_budget = float(MONTHLY_OPENAI_BUDGET)
     except (ValueError, TypeError):
-        daily_budget = 10.0
-        monthly_budget = 100.0
+        daily_budget, monthly_budget = 10.0, 100.0
 
     if get_openai_cost_today() >= daily_budget or get_openai_cost_month() >= monthly_budget:
         return create_simple_fallback(tool_config, user_data, localization)
 
-    # Tool info
-    category = tool_config.get("category", "general") or "general"
+    # ---- Tool meta ----
+    category = (tool_config.get("category") or "general").strip()
     tool_name = tool_config.get("seo_data", {}).get("title", "Calculator")
     tool_slug = tool_config.get("slug", "")
     category_lower = category.lower()
 
-    # Choose system prompt
+    # ---- System prompt ----
     if category_lower in ["appearance", "face", "photo", "image"]:
         language = (localization or {}).get("language", "English")
         system_prompt = get_face_system_prompt(language)
     else:
         system_prompt = get_expert_system_prompt(localization)
 
-    # Clean user data
+    # ---- Clean data & build user prompt ----
     cleaned_data = clean_user_data(user_data)
-
-    # Build prompt text
     prompt = build_enhanced_prompt(tool_name, category, tool_slug, cleaned_data, localization)
 
-    # Build messages
+    # ---- Messages ----
     messages = [{"role": "system", "content": system_prompt}]
+
     if category_lower in ["appearance", "face", "photo", "image"]:
-        img1 = cleaned_data.get("photo_url") or None
-        img2 = cleaned_data.get("photo_url_2") or None
+        img1 = cleaned_data.get("photo_url") or ""
+        img2 = cleaned_data.get("photo_url_2") or ""
+        # Quick debug prints (won't expose full base64 in logs)
+        safe1 = (img1[:60] + "...") if img1.startswith("data:image") else img1
+        safe2 = (img2[:60] + "...") if img2.startswith("data:image") else img2
+        print(f"[AI] Face tool: img1 present? {bool(_is_present_image_ref(img1))} -> {safe1}")
+        print(f"[AI] Face tool: img2 present? {bool(_is_present_image_ref(img2))} -> {safe2}")
+
+        # IMPORTANT: If this is the face mega tool, use the specific prompt builder
+        if tool_slug and "face-analyzer-mega" in tool_slug:
+            prompt = build_face_mega_prompt(tool_name, cleaned_data, localization)
+
         messages.append(build_multimodal_user_message(prompt, img1, img2))
     else:
         messages.append({"role": "user", "content": prompt})
 
+    # ---- Call OpenAI ----
     try:
         model_name = "gpt-4o"
-        response = client.chat.completions.create(
+        resp = client.chat.completions.create(
             model=model_name,
             messages=messages,
-            max_tokens=3000,
+            max_tokens=2000,   # You can raise to 3000; 2000 is usually enough and cheaper
             temperature=0.9
         )
 
-        ai_analysis = response.choices[0].message.content
+        ai_analysis = resp.choices[0].message.content
 
-        # Usage and cost
-        pt = getattr(response.usage, "prompt_tokens", 0) or 0
-        ct = getattr(response.usage, "completion_tokens", 0) or 0
+        # ---- Cost tracking (text-token based; image cost is baked into prompt tokens by API) ----
+        pt = getattr(resp.usage, "prompt_tokens", 0) or 0
+        ct = getattr(resp.usage, "completion_tokens", 0) or 0
         total_tokens = pt + ct
+        # Your original $2.50 / $10 CPM calc:
         cost = (pt * 2.50 + ct * 10.00) / 1_000_000
 
         response_time = int((time.time() - start_time) * 1000)
@@ -110,6 +217,7 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
         except:
             pass
         return create_simple_fallback(tool_config, cleaned_data, localization)
+
 
 
 
@@ -259,70 +367,6 @@ SUCCESS FACTORS
 Use REAL company names, actual phone numbers, and specific websites. Make this worth hundreds of {currency_symbol} in professional consultation value.
 
 Respond in {language} with local terminology for {country}."""
-
-def build_face_mega_prompt(tool_name, user_data, localization=None):
-    language = (localization or {}).get("language", "English")
-    has_img2 = bool(user_data.get("photo_url_2"))
-
-    return f"""
-You are an AI face and personality analyzer. Your role is to give users
-a fun but highly detailed, non-medical report from one or two face photos.
-
-Always return information in clear, structured SECTIONS with headers.
-Keep tone playful but professional. Avoid medical claims.
-
-INPUT: One or two face photos.
-TASK: Provide ALL of these sections:
-
-FACE SYMMETRY
-- Symmetry score (0–100)
-- 2–3 observations about balance or asymmetry
-- What symmetry usually means for attractiveness
-
-BEAUTY SCORE
-- Beauty score (0–100)
-- Male vs female differences if relevant
-- Top 3 factors that raised/lowered the score
-
-AGE GUESS
-- Estimated age range
-- Features that make them look younger
-- Features that make them look older
-
-CELEBRITY LOOKALIKE
-- Top 3 lookalikes with similarity %
-- Short reason why (jawline, eyes, hairstyle, etc.)
-
-SMILE RATING
-- Smile score (1–10)
-- Strengths of the smile
-- One improvement tip
-
-FACE SHAPE
-- Identify shape (oval, round, square, heart, diamond)
-- 2 hairstyle tips
-- 1 accessory suggestion (e.g., glasses style)
-
-SKIN & EYES
-- Undertone (warm/cool/neutral)
-- Visible eye color details
-- Contrast level (high/medium/low)
-
-{"SIDE BY SIDE COMPARISON\n- Compare A vs B on beauty, age, and smile\n- Give differences in bullet points\n- End with a compatibility % and short playful verdict" if has_img2 else ""}
-
-PRACTICAL TIPS
-- 3 short actionable tips anyone can apply right away
-
-QUALITY NOTES
-- Confidence: high/medium/low
-- Any image quality issues
-- Retake advice for clearer results
-
-SHARE PROMPT
-- A one-line playful caption for sharing results on social media
-
-Respond in {language}. Keep format clean with clear section titles.
-"""
 
 
 def build_psychology_prompt(tool_name, user_data, localization=None):
