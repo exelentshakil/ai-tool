@@ -238,6 +238,8 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
     if category_lower in ["appearance", "face", "photo", "image"]:
         img1 = cleaned_data.get("photo_url") or ""
         img2 = cleaned_data.get("photo_url_2") or ""
+        print(f"[ALL] -> {cleaned_data}")
+
         print(f"[AI] img1 -> {img1}")
 
         # Debug (shortened)
