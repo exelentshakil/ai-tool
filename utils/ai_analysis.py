@@ -86,8 +86,8 @@ def generate_ai_analysis(tool_config, user_data, ip, localization=None):
 
     if category_lower in ["appearance", "face", "photo", "image"]:
         # Accept direct URL or base64 data URL
-        img1 = (cleaned_data.get("photo_url") or "").strip()
-        img2 = (cleaned_data.get("photo_url_2") or "").strip()
+        img1 = (user_data.get("photo_url") or "").strip()
+        img2 = (user_data.get("photo_url_2") or "").strip()
 
         # Quick debug
         if img1: print(f"[AI] img1 detected -> {img1[:120]}")
