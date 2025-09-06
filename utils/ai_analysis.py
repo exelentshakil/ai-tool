@@ -18,6 +18,11 @@ import re
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 # ---------- PROMPTS ----------
+def build_multimodal_user_message(prompt_text, img1=None, img2=None):
+    content = [{"type": "text", "text": prompt_text}]
+    if img1: content.append({"type": "image_url", "image_url": {"url": img1}})
+    if img2: content.append({"type": "image_url", "image_url": {"url": img2}})
+    return {"role": "user", "content": content}
 
 def get_face_system_prompt_safe(language="English"):
     return f"""You are an AI photo critique assistant.
